@@ -1,0 +1,176 @@
+// User types
+export enum Role {
+  EMPLOYEE = 'EMPLOYEE',
+  LAB_ADMIN = 'LAB_ADMIN',
+  SUPER_ADMIN = 'SUPER_ADMIN',
+}
+
+export enum UserStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+}
+
+export interface User {
+  id: string;
+  employeeId: string;
+  employeeNumber: number;
+  name: string;
+  email: string;
+  designation: string;
+  role: Role;
+  dateOfJoining: string;
+  dateOfLeaving?: string;
+  baseSalary: number;
+  status: UserStatus;
+}
+
+// Attendance types
+export enum AttendanceStatus {
+  PRESENT = 'PRESENT',
+  ABSENT = 'ABSENT',
+  HALF_DAY = 'HALF_DAY',
+  WEEKEND = 'WEEKEND',
+  HOLIDAY = 'HOLIDAY',
+  CASUAL_LEAVE = 'CASUAL_LEAVE',
+}
+
+export interface Attendance {
+  id: string;
+  userId: string;
+  date: string;
+  status: AttendanceStatus;
+  firstInTime?: string;
+  lastOutTime?: string;
+  totalDuration?: number;
+  biometricSynced: boolean;
+}
+
+// Leave types
+export enum LeaveStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  CANCELLED = 'CANCELLED',
+}
+
+export interface LeaveApplication {
+  id: string;
+  userId: string;
+  fromDate: string;
+  toDate: string;
+  totalDays: number;
+  reason: string;
+  status: LeaveStatus;
+  appliedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewerComments?: string;
+  user?: {
+    name: string;
+    employeeId: string;
+    designation: string;
+  };
+}
+
+export interface LeaveBalance {
+  id: string;
+  userId: string;
+  year: number;
+  totalLeaves: number;
+  usedLeaves: number;
+  pendingLeaves: number;
+  availableLeaves: number;
+}
+
+// Payroll types
+export enum PaymentStatus {
+  DRAFT = 'DRAFT',
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+}
+
+export interface Payroll {
+  id: string;
+  userId: string;
+  month: number;
+  year: number;
+  baseSalary: number;
+  workingDays: number;
+  presentDays: number;
+  casualLeaveDays: number;
+  halfDays: number;
+  lossOfPayDays: number;
+  totalPayDays: number;
+  grossEarnings: number;
+  deductions: number;
+  reimbursements: number;
+  netSalary: number;
+  paymentStatus: PaymentStatus;
+  paymentDate?: string;
+  generatedAt: string;
+  user?: {
+    employeeId: string;
+    employeeNumber: number;
+    name: string;
+    designation: string;
+  };
+}
+
+// Announcement types
+export enum AnnouncementPriority {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+}
+
+export enum TargetAudience {
+  ALL = 'ALL',
+  EMPLOYEES = 'EMPLOYEES',
+  ADMINS = 'ADMINS',
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  priority: AnnouncementPriority;
+  isPinned: boolean;
+  isActive: boolean;
+  targetAudience: TargetAudience;
+  expiresAt?: string;
+  createdAt: string;
+  creator: {
+    name: string;
+    role: Role;
+  };
+  isRead?: boolean;
+  readAt?: string;
+}
+
+// Holiday type
+export interface Holiday {
+  id: string;
+  date: string;
+  name: string;
+  description?: string;
+}
+
+// Auth types
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  user: User;
+}
+
+// Dashboard types
+export interface DashboardStats {
+  presentDays: number;
+  absentDays: number;
+  halfDays: number;
+  casualLeaves: number;
+  totalWorkingDays: number;
+}
