@@ -24,7 +24,7 @@ A comprehensive full-stack web application for automating attendance tracking, l
 - **HTTP Client**: Axios
 - **Date Handling**: Day.js
 - **Data Grid**: MUI X Data Grid
-- **Excel Export**: XLSX
+- **Excel Export**: ExcelJS
 
 ## 📋 Features
 
@@ -183,7 +183,7 @@ attend-ease/
 After running the seed script:
 
 ```
-Email: admin@attendease.com
+Email: admin@cambridge.edu.in
 Password: admin123
 Role: Super Admin
 ```
@@ -211,6 +211,7 @@ Role: Super Admin
 ### Authentication
 - `POST /api/auth/login` - User login
 - `GET /api/auth/me` - Get current user
+- `PATCH /api/auth/me/password` - Change password (authenticated)
 - `POST /api/auth/logout` - User logout
 
 ### Attendance
@@ -229,12 +230,15 @@ Role: Super Admin
 
 ### Payroll
 - `POST /api/payroll/generate` - Generate payroll (Admin)
+- `GET /api/payroll` - Get all payroll (Admin, optional year/month/userId)
 - `GET /api/payroll/my-salary-slips` - My salary slips
+- `GET /api/payroll/:id` - Get payroll by ID
+- `PATCH /api/payroll/:id/mark-paid` - Mark as paid (Super Admin)
 - `GET /api/payroll/:id/download/pdf` - Download PDF
 - `GET /api/payroll/:id/download/xlsx` - Download Excel
 
 ### Users (Admin only)
-- `GET /api/users` - Get all users
+- `GET /api/users` - Get all users (paginated)
 - `POST /api/users` - Create user
 - `PATCH /api/users/:id` - Update user
 - `PATCH /api/users/:id/activate` - Activate user
@@ -316,8 +320,10 @@ The Reports page provides comprehensive analytics with Excel export:
 
 ## 🎨 UI Features
 
+- **Landing Page** - Public landing with sign-in; app when authenticated
+- **Theme** - Light/dark mode toggle (persisted)
 - **Responsive Design** - Works on desktop, tablet, mobile
-- **Material Design** - Modern, consistent UI
+- **Material Design** - Modern, consistent UI (MUI v7)
 - **Role-Based Navigation** - Menu items based on user role
 - **Loading States** - Smooth loading indicators
 - **Error Handling** - User-friendly error messages
@@ -325,6 +331,7 @@ The Reports page provides comprehensive analytics with Excel export:
 - **Data Grid** - Sortable, paginated tables
 - **Form Validation** - Real-time validation
 - **Protected Routes** - Automatic redirection
+- **Change Password** - In-app change password (user menu)
 
 ## 🔒 Security
 
@@ -406,7 +413,7 @@ See [DATA_MIGRATION_GUIDE.md](backend/DATA_MIGRATION_GUIDE.md) for detailed inst
 - Clear node_modules and reinstall
 
 ### Can't login
-- Use default credentials: admin@attendease.com / admin123
+- Use default credentials: admin@cambridge.edu.in / admin123
 - Check backend console for errors
 - Verify JWT_SECRET is set
 

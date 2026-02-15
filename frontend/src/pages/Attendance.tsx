@@ -17,6 +17,7 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   IconButton,
+  useTheme,
 } from '@mui/material';
 import { CalendarMonth, TableRows, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { attendanceApi } from '../api/attendance';
@@ -57,6 +58,8 @@ const formatKey = (date: Date) => {
 };
 
 const Attendance: React.FC = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const { data: attendance, isLoading } = useQuery({
     queryKey: ['my-attendance'],
     queryFn: () => attendanceApi.getMyAttendance(),
@@ -94,7 +97,7 @@ const Attendance: React.FC = () => {
       case AttendanceStatus.WEEKEND:
         return 'default';
       case AttendanceStatus.HOLIDAY:
-        return 'secondary';
+        return 'primary';
       default:
         return 'default';
     }
@@ -186,13 +189,22 @@ const Attendance: React.FC = () => {
                   const isToday =
                     formatKey(day.date) === formatKey(new Date()) && day.isCurrentMonth;
 
-                  let bg: string = 'grey.100';
-                  if (!day.isCurrentMonth) bg = 'grey.50';
-                  if (status === AttendanceStatus.PRESENT) bg = 'success.light';
-                  if (status === AttendanceStatus.ABSENT) bg = 'error.light';
-                  if (status === AttendanceStatus.HALF_DAY) bg = 'warning.light';
-                  if (status === AttendanceStatus.CASUAL_LEAVE) bg = 'info.light';
-                  if (status === AttendanceStatus.HOLIDAY) bg = 'secondary.light';
+                  let bg: string;
+                  if (!day.isCurrentMonth) {
+                    bg = isDark ? 'grey.900' : 'grey.50';
+                  } else if (status === AttendanceStatus.PRESENT) {
+                    bg = isDark ? 'success.dark' : 'success.light';
+                  } else if (status === AttendanceStatus.ABSENT) {
+                    bg = isDark ? 'error.dark' : 'error.light';
+                  } else if (status === AttendanceStatus.HALF_DAY) {
+                    bg = isDark ? 'warning.dark' : 'warning.light';
+                  } else if (status === AttendanceStatus.CASUAL_LEAVE) {
+                    bg = isDark ? 'info.dark' : 'info.light';
+                  } else if (status === AttendanceStatus.HOLIDAY) {
+                    bg = isDark ? 'primary.dark' : 'primary.light';
+                  } else {
+                    bg = isDark ? 'grey.800' : 'grey.100';
+                  }
 
                   return (
                     <Paper
@@ -205,19 +217,27 @@ const Attendance: React.FC = () => {
                         opacity: day.isCurrentMonth ? 1 : 0.6,
                         borderRadius: 1.5,
                         border: isToday ? 2 : 1,
-                        borderColor: isToday ? 'primary.main' : 'grey.200',
+                        borderColor: isToday ? 'primary.main' : 'divider',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'flex-start',
                       }}
                     >
-                      <Typography variant="subtitle2" fontWeight="bold">
+                      <Typography
+                        variant="subtitle2"
+                        fontWeight="bold"
+                        sx={{ color: 'text.primary' }}
+                      >
                         {day.date.getDate()}
                       </Typography>
                       {status && (
                         <Typography
                           variant="caption"
-                          sx={{ mt: 0.5, textTransform: 'capitalize' }}
+                          sx={{
+                            mt: 0.5,
+                            textTransform: 'capitalize',
+                            color: 'text.primary',
+                          }}
                         >
                           {status.replace('_', ' ').toLowerCase()}
                         </Typography>
@@ -239,7 +259,7 @@ const Attendance: React.FC = () => {
                 <Chip label="Absent" size="small" color="error" />
                 <Chip label="Half Day" size="small" color="warning" />
                 <Chip label="Casual Leave" size="small" color="info" />
-                <Chip label="Holiday" size="small" color="secondary" />
+                <Chip label="Holiday" size="small" color="primary" />
                 <Chip label="No record" size="small" variant="outlined" />
               </Box>
             </CardContent>

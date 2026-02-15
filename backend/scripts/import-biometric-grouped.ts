@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import * as XLSX from 'xlsx';
+import { readSheetAsArrays } from './lib/excel-reader';
 
 const prisma = new PrismaClient();
 
@@ -41,12 +41,9 @@ async function importBiometricGrouped(filePath: string) {
   console.log(`File: ${filePath}\n`);
 
   try {
-    const workbook = XLSX.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    
-    // Get raw data
-    const data: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
+    const data: any[] = (await readSheetAsArrays(filePath, {
+      defval: null,
+    })) as any[];
 
     console.log(`Found ${data.length} total rows\n`);
 

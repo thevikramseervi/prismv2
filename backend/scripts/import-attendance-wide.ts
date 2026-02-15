@@ -1,6 +1,6 @@
 import { PrismaClient, AttendanceStatus } from '@prisma/client';
-import * as XLSX from 'xlsx';
 import * as bcrypt from 'bcrypt';
+import { readSheetAsJson } from './lib/excel-reader';
 
 const prisma = new PrismaClient();
 
@@ -10,10 +10,7 @@ async function importAttendanceWide(filePath: string) {
 
   try {
     // Read Excel file
-    const workbook = XLSX.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet);
+    const data = await readSheetAsJson(filePath);
 
     console.log(`Found ${data.length} employees in Excel file\n`);
 
@@ -59,7 +56,7 @@ async function importAttendanceWide(filePath: string) {
 
         if (!user) {
           // Create user
-          const email = `${employeeId.toLowerCase()}@attendease.com`;
+          const email = `${employeeId.toLowerCase()}@cambridge.edu.in`;
           const passwordHash = await bcrypt.hash('employee123', 10);
 
           user = await prisma.user.create({

@@ -134,7 +134,7 @@ const Admin: React.FC = () => {
 
       <Grid container spacing={3}>
         {/* Payroll Generation */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card elevation={2}>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
@@ -229,7 +229,7 @@ const Admin: React.FC = () => {
         </Grid>
 
         {/* Biometric Sync */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card elevation={2}>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>

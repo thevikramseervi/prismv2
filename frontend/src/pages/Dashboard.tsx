@@ -16,7 +16,6 @@ import {
   Cancel,
   Timelapse,
   BeachAccess,
-  CalendarMonth,
 } from '@mui/icons-material';
 import { attendanceApi } from '../api/attendance';
 import { leaveApi } from '../api/leave';
@@ -43,8 +42,13 @@ const Dashboard: React.FC = () => {
 
   if (statsLoading || leaveLoading || announcementsLoading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="60vh"
+      >
+        <CircularProgress sx={{ color: 'primary.main' }} />
       </Box>
     );
   }
@@ -79,26 +83,45 @@ const Dashboard: React.FC = () => {
   return (
     <Box>
       <Box mb={4}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
+        <Typography variant="h4" fontWeight={700} gutterBottom>
           Welcome back, {user?.name}!
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Here's an overview of your attendance this month
+          Here’s an overview of your attendance this month
         </Typography>
       </Box>
 
       <Grid container spacing={3}>
-        {/* Stats Cards */}
         {statCards.map((card, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card elevation={2}>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
+            <Card
+              elevation={0}
+              sx={{
+                border: 1,
+                borderColor: 'divider',
+                transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+                '&:hover': {
+                  boxShadow: '0 4px 20px rgb(0 0 0 / 0.08)',
+                  borderColor: 'primary.light',
+                },
+              }}
+            >
+              <CardContent sx={{ p: 2.5 }}>
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="space-between"
+                >
                   <Box>
-                    <Typography color="text.secondary" variant="body2" gutterBottom>
+                    <Typography
+                      color="text.secondary"
+                      variant="body2"
+                      fontWeight={600}
+                      gutterBottom
+                    >
                       {card.title}
                     </Typography>
-                    <Typography variant="h4" fontWeight="bold">
+                    <Typography variant="h4" fontWeight={700}>
                       {card.value}
                     </Typography>
                   </Box>
@@ -107,7 +130,6 @@ const Dashboard: React.FC = () => {
                       bgcolor: card.color,
                       p: 1.5,
                       borderRadius: 2,
-                      opacity: 0.9,
                     }}
                   >
                     {card.icon}
@@ -118,37 +140,57 @@ const Dashboard: React.FC = () => {
           </Grid>
         ))}
 
-        {/* Leave Balance Card */}
-        <Grid item xs={12} md={4}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="h6" fontWeight="bold" gutterBottom>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <Card
+            elevation={0}
+            sx={{
+              border: 1,
+              borderColor: 'divider',
+              height: '100%',
+            }}
+          >
+            <CardContent sx={{ p: 2.5 }}>
+              <Typography variant="h6" fontWeight={700} gutterBottom>
                 Leave Balance
               </Typography>
               <Box mt={2}>
-                <Box display="flex" justifyContent="space-between" mb={1}>
-                  <Typography variant="body2">Total Leaves</Typography>
-                  <Typography variant="body2" fontWeight="bold">
+                <Box display="flex" justifyContent="space-between" mb={1.5}>
+                  <Typography variant="body2" color="text.secondary">
+                    Total Leaves
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600}>
                     {leaveBalance?.totalLeaves || 12}
                   </Typography>
                 </Box>
-                <Box display="flex" justifyContent="space-between" mb={1}>
-                  <Typography variant="body2">Used Leaves</Typography>
-                  <Typography variant="body2" color="error.main" fontWeight="bold">
+                <Box display="flex" justifyContent="space-between" mb={1.5}>
+                  <Typography variant="body2" color="text.secondary">
+                    Used
+                  </Typography>
+                  <Typography variant="body2" color="error.main" fontWeight={600}>
                     {leaveBalance?.usedLeaves || 0}
                   </Typography>
                 </Box>
-                <Box display="flex" justifyContent="space-between" mb={1}>
-                  <Typography variant="body2">Pending</Typography>
-                  <Typography variant="body2" color="warning.main" fontWeight="bold">
+                <Box display="flex" justifyContent="space-between" mb={1.5}>
+                  <Typography variant="body2" color="text.secondary">
+                    Pending
+                  </Typography>
+                  <Typography variant="body2" color="warning.main" fontWeight={600}>
                     {leaveBalance?.pendingLeaves || 0}
                   </Typography>
                 </Box>
-                <Box display="flex" justifyContent="space-between">
-                  <Typography variant="body2" fontWeight="bold">
-                    Available Leaves
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  sx={{
+                    pt: 1.5,
+                    borderTop: 1,
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography variant="body2" fontWeight={700}>
+                    Available
                   </Typography>
-                  <Typography variant="body2" color="success.main" fontWeight="bold">
+                  <Typography variant="body2" color="success.main" fontWeight={700}>
                     {leaveBalance?.availableLeaves || 12}
                   </Typography>
                 </Box>
@@ -157,11 +199,17 @@ const Dashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        {/* Announcements */}
-        <Grid item xs={12} md={8}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="h6" fontWeight="bold" gutterBottom>
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Card
+            elevation={0}
+            sx={{
+              border: 1,
+              borderColor: 'divider',
+              height: '100%',
+            }}
+          >
+            <CardContent sx={{ p: 2.5 }}>
+              <Typography variant="h6" fontWeight={700} gutterBottom>
                 Recent Announcements
               </Typography>
               <Box mt={2}>
@@ -173,13 +221,22 @@ const Dashboard: React.FC = () => {
                       sx={{
                         p: 2,
                         mb: 1.5,
-                        bgcolor: announcement.isRead ? 'grey.50' : 'primary.50',
+                        borderRadius: 2,
+                        bgcolor: announcement.isRead
+                          ? 'grey.50'
+                          : 'primary.50',
                         border: 1,
-                        borderColor: announcement.isRead ? 'grey.200' : 'primary.200',
+                        borderColor: announcement.isRead
+                          ? 'grey.200'
+                          : 'primary.200',
                       }}
                     >
                       <Box display="flex" alignItems="center" mb={0.5}>
-                        <Typography variant="subtitle2" fontWeight="bold" sx={{ flexGrow: 1 }}>
+                        <Typography
+                          variant="subtitle2"
+                          fontWeight={600}
+                          sx={{ flexGrow: 1 }}
+                        >
                           {announcement.title}
                         </Typography>
                         <Chip
@@ -189,22 +246,29 @@ const Dashboard: React.FC = () => {
                             announcement.priority === 'HIGH'
                               ? 'error'
                               : announcement.priority === 'MEDIUM'
-                              ? 'warning'
-                              : 'default'
+                                ? 'warning'
+                                : 'default'
                           }
                         />
                       </Box>
                       <Typography variant="body2" color="text.secondary">
                         {announcement.content}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                        mt={1}
+                      >
                         By {announcement.creator.name} •{' '}
                         {new Date(announcement.createdAt).toLocaleDateString()}
                       </Typography>
                     </Paper>
                   ))
                 ) : (
-                  <Alert severity="info">No announcements available</Alert>
+                  <Alert severity="info" sx={{ borderRadius: 2 }}>
+                    No announcements available
+                  </Alert>
                 )}
               </Box>
             </CardContent>

@@ -29,12 +29,17 @@ import {
   People,
   EventNote,
   Settings,
+  Lock,
   Logout,
   Notifications,
   AssignmentTurnedIn,
   Assessment,
+  Brightness4,
+  Brightness7,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { useThemeMode } from '../contexts/ThemeModeContext';
+import ChangePasswordDialog from '../components/ChangePasswordDialog';
 import { Role } from '../types';
 
 const drawerWidth = 260;
@@ -87,7 +92,9 @@ const navItems: NavItem[] = [
 const DashboardLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { mode, toggleMode } = useThemeMode();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -114,19 +121,21 @@ const DashboardLayout: React.FC = () => {
   });
 
   const drawer = (
-    <Box>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Toolbar
         sx={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)',
           color: 'white',
+          minHeight: { xs: 56, sm: 64 },
+          px: 2,
         }}
       >
-        <Typography variant="h6" noWrap component="div" fontWeight="bold">
+        <Typography variant="h6" noWrap component="div" fontWeight={800}>
           Attend Ease
         </Typography>
       </Toolbar>
       <Divider />
-      <List sx={{ px: 1, py: 2 }}>
+      <List sx={{ px: 1.5, py: 2, flex: 1 }}>
         {filteredNavItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -136,6 +145,7 @@ const DashboardLayout: React.FC = () => {
                 selected={isActive}
                 sx={{
                   borderRadius: 2,
+                  py: 1.25,
                   '&.Mui-selected': {
                     bgcolor: 'primary.main',
                     color: 'white',
@@ -149,11 +159,17 @@ const DashboardLayout: React.FC = () => {
                 }}
               >
                 <ListItemIcon
-                  sx={{ color: isActive ? 'white' : 'text.secondary', minWidth: 40 }}
+                  sx={{
+                    color: isActive ? 'white' : 'text.secondary',
+                    minWidth: 40,
+                  }}
                 >
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText primary={item.title} />
+                <ListItemText
+                  primary={item.title}
+                  primaryTypographyProps={{ fontWeight: isActive ? 600 : 500 }}
+                />
               </ListItemButton>
             </ListItem>
           );
@@ -166,12 +182,14 @@ const DashboardLayout: React.FC = () => {
     <Box sx={{ display: 'flex' }}>
       <AppBar
         position="fixed"
+        elevation={0}
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
-          bgcolor: 'white',
+          bgcolor: 'background.paper',
           color: 'text.primary',
-          boxShadow: 1,
+          borderBottom: 1,
+          borderColor: 'divider',
         }}
       >
         <Toolbar>
@@ -192,6 +210,15 @@ const DashboardLayout: React.FC = () => {
             <Badge badgeContent={0} color="error">
               <Notifications />
             </Badge>
+          </IconButton>
+
+          <IconButton
+            color="inherit"
+            onClick={toggleMode}
+            sx={{ mr: 1 }}
+            aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
           </IconButton>
 
           <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
@@ -228,6 +255,17 @@ const DashboardLayout: React.FC = () => {
               />
             </Box>
             <Divider />
+            <MenuItem
+              onClick={() => {
+                setChangePasswordOpen(true);
+                handleMenuClose();
+              }}
+            >
+              <ListItemIcon>
+                <Lock fontSize="small" />
+              </ListItemIcon>
+              Change password
+            </MenuItem>
             <MenuItem onClick={handleLogout}>
               <ListItemIcon>
                 <Logout fontSize="small" />
@@ -235,6 +273,10 @@ const DashboardLayout: React.FC = () => {
               Logout
             </MenuItem>
           </Menu>
+          <ChangePasswordDialog
+            open={changePasswordOpen}
+            onClose={() => setChangePasswordOpen(false)}
+          />
         </Toolbar>
       </AppBar>
 
@@ -270,10 +312,10 @@ const DashboardLayout: React.FC = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: { xs: 2, sm: 3 },
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           minHeight: '100vh',
-          bgcolor: 'grey.50',
+          bgcolor: 'background.default',
         }}
       >
         <Toolbar />

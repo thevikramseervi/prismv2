@@ -1,6 +1,6 @@
 # 🎉 Attend Ease - System Review & Status Report
 
-**Generated:** February 6, 2026  
+**Generated:** February 15, 2026  
 **Status:** ✅ PRODUCTION READY
 
 ---
@@ -52,15 +52,17 @@ backend/
 frontend/
 ├── src/
 │   ├── api/            ✅ Axios client, API services
-│   ├── contexts/       ✅ AuthContext (FIXED)
-│   ├── components/     ✅ ProtectedRoute
-│   ├── layouts/        ✅ DashboardLayout with sidebar
-│   ├── pages/          ✅ 11 pages implemented
+│   ├── contexts/       ✅ AuthContext, ThemeModeContext
+│   ├── components/    ✅ ProtectedRoute, ChangePasswordDialog, RootOrApp
+│   ├── layouts/       ✅ DashboardLayout with sidebar
+│   ├── pages/          ✅ 12+ pages
+│   │   ├── Landing.tsx         (public landing)
 │   │   ├── Login.tsx
 │   │   ├── Dashboard.tsx
-│   │   ├── Attendance.tsx      (calendar + table views)
+│   │   ├── Attendance.tsx     (calendar + table views)
 │   │   ├── Leave.tsx
 │   │   ├── SalarySlips.tsx
+│   │   ├── SalarySlipView.tsx (slip detail)
 │   │   ├── Announcements.tsx
 │   │   ├── Users.tsx
 │   │   ├── Holidays.tsx
@@ -68,7 +70,8 @@ frontend/
 │   │   ├── LeaveApproval.tsx
 │   │   └── Reports.tsx
 │   ├── types/          ✅ All TypeScript definitions
-│   └── App.tsx         ✅ Routing configured
+│   ├── utils/          ✅ slipUtils etc.
+│   └── App.tsx         ✅ Routing, theme, RootOrApp
 └── public/             ✅ Static assets
 ```
 
@@ -231,16 +234,16 @@ frontend/
 - ✅ @nestjs/config, jwt, passport, schedule
 - ✅ prisma (5.22.0), @prisma/client
 - ✅ bcrypt, passport-jwt
-- ✅ pdfkit, exceljs, xlsx
+- ✅ pdfkit, exceljs
 - ✅ class-validator, class-transformer
 
 ### Frontend
-- ✅ react, react-dom (18.3.1)
-- ✅ react-router-dom (7.1.1)
-- ✅ @tanstack/react-query (5.62.14)
-- ✅ @mui/material, @mui/icons-material (6.3.1)
+- ✅ react, react-dom (19.x)
+- ✅ react-router-dom (7.x)
+- ✅ @tanstack/react-query (5.x)
+- ✅ @mui/material, @mui/icons-material (7.x)
 - ✅ @mui/x-date-pickers, @mui/x-data-grid
-- ✅ axios, dayjs, xlsx
+- ✅ axios, dayjs, exceljs
 - ✅ react-hook-form, zod
 
 ---
@@ -251,7 +254,7 @@ frontend/
 - **Total:** 252 (251 employees + 1 admin)
 - **Status:** All ACTIVE
 - **Default Password:** `employee123`
-- **Email Format:** `{employeeId}@attendease.com`
+- **Email Format:** `{employeeId}@cambridge.edu.in`
 
 ### Attendance Data
 - **Period:** December 2025 (entire month)
@@ -291,7 +294,7 @@ frontend/
 ## 🔐 Test Credentials
 
 ### Super Admin
-- **Email:** admin@attendease.com
+- **Email:** admin@cambridge.edu.in
 - **Password:** admin123
 - **Access:** All features, user management, reports
 
@@ -300,7 +303,7 @@ frontend/
 - **Cannot:** Manage users, configure system
 
 ### Employee Example
-- **Email:** citseed100@attendease.com
+- **Email:** citseed100@cambridge.edu.in
 - **Password:** employee123
 - **Has:** 31 attendance records, 1 salary slip (₹20,087)
 
@@ -319,13 +322,15 @@ frontend/
 
 ### Employee Features
 - ✅ Login with JWT authentication
+- ✅ Public landing page; app when authenticated
+- ✅ Light/dark theme toggle (persisted)
 - ✅ View personal dashboard with stats
 - ✅ View attendance history (December 2025)
-- ✅ Download salary slips (PDF/Excel)
+- ✅ Download salary slips (PDF/Excel); slip detail page
 - ✅ Apply for casual leave
 - ✅ View leave balance (12 leaves/year)
 - ✅ View company announcements
-- ✅ Change password (via API)
+- ✅ Change password (user menu + API)
 
 ### Admin Features (Backend Ready)
 - ✅ User management (CRUD operations)
@@ -393,6 +398,7 @@ Full API documentation available at:
 **Authentication:**
 - `POST /api/auth/login` - Login
 - `GET /api/auth/me` - Get current user
+- `PATCH /api/auth/me/password` - Change password
 - `POST /api/auth/logout` - Logout
 
 **Attendance:**
@@ -409,15 +415,19 @@ Full API documentation available at:
 
 **Payroll:**
 - `POST /api/payroll/generate` - Generate payroll (admin)
+- `GET /api/payroll` - List payroll (admin, optional filters)
 - `GET /api/payroll/my-salary-slips` - My salary slips
+- `GET /api/payroll/:id` - Get payroll by ID
+- `PATCH /api/payroll/:id/mark-paid` - Mark as paid (Super Admin)
 - `GET /api/payroll/:id/download/pdf` - Download PDF
 - `GET /api/payroll/:id/download/xlsx` - Download Excel
 
 **Users (Admin):**
-- `GET /api/users` - List all users
+- `GET /api/users` - List all users (paginated)
 - `POST /api/users` - Create user
 - `PATCH /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user
+- `PATCH /api/users/:id/activate` - Activate user
+- `PATCH /api/users/:id/deactivate` - Deactivate user
 
 ---
 
@@ -682,5 +692,5 @@ The system successfully automates what was previously done manually in Excel! �
 ---
 
 **Generated by:** Attend Ease Development Team  
-**Date:** February 6, 2026  
+**Date:** February 15, 2026  
 **Version:** 1.0.0

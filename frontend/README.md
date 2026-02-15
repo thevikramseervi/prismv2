@@ -1,73 +1,39 @@
-# React + TypeScript + Vite
+# Attend Ease – Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React frontend for the Attend Ease attendance and payroll system.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19** + TypeScript
+- **Vite** (build and dev server)
+- **MUI (Material-UI) v7** – components, theme, MUI X Data Grid & Date Pickers
+- **React Router v7**
+- **TanStack Query (React Query) v5**
+- **Axios** (API client, proxy to backend `/api`)
+- **React Hook Form** + **Zod**
+- **Day.js**
 
-## React Compiler
+## Scripts
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `npm run dev` – Start dev server (http://localhost:5173, proxies `/api` to backend)
+- `npm run build` – TypeScript check + production build
+- `npm run lint` – ESLint
+- `npm run preview` – Preview production build
 
-## Expanding the ESLint configuration
+## Environment
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Dev server proxies ` /api` to `http://localhost:3000`. Set `host: true` in `vite.config.ts` if you need to access from another machine (e.g. Windows host when running in WSL).
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Features
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- **Landing** – Public landing page; app when authenticated
+- **Theme** – Light/dark mode (persisted)
+- **Auth** – Login, change password (user menu), protected routes
+- **Dashboard** – Stats, leave balance, announcements
+- **Attendance** – Calendar and table views
+- **Leave** – Apply, history, balance
+- **Salary Slips** – List, detail view, PDF/Excel download
+- **Announcements** – List and (admin) create
+- **Admin** – Users, holidays, payroll generation, biometric sync, reports (with Excel export)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+See root [README.md](../README.md) and [QUICK_START.md](../QUICK_START.md) for full setup and usage.

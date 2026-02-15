@@ -56,12 +56,24 @@ npm run start:dev
 ## Scripts
 
 - `npm run start:dev` - Start development server with hot reload
-- `npm run build` - Build for production  
+- `npm run build` - Build for production
 - `npm run start:prod` - Start production server
 - `npm run prisma:generate` - Generate Prisma Client
 - `npm run prisma:migrate` - Run database migrations
 - `npm run prisma:studio` - Open Prisma Studio (database GUI)
 - `npm run prisma:seed` - Seed the database with initial data
+
+### Data migration (Excel import)
+
+- `npm run migrate:create-samples` - Create sample Excel templates in `data/`
+- `npm run migrate:users data/<file>.xlsx` - Import employees
+- `npm run migrate:attendance data/<file>.xlsx` - Import attendance
+- `npm run migrate:attendance-wide data/<file>.xlsx` - Import attendance (wide format)
+- `npm run migrate:biometric data/<file>.xlsx` - Import biometric logs
+- `npm run migrate:biometric-grouped data/<file>.xlsx` - Import biometric (grouped format)
+- `npm run migrate:all` - Import all from `data/employees.xlsx`, `data/attendance.xlsx`, `data/biometric.xlsx`
+
+See [DATA_MIGRATION_GUIDE.md](DATA_MIGRATION_GUIDE.md) for details.
 
 ## API Documentation
 

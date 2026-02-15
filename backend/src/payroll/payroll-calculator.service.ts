@@ -25,13 +25,26 @@ export class PayrollCalculatorService {
     return dayOfWeek === 0 || dayOfWeek === 6; // Sunday = 0, Saturday = 6
   }
 
+  /** Format as YYYY-MM-DD for timezone-safe date-only comparison. */
+  private toDateOnlyKey(date: Date): string {
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  /**
+   * Working days = calendar days in month minus weekends (Sat/Sun) minus company holidays.
+   * Company operates in India only. Month is 1-12 (January = 1).
+   * Holiday comparison uses date-only keys so the count is correct regardless of server timezone.
+   */
   private async calculateWorkingDays(year: number, month: number): Promise<number> {
+    // Last day of month: new Date(year, month, 0) since day 0 = last day of previous month (month is 1-12 here, so month=12 => Jan next year, day 0 = Dec 31)
     const daysInMonth = new Date(year, month, 0).getDate();
-    
-    // Get holidays for the month
+
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
-    
+
     const holidays = await this.prisma.holiday.findMany({
       where: {
         date: {
@@ -41,15 +54,13 @@ export class PayrollCalculatorService {
       },
     });
 
-    const holidayDates = new Set(holidays.map(h => h.date.toDateString()));
+    const holidayDates = new Set(holidays.map((h) => this.toDateOnlyKey(h.date)));
 
     let workingDays = 0;
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month - 1, day);
-      const isWeekend = this.isWeekend(date);
-      const isHoliday = holidayDates.has(date.toDateString());
-
-      if (!isWeekend && !isHoliday) {
+      const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      if (!this.isWeekend(date) && !holidayDates.has(dateKey)) {
         workingDays++;
       }
     }
@@ -117,7 +128,10 @@ export class PayrollCalculatorService {
     // Calculate total pay days
     const totalPayDays = presentDays + casualLeaveDays + halfDays * 0.5;
 
-    // Calculate gross earnings (prorated)
+    // Calculate gross earnings (prorated); guard against no working days
+    if (workingDays <= 0) {
+      throw new Error(`No working days in ${year}-${month}; cannot calculate salary.`);
+    }
     const grossEarnings = Math.round((totalPayDays / workingDays) * baseSalary);
 
     // Future: Add deductions and reimbursements

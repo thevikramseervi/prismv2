@@ -1,5 +1,5 @@
 import { PrismaClient, AttendanceStatus } from '@prisma/client';
-import * as XLSX from 'xlsx';
+import { readSheetAsJson } from './lib/excel-reader';
 
 const prisma = new PrismaClient();
 
@@ -9,10 +9,7 @@ async function importAttendance(filePath: string) {
 
   try {
     // Read Excel file
-    const workbook = XLSX.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet);
+    const data = await readSheetAsJson(filePath);
 
     console.log(`Found ${data.length} rows in Excel file`);
 

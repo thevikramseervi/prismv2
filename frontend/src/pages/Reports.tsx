@@ -31,7 +31,7 @@ import { leaveApi } from '../api/leave';
 import { payrollApi } from '../api/payroll';
 import { usersApi } from '../api/users';
 import { AttendanceStatus, LeaveStatus, PaymentStatus } from '../types';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -111,8 +111,8 @@ const Reports: React.FC = () => {
     }
   };
 
-  const exportToExcel = () => {
-    let data: any[] = [];
+  const exportToExcel = async () => {
+    let data: Record<string, unknown>[] = [];
     let filename = '';
 
     if (tabValue === 0 && attendanceData) {
@@ -169,10 +169,23 @@ const Reports: React.FC = () => {
     }
 
     if (data.length > 0) {
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Report');
-      XLSX.writeFile(wb, filename);
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Report');
+      const headers = Object.keys(data[0]);
+      worksheet.addRow(headers);
+      data.forEach((row) => {
+        worksheet.addRow(headers.map((h) => row[h]));
+      });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
     }
   };
 
@@ -266,7 +279,7 @@ const Reports: React.FC = () => {
         case PaymentStatus.PAID:
           summary.paid++;
           break;
-        case PaymentStatus.PENDING:
+        case PaymentStatus.PROCESSED:
           summary.pending++;
           break;
         case PaymentStatus.DRAFT:
@@ -314,7 +327,7 @@ const Reports: React.FC = () => {
           {/* Attendance Report */}
           <TabPanel value={tabValue} index={0}>
             <Grid container spacing={2} mb={3}>
-              <Grid item xs={12} md={3}>
+              <Grid size={{ xs: 12, md: 3 }}>
                 <TextField
                   fullWidth
                   label="Start Date"
@@ -324,7 +337,7 @@ const Reports: React.FC = () => {
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid size={{ xs: 12, md: 3 }}>
                 <TextField
                   fullWidth
                   label="End Date"
@@ -334,7 +347,7 @@ const Reports: React.FC = () => {
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <FormControl fullWidth>
                   <InputLabel>Employee (Optional)</InputLabel>
                   <Select
@@ -353,7 +366,7 @@ const Reports: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={2}>
+              <Grid size={{ xs: 12, md: 2 }}>
                 <Button
                   fullWidth
                   variant="contained"
@@ -372,7 +385,7 @@ const Reports: React.FC = () => {
                   Summary
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={6} sm={4} md={2}>
+                  <Grid size={{ xs: 6, sm: 4, md: 2 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
                       <Typography variant="h4" color="primary">
                         {attendanceSummary.total}
@@ -380,7 +393,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Total Records</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} sm={4} md={2}>
+                  <Grid size={{ xs: 6, sm: 4, md: 2 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.50', textAlign: 'center' }}>
                       <Typography variant="h4" color="success.main">
                         {attendanceSummary.present}
@@ -388,7 +401,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Present</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} sm={4} md={2}>
+                  <Grid size={{ xs: 6, sm: 4, md: 2 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'error.50', textAlign: 'center' }}>
                       <Typography variant="h4" color="error.main">
                         {attendanceSummary.absent}
@@ -396,7 +409,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Absent</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} sm={4} md={2}>
+                  <Grid size={{ xs: 6, sm: 4, md: 2 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'warning.50', textAlign: 'center' }}>
                       <Typography variant="h4" color="warning.main">
                         {attendanceSummary.halfDay}
@@ -404,7 +417,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Half Day</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} sm={4} md={2}>
+                  <Grid size={{ xs: 6, sm: 4, md: 2 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'info.50', textAlign: 'center' }}>
                       <Typography variant="h4" color="info.main">
                         {attendanceSummary.casualLeave}
@@ -412,7 +425,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Casual Leave</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} sm={4} md={2}>
+                  <Grid size={{ xs: 6, sm: 4, md: 2 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
                       <Typography variant="h4">
                         {attendanceSummary.weekend + attendanceSummary.holiday}
@@ -507,7 +520,7 @@ const Reports: React.FC = () => {
                   Summary
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={6} md={2.4}>
+                  <Grid size={{ xs: 6, md: 2.4 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
                       <Typography variant="h4" color="primary">
                         {leaveSummary.total}
@@ -515,7 +528,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Total Applications</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} md={2.4}>
+                  <Grid size={{ xs: 6, md: 2.4 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'warning.50', textAlign: 'center' }}>
                       <Typography variant="h4" color="warning.main">
                         {leaveSummary.pending}
@@ -523,7 +536,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Pending</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} md={2.4}>
+                  <Grid size={{ xs: 6, md: 2.4 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.50', textAlign: 'center' }}>
                       <Typography variant="h4" color="success.main">
                         {leaveSummary.approved}
@@ -531,7 +544,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Approved</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} md={2.4}>
+                  <Grid size={{ xs: 6, md: 2.4 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'error.50', textAlign: 'center' }}>
                       <Typography variant="h4" color="error.main">
                         {leaveSummary.rejected}
@@ -539,7 +552,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Rejected</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} md={2.4}>
+                  <Grid size={{ xs: 6, md: 2.4 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
                       <Typography variant="h4">{leaveSummary.cancelled}</Typography>
                       <Typography variant="caption">Cancelled</Typography>
@@ -617,7 +630,7 @@ const Reports: React.FC = () => {
           {/* Payroll Report */}
           <TabPanel value={tabValue} index={2}>
             <Grid container spacing={2} mb={3}>
-              <Grid item xs={12} md={3}>
+              <Grid size={{ xs: 12, md: 3 }}>
                 <FormControl fullWidth>
                   <InputLabel>Month</InputLabel>
                   <Select
@@ -633,7 +646,7 @@ const Reports: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid size={{ xs: 12, md: 3 }}>
                 <FormControl fullWidth>
                   <InputLabel>Year</InputLabel>
                   <Select
@@ -649,7 +662,7 @@ const Reports: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <FormControl fullWidth>
                   <InputLabel>Employee (Optional)</InputLabel>
                   <Select
@@ -668,7 +681,7 @@ const Reports: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={2}>
+              <Grid size={{ xs: 12, md: 2 }}>
                 <Button
                   fullWidth
                   variant="contained"
@@ -687,7 +700,7 @@ const Reports: React.FC = () => {
                   Summary
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={6} md={2.4}>
+                  <Grid size={{ xs: 6, md: 2.4 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
                       <Typography variant="h4" color="primary">
                         {payrollSummary.total}
@@ -695,7 +708,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Total Records</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} md={2.4}>
+                  <Grid size={{ xs: 6, md: 2.4 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'info.50', textAlign: 'center' }}>
                       <Typography variant="h5" color="info.main">
                         ₹{payrollSummary.totalGross.toLocaleString('en-IN')}
@@ -703,7 +716,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Total Gross</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} md={2.4}>
+                  <Grid size={{ xs: 6, md: 2.4 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.50', textAlign: 'center' }}>
                       <Typography variant="h5" color="success.main">
                         ₹{payrollSummary.totalNet.toLocaleString('en-IN')}
@@ -711,7 +724,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Total Net</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} md={2.4}>
+                  <Grid size={{ xs: 6, md: 2.4 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.100', textAlign: 'center' }}>
                       <Typography variant="h4" color="success.dark">
                         {payrollSummary.paid}
@@ -719,7 +732,7 @@ const Reports: React.FC = () => {
                       <Typography variant="caption">Paid</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={6} md={2.4}>
+                  <Grid size={{ xs: 6, md: 2.4 }}>
                     <Paper elevation={0} sx={{ p: 2, bgcolor: 'warning.50', textAlign: 'center' }}>
                       <Typography variant="h4" color="warning.main">
                         {payrollSummary.pending + payrollSummary.draft}
@@ -781,7 +794,7 @@ const Reports: React.FC = () => {
                               color={
                                 payroll.paymentStatus === PaymentStatus.PAID
                                   ? 'success'
-                                  : payroll.paymentStatus === PaymentStatus.PENDING
+                                  : payroll.paymentStatus === PaymentStatus.PROCESSED
                                   ? 'warning'
                                   : 'default'
                               }

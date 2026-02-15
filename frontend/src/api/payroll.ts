@@ -4,7 +4,7 @@ import { Payroll } from '../types';
 export const payrollApi = {
   getMySalarySlips: async (): Promise<Payroll[]> => {
     const { data } = await api.get<Payroll[]>('/payroll/my-salary-slips');
-    return data;
+    return Array.isArray(data) ? data : data ? [data] : [];
   },
 
   getAll: async (params?: {

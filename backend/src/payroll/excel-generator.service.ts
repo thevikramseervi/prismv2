@@ -1,11 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
-import { Readable } from 'stream';
+import {
+  companyName,
+  division,
+  address,
+  currencyNote,
+  getPayPeriod,
+  getPayDateFormatted,
+} from './slip-config';
+import { numberToWordsInr } from '../common/number-to-words';
 
 interface PayrollData {
   id: string;
   month: number;
   year: number;
+  paymentDate?: Date | null;
   baseSalary: number;
   workingDays: number;
   presentDays: number;
@@ -50,6 +59,12 @@ export class ExcelGeneratorService {
     const worksheet = workbook.addWorksheet('Salary Slip');
 
     const monthName = this.getMonthName(payrollData.month);
+    const payPeriod = getPayPeriod(payrollData.month, payrollData.year);
+    const payDateStr = getPayDateFormatted(
+      payrollData.month,
+      payrollData.year,
+      payrollData.paymentDate,
+    );
 
     // Set column widths
     worksheet.columns = [
@@ -63,28 +78,37 @@ export class ExcelGeneratorService {
 
     let currentRow = 2;
 
-    // Header - SALARY SLIP
+    // Header: Pay Slip for the month of ...
     worksheet.mergeCells(`B${currentRow}:F${currentRow}`);
     const headerCell = worksheet.getCell(`B${currentRow}`);
-    headerCell.value = 'SALARY SLIP';
-    headerCell.font = { size: 18, bold: true };
+    headerCell.value = `Pay Slip for the month of ${monthName} ${payrollData.year}`;
+    headerCell.font = { size: 14, bold: true };
     headerCell.alignment = { horizontal: 'center', vertical: 'middle' };
     currentRow += 1;
 
-    // Month Year
+    // Company, division, address, currency note
     worksheet.mergeCells(`B${currentRow}:F${currentRow}`);
-    const monthCell = worksheet.getCell(`B${currentRow}`);
-    monthCell.value = `${monthName} ${payrollData.year}`;
-    monthCell.font = { size: 14, bold: true };
-    monthCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    worksheet.getCell(`B${currentRow}`).value = companyName;
+    worksheet.getCell(`B${currentRow}`).font = { size: 11 };
+    worksheet.getCell(`B${currentRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
     currentRow += 1;
 
-    // Company Name
     worksheet.mergeCells(`B${currentRow}:F${currentRow}`);
-    const companyCell = worksheet.getCell(`B${currentRow}`);
-    companyCell.value = 'CIT - Attend Ease';
-    companyCell.font = { size: 12 };
-    companyCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    worksheet.getCell(`B${currentRow}`).value = division;
+    worksheet.getCell(`B${currentRow}`).font = { size: 10 };
+    worksheet.getCell(`B${currentRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+    currentRow += 1;
+
+    worksheet.mergeCells(`B${currentRow}:F${currentRow}`);
+    worksheet.getCell(`B${currentRow}`).value = address;
+    worksheet.getCell(`B${currentRow}`).font = { size: 10 };
+    worksheet.getCell(`B${currentRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+    currentRow += 1;
+
+    worksheet.mergeCells(`B${currentRow}:F${currentRow}`);
+    worksheet.getCell(`B${currentRow}`).value = currencyNote;
+    worksheet.getCell(`B${currentRow}`).font = { size: 10 };
+    worksheet.getCell(`B${currentRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
     currentRow += 2;
 
     // Employee Details Section Header
@@ -100,11 +124,12 @@ export class ExcelGeneratorService {
     empHeaderCell.alignment = { horizontal: 'left', vertical: 'middle' };
     currentRow += 1;
 
-    // Employee Details
+    // Employee Details (including Pay Period and Pay Date)
     const employeeDetails = [
-      ['Employee ID:', payrollData.user.employeeId, 'Employee Number:', payrollData.user.employeeNumber.toString()],
+      ['Employee ID:', payrollData.user.employeeId, 'Email:', payrollData.user.email],
       ['Name:', payrollData.user.name, 'Designation:', payrollData.user.designation],
-      ['Email:', payrollData.user.email, 'Date of Joining:', this.formatDate(payrollData.user.dateOfJoining)],
+      ['Employee Number:', payrollData.user.employeeNumber.toString(), 'Date of Joining:', this.formatDate(payrollData.user.dateOfJoining)],
+      ['Pay Period:', payPeriod, 'Pay Date:', payDateStr],
     ];
 
     employeeDetails.forEach((row) => {
@@ -166,19 +191,54 @@ export class ExcelGeneratorService {
     salHeaderCell.alignment = { horizontal: 'left', vertical: 'middle' };
     currentRow += 1;
 
-    // Earnings Header
+    // Earnings (left B/C) and Deductions (right E/F) side by side — soft light gray header
+    const headerGray = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFEBEBEB' } };
     worksheet.getCell(`B${currentRow}`).value = 'Earnings';
     worksheet.getCell(`B${currentRow}`).font = { bold: true, underline: true };
+    worksheet.getCell(`B${currentRow}`).fill = headerGray;
     worksheet.getCell(`C${currentRow}`).value = 'Amount (₹)';
     worksheet.getCell(`C${currentRow}`).font = { bold: true, underline: true };
     worksheet.getCell(`C${currentRow}`).alignment = { horizontal: 'right' };
+    worksheet.getCell(`C${currentRow}`).fill = headerGray;
+    worksheet.getCell(`E${currentRow}`).value = 'Deductions';
+    worksheet.getCell(`E${currentRow}`).font = { bold: true, underline: true };
+    worksheet.getCell(`E${currentRow}`).fill = headerGray;
+    worksheet.getCell(`F${currentRow}`).value = 'Amount (₹)';
+    worksheet.getCell(`F${currentRow}`).font = { bold: true, underline: true };
+    worksheet.getCell(`F${currentRow}`).alignment = { horizontal: 'right' };
+    worksheet.getCell(`F${currentRow}`).fill = headerGray;
     currentRow += 1;
 
-    // Earnings
-    worksheet.getCell(`B${currentRow}`).value = 'Base Salary';
-    worksheet.getCell(`C${currentRow}`).value = payrollData.baseSalary;
+    worksheet.getCell(`B${currentRow}`).value = 'Salary and other Allowances';
+    worksheet.getCell(`C${currentRow}`).value = payrollData.grossEarnings;
     worksheet.getCell(`C${currentRow}`).numFmt = '₹#,##0.00';
     worksheet.getCell(`C${currentRow}`).alignment = { horizontal: 'right' };
+    worksheet.getCell(`E${currentRow}`).value = 'Withholding Tax';
+    worksheet.getCell(`F${currentRow}`).value = '-';
+    worksheet.getCell(`F${currentRow}`).alignment = { horizontal: 'right' };
+    currentRow += 1;
+
+    worksheet.getCell(`E${currentRow}`).value = 'Professional Tax';
+    worksheet.getCell(`F${currentRow}`).value = '-';
+    worksheet.getCell(`F${currentRow}`).alignment = { horizontal: 'right' };
+    currentRow += 1;
+
+    // Reimbursements: always show
+    worksheet.getCell(`B${currentRow}`).value = 'Reimbursements';
+    worksheet.getCell(`B${currentRow}`).font = { bold: true };
+    worksheet.getCell(`C${currentRow}`).value = payrollData.reimbursements > 0 ? payrollData.reimbursements : '-';
+    if (payrollData.reimbursements > 0) {
+      worksheet.getCell(`C${currentRow}`).numFmt = '₹#,##0.00';
+    }
+    worksheet.getCell(`C${currentRow}`).alignment = { horizontal: 'right' };
+    currentRow += 2;
+
+    // Summary: Gross Earnings, Total Deductions, Total Reimbursements, Net Payable — soft gray header
+    const summaryHeaderGray = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFEBEBEB' } };
+    worksheet.getCell(`B${currentRow}`).value = 'Summary';
+    worksheet.getCell(`B${currentRow}`).font = { bold: true, underline: true };
+    worksheet.getCell(`B${currentRow}`).fill = summaryHeaderGray;
+    worksheet.getCell(`C${currentRow}`).fill = summaryHeaderGray;
     currentRow += 1;
 
     worksheet.getCell(`B${currentRow}`).value = 'Gross Earnings';
@@ -187,49 +247,36 @@ export class ExcelGeneratorService {
     worksheet.getCell(`C${currentRow}`).alignment = { horizontal: 'right' };
     currentRow += 1;
 
-    if (payrollData.reimbursements > 0) {
-      worksheet.getCell(`B${currentRow}`).value = 'Reimbursements';
-      worksheet.getCell(`C${currentRow}`).value = payrollData.reimbursements;
-      worksheet.getCell(`C${currentRow}`).numFmt = '₹#,##0.00';
-      worksheet.getCell(`C${currentRow}`).alignment = { horizontal: 'right' };
-      currentRow += 1;
-    }
-
+    worksheet.getCell(`B${currentRow}`).value = 'Total Deductions';
+    worksheet.getCell(`C${currentRow}`).value = payrollData.deductions;
+    worksheet.getCell(`C${currentRow}`).numFmt = '₹#,##0.00';
+    worksheet.getCell(`C${currentRow}`).alignment = { horizontal: 'right' };
     currentRow += 1;
 
-    // Deductions
-    if (payrollData.deductions > 0) {
-      worksheet.getCell(`B${currentRow}`).value = 'Deductions';
-      worksheet.getCell(`B${currentRow}`).font = { bold: true, underline: true };
-      worksheet.getCell(`C${currentRow}`).value = 'Amount (₹)';
-      worksheet.getCell(`C${currentRow}`).font = { bold: true, underline: true };
-      worksheet.getCell(`C${currentRow}`).alignment = { horizontal: 'right' };
-      currentRow += 1;
+    worksheet.getCell(`B${currentRow}`).value = 'Total Reimbursements';
+    worksheet.getCell(`C${currentRow}`).value = payrollData.reimbursements;
+    worksheet.getCell(`C${currentRow}`).numFmt = '₹#,##0.00';
+    worksheet.getCell(`C${currentRow}`).alignment = { horizontal: 'right' };
+    currentRow += 1;
 
-      worksheet.getCell(`B${currentRow}`).value = 'Total Deductions';
-      worksheet.getCell(`C${currentRow}`).value = payrollData.deductions;
-      worksheet.getCell(`C${currentRow}`).numFmt = '₹#,##0.00';
-      worksheet.getCell(`C${currentRow}`).alignment = { horizontal: 'right' };
-      currentRow += 2;
-    }
-
-    // Net Salary
-    worksheet.getCell(`B${currentRow}`).value = 'NET SALARY';
+    worksheet.getCell(`B${currentRow}`).value = 'Net Payable';
     worksheet.getCell(`B${currentRow}`).font = { bold: true, size: 12 };
-    worksheet.getCell(`B${currentRow}`).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFFFEB3B' }
-    };
     worksheet.getCell(`C${currentRow}`).value = payrollData.netSalary;
     worksheet.getCell(`C${currentRow}`).numFmt = '₹#,##0.00';
     worksheet.getCell(`C${currentRow}`).alignment = { horizontal: 'right' };
     worksheet.getCell(`C${currentRow}`).font = { bold: true, size: 12 };
-    worksheet.getCell(`C${currentRow}`).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFFFEB3B' }
-    };
+    currentRow += 2;
+
+    // Formula
+    worksheet.mergeCells(`B${currentRow}:F${currentRow}`);
+    worksheet.getCell(`B${currentRow}`).value = 'Net Payable = Gross earnings - Total deductions';
+    worksheet.getCell(`B${currentRow}`).font = { italic: true };
+    currentRow += 1;
+
+    // Net Payable in words
+    worksheet.mergeCells(`B${currentRow}:F${currentRow}`);
+    worksheet.getCell(`B${currentRow}`).value = `Net Payable in words: ${numberToWordsInr(payrollData.netSalary)}`;
+    worksheet.getCell(`B${currentRow}`).font = { size: 10 };
     currentRow += 2;
 
     // Footer

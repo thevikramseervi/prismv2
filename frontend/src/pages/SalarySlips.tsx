@@ -17,21 +17,31 @@ import {
   Tooltip,
   Paper,
 } from '@mui/material';
-import { PictureAsPdf, Description } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { PictureAsPdf, Description, Visibility } from '@mui/icons-material';
 import { payrollApi } from '../api/payroll';
 import { PaymentStatus } from '../types';
 
 const SalarySlips: React.FC = () => {
-  const { data: salarySlips, isLoading } = useQuery({
+  const navigate = useNavigate();
+  const { data: salarySlipsRaw, isLoading } = useQuery({
     queryKey: ['my-salary-slips'],
     queryFn: () => payrollApi.getMySalarySlips(),
   });
+  // Ensure we always have an array, sorted by year desc then month desc (most recent first)
+  const salarySlips = React.useMemo(() => {
+    const list = Array.isArray(salarySlipsRaw) ? salarySlipsRaw : [];
+    return [...list].sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
+  }, [salarySlipsRaw]);
 
   const getStatusColor = (status: PaymentStatus): any => {
     switch (status) {
       case PaymentStatus.PAID:
         return 'success';
-      case PaymentStatus.PENDING:
+      case PaymentStatus.PROCESSED:
         return 'warning';
       case PaymentStatus.DRAFT:
         return 'default';
@@ -115,6 +125,14 @@ const SalarySlips: React.FC = () => {
                         />
                       </TableCell>
                       <TableCell align="center">
+                        <Tooltip title="View slip">
+                          <IconButton
+                            size="small"
+                            onClick={() => navigate(`/salary-slips/view/${slip.id}`)}
+                          >
+                            <Visibility />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Download PDF">
                           <IconButton
                             size="small"

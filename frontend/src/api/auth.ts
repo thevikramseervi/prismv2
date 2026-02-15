@@ -14,4 +14,11 @@ export const authApi = {
   logout: async (): Promise<void> => {
     await api.post('/auth/logout');
   },
+
+  changePassword: async (body: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<void> => {
+    await api.patch('/auth/me/password', body);
+  },
 };

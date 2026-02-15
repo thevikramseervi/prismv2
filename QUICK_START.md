@@ -12,17 +12,17 @@
 
 ### Admin
 ```
-Email: admin@attendease.com
+Email: admin@cambridge.edu.in
 Password: admin123
 ```
 
 ### Employee (Example)
 ```
-Email: citseed100@attendease.com
+Email: citseed100@cambridge.edu.in
 Password: employee123
 ```
 
-**All employees:** `{employeeId}@attendease.com` / `employee123`
+**All employees:** `{employeeId}@cambridge.edu.in` / `employee123`
 
 ---
 
@@ -31,9 +31,11 @@ Password: employee123
 ### For Employees
 - ✅ View attendance (December 2025) — calendar & table views
 - ✅ Download salary slips (PDF/Excel)
+- ✅ View salary slip detail page
 - ✅ Apply for casual leave
 - ✅ View leave balance
 - ✅ View announcements
+- ✅ Change password (user menu)
 
 ### For Admins (via UI & API)
 - ✅ Manage users
@@ -50,7 +52,7 @@ Password: employee123
 ```bash
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@attendease.com","password":"admin123"}'
+  -d '{"email":"admin@cambridge.edu.in","password":"admin123"}'
 ```
 
 ### 2. View Employees
@@ -101,4 +103,4 @@ If you need help:
 ---
 
 **System Status:** ✅ OPERATIONAL  
-**Last Updated:** February 6, 2026
+**Last Updated:** February 15, 2026

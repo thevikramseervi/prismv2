@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { PrismaService } from '../prisma/prisma.service';
 import { PayrollCalculatorService } from './payroll-calculator.service';
 import { GeneratePayrollDto } from './dto/generate-payroll.dto';
+import { defaultPayDayOfMonth } from './slip-config';
 
 @Injectable()
 export class PayrollService {
@@ -34,6 +35,13 @@ export class PayrollService {
     // Calculate salary
     const calculation = await this.payrollCalculator.calculateSalary(userId, year, month);
 
+    // Default payment date: Nth day of the month following payroll month
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    const lastDayOfNext = new Date(nextYear, nextMonth, 0).getDate();
+    const payDay = Math.min(defaultPayDayOfMonth, lastDayOfNext);
+    const defaultPaymentDate = new Date(nextYear, nextMonth - 1, payDay);
+
     // Create payroll record
     return this.prisma.payroll.create({
       data: {
@@ -53,6 +61,7 @@ export class PayrollService {
         netSalary: calculation.netSalary,
         paymentStatus: 'DRAFT',
         generatedBy,
+        paymentDate: defaultPaymentDate,
       },
       include: {
         user: {

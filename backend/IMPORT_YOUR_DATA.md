@@ -14,10 +14,10 @@ Based on your files:
 ### Step 1: Prepare the Data Directory
 
 ```bash
-cd /home/vikram/feb5/attend-ease/backend/data
+cd backend/data
 ```
 
-Copy your Excel files here or reference them directly.
+Copy your Excel files here or reference them by path when running the import commands.
 
 ---
 
@@ -28,13 +28,13 @@ Your attendance file format from the Excel you shared:
 
 **Run import:**
 ```bash
-cd /home/vikram/feb5/attend-ease/backend
+cd backend
 
 # If your file is in the data directory
 npm run migrate:attendance "data/DECEMBER ATTENDANCE 2025.xlsx"
 
-# Or use the full path from WSL
-npm run migrate:attendance "/home/vikram/feb5/attend-ease/excel/DECEMBER ATTENDANCE 2025.xlsx"
+# Or use the full path to your file
+npm run migrate:attendance "data/your-attendance-file.xlsx"
 ```
 
 **What happens:**
@@ -54,8 +54,8 @@ Your biometric file has columns like: Employee ID, Date, In Time, Out Time, Dura
 ```bash
 npm run migrate:biometric "data/DECEMBER BIOMETRIC 2025.xls"
 
-# Or from excel directory
-npm run migrate:biometric "/home/vikram/feb5/attend-ease/excel/DECEMBER BIOMETRIC 2025.xls"
+# Or use full path to your file
+npm run migrate:biometric "data/your-biometric-file.xls"
 ```
 
 **What happens:**

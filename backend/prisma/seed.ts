@@ -10,13 +10,13 @@ async function main() {
   const hashedPassword = await bcrypt.hash('admin123', 10);
   
   const superAdmin = await prisma.user.upsert({
-    where: { email: 'admin@attendease.com' },
+    where: { email: 'admin@cambridge.edu.in' },
     update: {},
     create: {
       employeeId: 'CITADMIN001',
       employeeNumber: 1,
       name: 'Super Admin',
-      email: 'admin@attendease.com',
+      email: 'admin@cambridge.edu.in',
       passwordHash: hashedPassword,
       designation: 'Administrator',
       role: 'SUPER_ADMIN',
@@ -28,8 +28,10 @@ async function main() {
 
   console.log('✅ Created super admin:', superAdmin.email);
 
-  // Create holidays for 2026
+  // Create holidays (2025 December for payroll alignment with attendance calendar, then 2026)
   const holidays = [
+    { date: new Date('2025-12-25'), name: 'Christmas', description: 'Christian Holiday' },
+    { date: new Date('2025-12-26'), name: 'Boxing Day / Day after Christmas', description: 'Optional Holiday' },
     { date: new Date('2026-01-26'), name: 'Republic Day', description: 'National Holiday' },
     { date: new Date('2026-03-08'), name: 'Maha Shivaratri', description: 'Hindu Festival' },
     { date: new Date('2026-03-25'), name: 'Holi', description: 'Festival of Colors' },
@@ -53,7 +55,7 @@ async function main() {
     });
   }
 
-  console.log(`✅ Created ${holidays.length} holidays for 2026`);
+  console.log(`✅ Created ${holidays.length} holidays (incl. Dec 2025 for payroll alignment)`);
 
   // Create initial leave balance for super admin (2026)
   await prisma.leaveBalance.upsert({
@@ -93,7 +95,7 @@ async function main() {
 
   console.log('\n🎉 Database seeded successfully!');
   console.log('\n📧 Super Admin Credentials:');
-  console.log('   Email: admin@attendease.com');
+  console.log('   Email: admin@cambridge.edu.in');
   console.log('   Password: admin123');
   console.log('\n⚠️  Please change the default password after first login!\n');
 }

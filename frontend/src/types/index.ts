@@ -85,7 +85,7 @@ export interface LeaveBalance {
 // Payroll types
 export enum PaymentStatus {
   DRAFT = 'DRAFT',
-  PENDING = 'PENDING',
+  PROCESSED = 'PROCESSED',
   PAID = 'PAID',
 }
 
@@ -112,7 +112,9 @@ export interface Payroll {
     employeeId: string;
     employeeNumber: number;
     name: string;
+    email?: string;
     designation: string;
+    dateOfJoining?: string;
   };
 }
 
@@ -121,6 +123,7 @@ export enum AnnouncementPriority {
   LOW = 'LOW',
   MEDIUM = 'MEDIUM',
   HIGH = 'HIGH',
+  URGENT = 'URGENT',
 }
 
 export enum TargetAudience {

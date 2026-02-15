@@ -101,7 +101,7 @@ export class PayrollController {
   async downloadPDF(@Param('id') id: string, @Res() res: Response) {
     const payroll = await this.payrollService.getPayrollById(id);
     
-    // Convert Decimal types to numbers
+    // Convert Decimal types to numbers; pass full payroll including paymentDate for slip generators
     const payrollData = {
       ...payroll,
       baseSalary: Number(payroll.baseSalary),
@@ -112,8 +112,9 @@ export class PayrollController {
       deductions: Number(payroll.deductions),
       reimbursements: Number(payroll.reimbursements),
       netSalary: Number(payroll.netSalary),
+      paymentDate: payroll.paymentDate ?? undefined,
     };
-    
+
     const pdfStream = await this.pdfGenerator.generateSalarySlipPDF(payrollData);
 
     const monthName = new Date(payroll.year, payroll.month - 1).toLocaleString('default', { month: 'long' });
@@ -133,7 +134,7 @@ export class PayrollController {
   async downloadExcel(@Param('id') id: string, @Res() res: Response) {
     const payroll = await this.payrollService.getPayrollById(id);
     
-    // Convert Decimal types to numbers
+    // Convert Decimal types to numbers; pass full payroll including paymentDate for slip generators
     const payrollData = {
       ...payroll,
       baseSalary: Number(payroll.baseSalary),
@@ -144,8 +145,9 @@ export class PayrollController {
       deductions: Number(payroll.deductions),
       reimbursements: Number(payroll.reimbursements),
       netSalary: Number(payroll.netSalary),
+      paymentDate: payroll.paymentDate ?? undefined,
     };
-    
+
     const buffer = await this.excelGenerator.generateSalarySlipExcel(payrollData);
 
     const monthName = new Date(payroll.year, payroll.month - 1).toLocaleString('default', { month: 'long' });
