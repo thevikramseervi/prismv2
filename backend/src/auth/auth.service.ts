@@ -9,12 +9,15 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { TwoFactorService } from './two-factor.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { Enable2faDto } from './dto/enable-2fa.dto';
+import { Verify2faDto } from './dto/verify-2fa.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 
 const FORGOT_PASSWORD_RATE_LIMIT = 3;
@@ -33,11 +36,28 @@ export class AuthService {
     private jwtService: JwtService,
     private emailService: EmailService,
     private configService: ConfigService,
+    private twoFactorService: TwoFactorService,
   ) {}
 
-  async login(loginDto: LoginDto): Promise<AuthResponseDto> {
+  async login(
+    loginDto: LoginDto,
+  ): Promise<
+    | AuthResponseDto
+    | { requires2fa: true; twoFactorToken: string }
+  > {
     const user = await this.prisma.user.findUnique({
       where: { email: loginDto.email },
+      select: {
+        id: true,
+        employeeId: true,
+        name: true,
+        email: true,
+        role: true,
+        designation: true,
+        passwordHash: true,
+        status: true,
+        twoFactorEnabled: true,
+      },
     });
 
     if (!user) {
@@ -55,6 +75,15 @@ export class AuthService {
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isAdmin = this.twoFactorService.isAdminRole(user.role);
+    if (isAdmin && user.twoFactorEnabled) {
+      const twoFactorToken = this.jwtService.sign(
+        { sub: user.id, purpose: '2fa' },
+        { expiresIn: '5m' },
+      );
+      return { requires2fa: true, twoFactorToken };
     }
 
     const payload: JwtPayload = {
@@ -78,6 +107,113 @@ export class AuthService {
     };
   }
 
+  async setup2fa(userId: string): Promise<{ otpauthUrl: string; secret: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, role: true, twoFactorEnabled: true },
+    });
+    if (!user) throw new UnauthorizedException('User not found');
+    if (!this.twoFactorService.isAdminRole(user.role)) {
+      throw new BadRequestException('Two-factor authentication is only available for admins');
+    }
+    if (user.twoFactorEnabled) {
+      throw new BadRequestException('2FA is already enabled');
+    }
+    const { secret, otpauthUrl } = this.twoFactorService.generateSecretForUser(user.email);
+    this.twoFactorService.setPendingSecret(userId, secret);
+    return { otpauthUrl, secret };
+  }
+
+  async enable2fa(userId: string, dto: Enable2faDto): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, twoFactorEnabled: true },
+    });
+    if (!user) throw new UnauthorizedException('User not found');
+    if (!this.twoFactorService.isAdminRole(user.role)) {
+      throw new BadRequestException('Two-factor authentication is only available for admins');
+    }
+    if (user.twoFactorEnabled) {
+      throw new BadRequestException('2FA is already enabled');
+    }
+    const secret = this.twoFactorService.getAndClearPendingSecret(userId);
+    if (!secret) {
+      throw new BadRequestException('2FA setup expired or not started. Please run setup again.');
+    }
+    const valid = await this.twoFactorService.verifyCode(secret, dto.code);
+    if (!valid) {
+      throw new BadRequestException('Invalid verification code');
+    }
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { twoFactorEnabled: true, twoFactorSecret: secret },
+    });
+  }
+
+  async verify2fa(dto: Verify2faDto): Promise<AuthResponseDto> {
+    let payload: { sub?: string; purpose?: string };
+    try {
+      payload = this.jwtService.verify(dto.token, { ignoreExpiration: false }) as any;
+    } catch {
+      throw new UnauthorizedException('Invalid or expired 2FA session. Please sign in again.');
+    }
+    if (payload.purpose !== '2fa' || !payload.sub) {
+      throw new UnauthorizedException('Invalid token');
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: {
+        id: true,
+        employeeId: true,
+        name: true,
+        email: true,
+        role: true,
+        designation: true,
+        twoFactorEnabled: true,
+        twoFactorSecret: true,
+      },
+    });
+    if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+      throw new UnauthorizedException('2FA not enabled for this account');
+    }
+    const valid = await this.twoFactorService.verifyCode(user.twoFactorSecret, dto.code);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid verification code');
+    }
+    const jwtPayload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+    const accessToken = this.jwtService.sign(jwtPayload);
+    return {
+      access_token: accessToken,
+      user: {
+        id: user.id,
+        employeeId: user.employeeId,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        designation: user.designation,
+      },
+    };
+  }
+
+  async disable2fa(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, twoFactorEnabled: true },
+    });
+    if (!user) throw new UnauthorizedException('User not found');
+    if (!this.twoFactorService.isAdminRole(user.role)) {
+      throw new BadRequestException('Two-factor authentication is only available for admins');
+    }
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { twoFactorEnabled: false, twoFactorSecret: null },
+    });
+  }
+
   async validateUser(userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId },
@@ -92,6 +228,7 @@ export class AuthService {
         dateOfJoining: true,
         baseSalary: true,
         status: true,
+        twoFactorEnabled: true,
       },
     });
   }

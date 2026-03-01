@@ -74,9 +74,11 @@ model User {
   dateOfJoining    DateTime @map("date_of_joining") @db.Date
   dateOfLeaving    DateTime? @map("date_of_leaving") @db.Date
   baseSalary       Decimal  @default(22000) @map("base_salary") @db.Decimal(10, 2)
-  status           UserStatus @default(ACTIVE)
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  status             UserStatus @default(ACTIVE)
+  twoFactorEnabled   Boolean    @default(false) @map("two_factor_enabled")
+  twoFactorSecret    String?    @map("two_factor_secret")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
 
   // Relations
   attendance        Attendance[]

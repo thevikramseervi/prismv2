@@ -78,12 +78,6 @@ export class AnnouncementsService {
             role: true,
           },
         },
-        reads: {
-          where: { userId },
-          select: {
-            readAt: true,
-          },
-        },
       },
       orderBy: [
         { isPinned: 'desc' },
@@ -93,8 +87,8 @@ export class AnnouncementsService {
 
     return announcements.map((announcement) => ({
       ...announcement,
-      isRead: announcement.reads.length > 0,
-      readAt: announcement.reads[0]?.readAt || null,
+      isRead: false,
+      readAt: null,
     }));
   }
 
@@ -149,24 +143,9 @@ export class AnnouncementsService {
     });
   }
 
-  async markAsRead(announcementId: string, userId: string) {
+  async markAsRead(announcementId: string, _userId: string) {
     await this.findOne(announcementId);
-
-    return this.prisma.announcementRead.upsert({
-      where: {
-        announcementId_userId: {
-          announcementId,
-          userId,
-        },
-      },
-      create: {
-        announcementId,
-        userId,
-      },
-      update: {
-        readAt: new Date(),
-      },
-    });
+    return { announcementId, readAt: new Date() };
   }
 
   async getUnreadCount(userId: string) {
@@ -190,12 +169,6 @@ export class AnnouncementsService {
           select: {
             name: true,
             role: true,
-          },
-        },
-        reads: {
-          select: {
-            userId: true,
-            readAt: true,
           },
         },
       },

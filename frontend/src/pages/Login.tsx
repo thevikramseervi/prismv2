@@ -30,7 +30,10 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [step, setStep] = useState<'credentials' | '2fa'>('credentials');
+  const [twoFactorToken, setTwoFactorToken] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const { login, complete2fa } = useAuth();
   const { mode, toggleMode } = useThemeMode();
   const navigate = useNavigate();
   const location = useLocation();
@@ -43,8 +46,13 @@ const Login: React.FC = () => {
     setError('');
     setLoading(true);
     try {
-      await login({ email, password });
-      navigate('/');
+      const response = await login({ email, password });
+      if ('requires2fa' in response && response.requires2fa) {
+        setTwoFactorToken(response.twoFactorToken);
+        setStep('2fa');
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
@@ -53,6 +61,29 @@ const Login: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handle2faSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await complete2fa(twoFactorToken, twoFactorCode);
+      navigate('/');
+    } catch (err: any) {
+      setError(
+        err.response?.data?.message || 'Invalid code. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBackToLogin = () => {
+    setStep('credentials');
+    setTwoFactorToken('');
+    setTwoFactorCode('');
+    setError('');
   };
 
   return (
@@ -136,79 +167,135 @@ const Login: React.FC = () => {
               </Alert>
             )}
 
-            <form onSubmit={handleSubmit}>
-              <TextField
-                label="Email"
-                type="email"
-                fullWidth
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                margin="normal"
-                autoComplete="email"
-                autoFocus
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-              />
-              <TextField
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                fullWidth
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                margin="normal"
-                autoComplete="current-password"
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                        size="small"
-                      >
-                        {showPassword ? (
-                          <VisibilityOff fontSize="small" />
-                        ) : (
-                          <Visibility fontSize="small" />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                size="large"
-                disabled={loading}
-                startIcon={<LoginIcon />}
-                sx={{
-                  mt: 3,
-                  mb: 2,
-                  py: 1.75,
-                  borderRadius: 2,
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  boxShadow: `0 4px 14px 0 ${theme.palette.primary.main}40`,
-                }}
-              >
-                {loading ? 'Signing in…' : 'Sign In'}
-              </Button>
-              <Typography variant="body2" sx={{ textAlign: 'center', mt: 1 }}>
-                <Link
-                  to="/forgot-password"
-                  style={{
-                    color: theme.palette.primary.main,
-                    textDecoration: 'none',
-                    fontWeight: 600,
+            {step === '2fa' ? (
+              <form onSubmit={handle2faSubmit}>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                  Enter the 6-digit code from your authenticator app.
+                </Typography>
+                <TextField
+                  label="Verification code"
+                  placeholder="000000"
+                  fullWidth
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  inputProps={{ maxLength: 6, inputMode: 'numeric', pattern: '[0-9]*' }}
+                  margin="normal"
+                  autoFocus
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  disabled={loading || twoFactorCode.length !== 6}
+                  startIcon={<LoginIcon />}
+                  sx={{
+                    mt: 3,
+                    mb: 2,
+                    py: 1.75,
+                    borderRadius: 2,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    boxShadow: `0 4px 14px 0 ${theme.palette.primary.main}40`,
                   }}
                 >
-                  Forgot password?
-                </Link>
-              </Typography>
-            </form>
+                  {loading ? 'Verifying…' : 'Verify and sign in'}
+                </Button>
+                <Typography variant="body2" sx={{ textAlign: 'center', mt: 1 }}>
+                  <Typography
+                    component="button"
+                    type="button"
+                    onClick={handleBackToLogin}
+                    sx={{
+                      color: 'primary.main',
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    Back to sign in
+                  </Typography>
+                </Typography>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                <TextField
+                  label="Email"
+                  type="email"
+                  fullWidth
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  margin="normal"
+                  autoComplete="email"
+                  autoFocus
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+                <TextField
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
+                  fullWidth
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  margin="normal"
+                  autoComplete="current-password"
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowPassword(!showPassword)}
+                          edge="end"
+                          size="small"
+                        >
+                          {showPassword ? (
+                            <VisibilityOff fontSize="small" />
+                          ) : (
+                            <Visibility fontSize="small" />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  disabled={loading}
+                  startIcon={<LoginIcon />}
+                  sx={{
+                    mt: 3,
+                    mb: 2,
+                    py: 1.75,
+                    borderRadius: 2,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    boxShadow: `0 4px 14px 0 ${theme.palette.primary.main}40`,
+                  }}
+                >
+                  {loading ? 'Signing in…' : 'Sign In'}
+                </Button>
+                <Typography variant="body2" sx={{ textAlign: 'center', mt: 1 }}>
+                  <Link
+                    to="/forgot-password"
+                    style={{
+                      color: theme.palette.primary.main,
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Forgot password?
+                  </Link>
+                </Typography>
+              </form>
+            )}
 
             <Box
               sx={{

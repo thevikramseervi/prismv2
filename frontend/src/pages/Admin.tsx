@@ -17,10 +17,18 @@ import {
   InputLabel,
   Paper,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
-import { MonetizationOn, Sync, CloudUpload } from '@mui/icons-material';
+import { MonetizationOn, Sync, CloudUpload, Security, QrCode2 } from '@mui/icons-material';
+import { QRCodeSVG } from 'qrcode.react';
 import { payrollApi } from '../api/payroll';
 import { usersApi } from '../api/users';
+import { authApi } from '../api/auth';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../api/axios';
 
 const Admin: React.FC = () => {
@@ -30,6 +38,15 @@ const Admin: React.FC = () => {
     severity: 'success' as 'success' | 'error',
   });
   const queryClient = useQueryClient();
+  const { user, refreshUser } = useAuth();
+
+  // 2FA state
+  const [twoFactorSetup, setTwoFactorSetup] = useState<{
+    otpauthUrl: string;
+    secret: string;
+  } | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [disable2faDialogOpen, setDisable2faDialogOpen] = useState(false);
 
   // Payroll Generation State
   const [payrollYear, setPayrollYear] = useState(new Date().getFullYear());
@@ -145,6 +162,53 @@ const Admin: React.FC = () => {
     uploadBiometricMutation.mutate(file);
   };
 
+  const start2faSetup = async () => {
+    try {
+      const data = await authApi.setup2fa();
+      setTwoFactorSetup(data);
+      setTwoFactorCode('');
+    } catch (err: any) {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to start 2FA setup',
+        severity: 'error',
+      });
+    }
+  };
+
+  const enable2faMutation = useMutation({
+    mutationFn: (code: string) => authApi.enable2fa(code),
+    onSuccess: async () => {
+      setTwoFactorSetup(null);
+      setTwoFactorCode('');
+      await refreshUser();
+      setSnackbar({ open: true, message: 'Two-factor authentication enabled.', severity: 'success' });
+    },
+    onError: (err: any) => {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to enable 2FA',
+        severity: 'error',
+      });
+    },
+  });
+
+  const disable2faMutation = useMutation({
+    mutationFn: () => authApi.disable2fa(),
+    onSuccess: async () => {
+      setDisable2faDialogOpen(false);
+      await refreshUser();
+      setSnackbar({ open: true, message: 'Two-factor authentication disabled.', severity: 'success' });
+    },
+    onError: (err: any) => {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to disable 2FA',
+        severity: 'error',
+      });
+    },
+  });
+
   const months = [
     'January',
     'February',
@@ -173,6 +237,96 @@ const Admin: React.FC = () => {
       </Typography>
 
       <Grid container spacing={3}>
+        {/* Two-Factor Authentication */}
+        <Grid size={{ xs: 12 }}>
+          <Card elevation={2}>
+            <CardContent>
+              <Box display="flex" alignItems="center" mb={2}>
+                <Security sx={{ fontSize: 40, color: 'secondary.main', mr: 2 }} />
+                <Box>
+                  <Typography variant="h6" fontWeight="bold">
+                    Two-Factor Authentication
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Add an extra layer of security for admin sign-in (e.g. Google Authenticator)
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              {user?.twoFactorEnabled ? (
+                <Box>
+                  <Alert severity="success" sx={{ mb: 2 }}>
+                    Two-factor authentication is enabled for your account.
+                  </Alert>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={() => setDisable2faDialogOpen(true)}
+                    disabled={disable2faMutation.isPending}
+                  >
+                    Disable 2FA
+                  </Button>
+                </Box>
+              ) : twoFactorSetup ? (
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Scan this QR code with your authenticator app, then enter the 6-digit code below.
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3, flexWrap: 'wrap', my: 2 }}>
+                    <Paper variant="outlined" sx={{ p: 2, display: 'inline-block' }}>
+                      <QRCodeSVG value={twoFactorSetup.otpauthUrl} size={180} level="M" />
+                    </Paper>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Or enter this secret manually:
+                      </Typography>
+                      <Typography variant="body2" fontFamily="monospace" sx={{ wordBreak: 'break-all', mt: 0.5 }}>
+                        {twoFactorSetup.secret}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <TextField
+                    label="Verification code"
+                    placeholder="000000"
+                    value={twoFactorCode}
+                    onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    inputProps={{ maxLength: 6 }}
+                    sx={{ width: 200, display: 'block', mb: 2 }}
+                  />
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      variant="contained"
+                      onClick={() => enable2faMutation.mutate(twoFactorCode)}
+                      disabled={twoFactorCode.length !== 6 || enable2faMutation.isPending}
+                      startIcon={enable2faMutation.isPending ? <CircularProgress size={20} /> : <QrCode2 />}
+                    >
+                      {enable2faMutation.isPending ? 'Enabling…' : 'Verify and enable 2FA'}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={() => { setTwoFactorSetup(null); setTwoFactorCode(''); }}
+                      disabled={enable2faMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                  </Box>
+                </Box>
+              ) : (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<Security />}
+                  onClick={start2faSetup}
+                >
+                  Enable two-factor authentication
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* Upload Biometric File */}
         <Grid size={{ xs: 12 }}>
           <Card elevation={2}>
@@ -390,6 +544,23 @@ const Admin: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+
+      <Dialog open={disable2faDialogOpen} onClose={() => !disable2faMutation.isPending && setDisable2faDialogOpen(false)}>
+        <DialogTitle>Disable two-factor authentication?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Your account will be protected only by your password. You can re-enable 2FA anytime from this page.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDisable2faDialogOpen(false)} disabled={disable2faMutation.isPending}>
+            Cancel
+          </Button>
+          <Button color="error" variant="contained" onClick={() => disable2faMutation.mutate()} disabled={disable2faMutation.isPending}>
+            {disable2faMutation.isPending ? 'Disabling…' : 'Disable 2FA'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbar.open}

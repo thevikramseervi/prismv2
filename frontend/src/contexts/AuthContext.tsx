@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authApi } from '../api/auth';
+import { authApi, type LoginResponse, type AuthUser } from '../api/auth';
 
 interface AuthContextType {
   user: any | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: { email: string; password: string }) => Promise<void>;
+  login: (credentials: { email: string; password: string }) => Promise<LoginResponse>;
+  complete2fa: (token: string, code: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
   logout: () => void;
 }
 
@@ -47,15 +49,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (credentials: { email: string; password: string }) => {
+  const login = async (credentials: {
+    email: string;
+    password: string;
+  }): Promise<LoginResponse> => {
+    const response = await authApi.login(credentials);
+    if ('requires2fa' in response && response.requires2fa) {
+      return response;
+    }
+    const authResponse = response as { access_token: string; user: AuthUser };
+    localStorage.setItem('token', authResponse.access_token);
+    localStorage.setItem('user', JSON.stringify(authResponse.user));
+    setUser(authResponse.user);
+    return response;
+  };
+
+  const complete2fa = async (token: string, code: string) => {
+    const response = await authApi.verify2fa({ token, code });
+    localStorage.setItem('token', response.access_token);
+    localStorage.setItem('user', JSON.stringify(response.user));
+    setUser(response.user);
+  };
+
+  const refreshUser = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
     try {
-      const response = await authApi.login(credentials);
-      localStorage.setItem('token', response.access_token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      setUser(response.user);
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
+      const userData = await authApi.me();
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+    } catch {
+      logout();
     }
   };
 
@@ -71,6 +95,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: !!user,
     isLoading,
     login,
+    complete2fa,
+    refreshUser,
     logout,
   };
 

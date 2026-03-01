@@ -6,9 +6,15 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { Enable2faDto } from './dto/enable-2fa.dto';
+import { Verify2faDto } from './dto/verify-2fa.dto';
+import { Setup2faResponseDto } from './dto/setup-2fa-response.dto';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { Roles } from './decorators/roles.decorator';
+import { RolesGuard } from './guards/roles.guard';
+import { Role } from '@prisma/client';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -18,9 +24,9 @@ export class AuthController {
   @Public()
   @Post('login')
   @ApiOperation({ summary: 'User login' })
-  @ApiResponse({ status: 200, description: 'Login successful', type: AuthResponseDto })
+  @ApiResponse({ status: 200, description: 'Login successful or requires 2FA', schema: { oneOf: [{ $ref: '#/components/schemas/AuthResponseDto' }, { type: 'object', properties: { requires2fa: { type: 'boolean', example: true }, twoFactorToken: { type: 'string' } } }] } })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
+  async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
@@ -75,5 +81,46 @@ export class AuthController {
     // In a stateless JWT system, logout is handled client-side
     // by removing the token from storage
     return { message: 'Logout successful' };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.LAB_ADMIN, Role.SUPER_ADMIN)
+  @Post('2fa/setup')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Start 2FA setup (admin only)' })
+  @ApiResponse({ status: 200, description: 'Returns QR/secret for authenticator app', type: Setup2faResponseDto })
+  async setup2fa(@CurrentUser() user: any) {
+    return this.authService.setup2fa(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.LAB_ADMIN, Role.SUPER_ADMIN)
+  @Post('2fa/enable')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Enable 2FA after verifying code (admin only)' })
+  @ApiResponse({ status: 200, description: '2FA enabled' })
+  async enable2fa(@CurrentUser() user: any, @Body() dto: Enable2faDto) {
+    await this.authService.enable2fa(user.id, dto);
+    return { message: '2FA enabled successfully' };
+  }
+
+  @Public()
+  @Post('2fa/verify')
+  @ApiOperation({ summary: 'Verify 2FA code and complete login' })
+  @ApiResponse({ status: 200, description: 'Returns access token and user', type: AuthResponseDto })
+  @ApiResponse({ status: 401, description: 'Invalid or expired token or code' })
+  async verify2fa(@Body() dto: Verify2faDto) {
+    return this.authService.verify2fa(dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.LAB_ADMIN, Role.SUPER_ADMIN)
+  @Post('2fa/disable')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Disable 2FA (admin only)' })
+  @ApiResponse({ status: 200, description: '2FA disabled' })
+  async disable2fa(@CurrentUser() user: any) {
+    await this.authService.disable2fa(user.id);
+    return { message: '2FA disabled successfully' };
   }
 }
