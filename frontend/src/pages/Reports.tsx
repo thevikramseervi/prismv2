@@ -30,7 +30,14 @@ import { attendanceApi } from '../api/attendance';
 import { leaveApi } from '../api/leave';
 import { payrollApi } from '../api/payroll';
 import { usersApi } from '../api/users';
-import { AttendanceStatus, LeaveStatus, PaymentStatus } from '../types';
+import {
+  Attendance,
+  AttendanceStatus,
+  LeaveApplication,
+  LeaveStatus,
+  PaymentStatus,
+  Payroll,
+} from '../types';
 import ExcelJS from 'exceljs';
 
 /** Format time from ISO string or Date to HH:MM */
@@ -89,10 +96,23 @@ const Reports: React.FC = () => {
     queryFn: () => usersApi.getAll(),
   });
 
-  const { data: attendanceData, isLoading: attendanceLoading, refetch: refetchAttendance } = useQuery({
+  type AttendanceReportRow = Attendance & {
+    user?: {
+      employeeId: string;
+      employeeNumber?: number;
+      name: string;
+      designation?: string;
+    };
+  };
+
+  const {
+    data: attendanceData,
+    isLoading: attendanceLoading,
+    refetch: refetchAttendance,
+  } = useQuery<AttendanceReportRow[]>({
     queryKey: ['attendance-report', selectedUserId, startDate, endDate],
     queryFn: () =>
-      attendanceApi.getAll({
+      attendanceApi.getReport({
         userId: selectedUserId || undefined,
         startDate,
         endDate,
@@ -100,13 +120,21 @@ const Reports: React.FC = () => {
     enabled: false,
   });
 
-  const { data: leaveData, isLoading: leaveLoading, refetch: refetchLeave } = useQuery({
+  const {
+    data: leaveData,
+    isLoading: leaveLoading,
+    refetch: refetchLeave,
+  } = useQuery<LeaveApplication[]>({
     queryKey: ['leave-report'],
-    queryFn: () => leaveApi.getMyApplications(),
+    queryFn: () => leaveApi.getReport(),
     enabled: false,
   });
 
-  const { data: payrollData, isLoading: payrollLoading, refetch: refetchPayroll } = useQuery({
+  const {
+    data: payrollData,
+    isLoading: payrollLoading,
+    refetch: refetchPayroll,
+  } = useQuery<Payroll[]>({
     queryKey: ['payroll-report', payrollYear, payrollMonth, selectedUserId],
     queryFn: () =>
       payrollApi.getAll({
@@ -127,70 +155,139 @@ const Reports: React.FC = () => {
     }
   };
 
+  type Column<T> = {
+    header: string;
+    value: (row: T) => string | number;
+  };
+
+  const attendanceColumns: Column<AttendanceReportRow>[] = [
+    { header: 'Employee ID', value: (r) => r.user?.employeeId || 'N/A' },
+    { header: 'Employee Name', value: (r) => r.user?.name || 'N/A' },
+    {
+      header: 'Date',
+      value: (r) => new Date(r.date).toLocaleDateString('en-IN'),
+    },
+    { header: 'Status', value: (r) => r.status },
+    {
+      header: 'First In',
+      value: (r) => (r.firstInTime ? formatTime(r.firstInTime) : '-'),
+    },
+    {
+      header: 'Last Out',
+      value: (r) => (r.lastOutTime ? formatTime(r.lastOutTime) : '-'),
+    },
+    {
+      header: 'Duration (hrs)',
+      value: (r) =>
+        r.totalDuration ? (Number(r.totalDuration) / 60).toFixed(2) : '-',
+    },
+  ];
+
+  const leaveColumns: Column<LeaveApplication>[] = [
+    { header: 'Employee ID', value: (l) => l.user?.employeeId || 'N/A' },
+    { header: 'Employee Name', value: (l) => l.user?.name || 'N/A' },
+    {
+      header: 'From Date',
+      value: (l) => new Date(l.fromDate).toLocaleDateString('en-IN'),
+    },
+    {
+      header: 'To Date',
+      value: (l) => new Date(l.toDate).toLocaleDateString('en-IN'),
+    },
+    { header: 'Total Days', value: (l) => l.totalDays },
+    { header: 'Reason', value: (l) => l.reason },
+    { header: 'Status', value: (l) => l.status },
+    {
+      header: 'Applied On',
+      value: (l) => new Date(l.appliedAt).toLocaleDateString('en-IN'),
+    },
+    {
+      header: 'Reviewed On',
+      value: (l) =>
+        l.reviewedAt
+          ? new Date(l.reviewedAt).toLocaleDateString('en-IN')
+          : '-',
+    },
+    {
+      header: 'Comments',
+      value: (l) => l.reviewerComments || '',
+    },
+  ];
+
+  const payrollColumns: Column<Payroll>[] = [
+    { header: 'Employee Number', value: (p) => p.user?.employeeNumber || 'N/A' },
+    { header: 'Employee ID', value: (p) => p.user?.employeeId || 'N/A' },
+    { header: 'Employee Name', value: (p) => p.user?.name || 'N/A' },
+    { header: 'Month', value: (p) => p.month },
+    { header: 'Year', value: (p) => p.year },
+    { header: 'Base Salary', value: (p) => p.baseSalary },
+    { header: 'Working Days', value: (p) => p.workingDays },
+    { header: 'Present Days', value: (p) => p.presentDays },
+    { header: 'Casual Leave', value: (p) => p.casualLeaveDays },
+    { header: 'Half Days', value: (p) => p.halfDays },
+    { header: 'LOP Days', value: (p) => p.lossOfPayDays },
+    { header: 'Total Pay Days', value: (p) => p.totalPayDays },
+    { header: 'Gross Earnings', value: (p) => p.grossEarnings },
+    { header: 'Deductions', value: (p) => p.deductions },
+    { header: 'Reimbursements', value: (p) => p.reimbursements },
+    { header: 'Net Salary', value: (p) => p.netSalary },
+    { header: 'Status', value: (p) => p.paymentStatus },
+  ];
+
   const exportToExcel = async () => {
-    let data: Record<string, unknown>[] = [];
     let filename = '';
 
-    if (tabValue === 0 && attendanceData) {
-      // Attendance Report
-      data = attendanceData.map((record: any) => ({
-        'Employee ID': record.user?.employeeId || 'N/A',
-        'Employee Name': record.user?.name || 'N/A',
-        Date: new Date(record.date).toLocaleDateString('en-IN'),
-        Status: record.status,
-        'First In': record.firstInTime || '-',
-        'Last Out': record.lastOutTime || '-',
-        'Duration (hrs)': record.totalDuration ? (Number(record.totalDuration) / 60).toFixed(2) : '-',
-      }));
+    if (tabValue === 0 && attendanceData && attendanceData.length > 0) {
       filename = `Attendance_Report_${startDate}_to_${endDate}.xlsx`;
-    } else if (tabValue === 1 && leaveData) {
-      // Leave Report
-      data = leaveData.map((leave: any) => ({
-        'Employee ID': leave.user?.employeeId || 'N/A',
-        'Employee Name': leave.user?.name || 'N/A',
-        'From Date': new Date(leave.fromDate).toLocaleDateString('en-IN'),
-        'To Date': new Date(leave.toDate).toLocaleDateString('en-IN'),
-        'Total Days': leave.totalDays,
-        Reason: leave.reason,
-        Status: leave.status,
-        'Applied On': new Date(leave.appliedAt).toLocaleDateString('en-IN'),
-        'Reviewed On': leave.reviewedAt
-          ? new Date(leave.reviewedAt).toLocaleDateString('en-IN')
-          : '-',
-        Comments: leave.reviewerComments || '-',
-      }));
-      filename = `Leave_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
-    } else if (tabValue === 2 && payrollData) {
-      // Payroll Report
-      data = payrollData.map((payroll: any) => ({
-        'Employee Number': payroll.user?.employeeNumber || 'N/A',
-        'Employee ID': payroll.user?.employeeId || 'N/A',
-        'Employee Name': payroll.user?.name || 'N/A',
-        Month: payroll.month,
-        Year: payroll.year,
-        'Base Salary': payroll.baseSalary,
-        'Working Days': payroll.workingDays,
-        'Present Days': payroll.presentDays,
-        'Casual Leave': payroll.casualLeaveDays,
-        'Half Days': payroll.halfDays,
-        'LOP Days': payroll.lossOfPayDays,
-        'Total Pay Days': payroll.totalPayDays,
-        'Gross Earnings': payroll.grossEarnings,
-        Deductions: payroll.deductions,
-        Reimbursements: payroll.reimbursements,
-        'Net Salary': payroll.netSalary,
-        Status: payroll.paymentStatus,
-      }));
-      filename = `Payroll_Report_${payrollMonth}_${payrollYear}.xlsx`;
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Attendance');
+      worksheet.addRow(attendanceColumns.map((c) => c.header));
+      attendanceData.forEach((row) => {
+        worksheet.addRow(attendanceColumns.map((c) => c.value(row)));
+      });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      return;
     }
 
-    if (data.length > 0) {
+    if (tabValue === 1 && leaveData && leaveData.length > 0) {
+      filename = `Leave_Report_${new Date()
+        .toISOString()
+        .split('T')[0]}.xlsx`;
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Report');
-      const headers = Object.keys(data[0]);
-      worksheet.addRow(headers);
-      data.forEach((row) => {
-        worksheet.addRow(headers.map((h) => row[h]));
+      const worksheet = workbook.addWorksheet('Leave');
+      worksheet.addRow(leaveColumns.map((c) => c.header));
+      leaveData.forEach((row) => {
+        worksheet.addRow(leaveColumns.map((c) => c.value(row)));
+      });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    if (tabValue === 2 && payrollData && payrollData.length > 0) {
+      filename = `Payroll_Report_${payrollMonth}_${payrollYear}.xlsx`;
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Payroll');
+      worksheet.addRow(payrollColumns.map((c) => c.header));
+      payrollData.forEach((row) => {
+        worksheet.addRow(payrollColumns.map((c) => c.value(row)));
       });
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], {

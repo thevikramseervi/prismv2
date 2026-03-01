@@ -123,6 +123,7 @@ model Attendance {
 
   @@unique([userId, date])
   @@index([userId, date])
+  @@index([date, userId])
   @@map("attendance")
 }
 
@@ -165,6 +166,7 @@ model LeaveApplication {
   reviewer User? @relation("reviewer", fields: [reviewedBy], references: [id])
 
   @@index([userId, status])
+  @@index([fromDate])
   @@map("leave_applications")
 }
 

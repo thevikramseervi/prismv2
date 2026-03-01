@@ -342,6 +342,65 @@ export class LeaveService {
     });
   }
 
+  async getReport(
+    userId?: string,
+    status?: LeaveStatus,
+    fromDate?: string,
+    toDate?: string,
+  ) {
+    const where: any = {};
+
+    if (userId) {
+      where.userId = userId;
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (fromDate || toDate) {
+      const from = fromDate ? new Date(fromDate) : undefined;
+      const to = toDate ? new Date(toDate) : undefined;
+
+      if (from && to && from > to) {
+        throw new BadRequestException('fromDate must be before or equal to toDate');
+      }
+
+      // Leaves that overlap the given window [from, to]
+      where.AND = where.AND || [];
+      const overlap: any = {};
+      if (from && to) {
+        overlap.fromDate = { lte: to };
+        overlap.toDate = { gte: from };
+      } else if (from) {
+        overlap.toDate = { gte: from };
+      } else if (to) {
+        overlap.fromDate = { lte: to };
+      }
+      where.AND.push(overlap);
+    }
+
+    return this.prisma.leaveApplication.findMany({
+      where,
+      orderBy: { appliedAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            employeeId: true,
+            employeeNumber: true,
+            name: true,
+            designation: true,
+          },
+        },
+        reviewer: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
   async getMyLeaveBalance(userId: string, year: number) {
     let leaveBalance = await this.prisma.leaveBalance.findUnique({
       where: {

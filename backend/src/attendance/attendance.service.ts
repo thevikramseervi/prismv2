@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
@@ -134,6 +134,58 @@ export class AttendanceService {
 
     if (date) {
       where.date = new Date(date);
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    return this.prisma.attendance.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            employeeId: true,
+            employeeNumber: true,
+            name: true,
+            designation: true,
+          },
+        },
+      },
+      orderBy: [
+        { date: 'desc' },
+        { user: { employeeNumber: 'asc' } },
+      ],
+    });
+  }
+
+  async findForReport(
+    userId?: string,
+    startDate?: string,
+    endDate?: string,
+    status?: AttendanceStatus,
+  ) {
+    const where: any = {};
+
+    if (userId) {
+      where.userId = userId;
+    }
+
+    if (startDate || endDate) {
+      const start = startDate ? new Date(startDate) : undefined;
+      const end = endDate ? new Date(endDate) : undefined;
+
+      if (start && end && start > end) {
+        throw new BadRequestException('startDate must be before or equal to endDate');
+      }
+
+      where.date = {};
+      if (start) {
+        where.date.gte = start;
+      }
+      if (end) {
+        where.date.lte = end;
+      }
     }
 
     if (status) {

@@ -16,6 +16,19 @@ export const leaveApi = {
     return data;
   },
 
+  /**
+   * Admin reporting endpoint: returns leave applications with user details.
+   */
+  getReport: async (params?: {
+    userId?: string;
+    status?: string;
+    fromDate?: string;
+    toDate?: string;
+  }): Promise<LeaveApplication[]> => {
+    const { data } = await api.get<LeaveApplication[]>('/leave/report', { params });
+    return data;
+  },
+
   getBalance: async (): Promise<LeaveBalance> => {
     const { data } = await api.get<LeaveBalance>('/leave/balance');
     return data;

@@ -65,6 +65,23 @@ export class LeaveController {
     return this.leaveService.getPendingApplications();
   }
 
+  @Get('report')
+  @Roles(Role.LAB_ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get leave report (Admin only)' })
+  @ApiQuery({ name: 'userId', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, enum: LeaveStatus })
+  @ApiQuery({ name: 'fromDate', required: false, type: String })
+  @ApiQuery({ name: 'toDate', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Leave report retrieved successfully' })
+  getReport(
+    @Query('userId') userId?: string,
+    @Query('status') status?: LeaveStatus,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    return this.leaveService.getReport(userId, status, fromDate, toDate);
+  }
+
   @Patch(':id/approve')
   @Roles(Role.LAB_ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Approve leave application (Admin only)' })

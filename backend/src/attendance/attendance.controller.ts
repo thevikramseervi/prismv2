@@ -69,6 +69,23 @@ export class AttendanceController {
     return this.attendanceService.getDashboardStats(user.id);
   }
 
+  @Get('report')
+  @Roles(Role.LAB_ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get attendance report (Admin only)' })
+  @ApiQuery({ name: 'userId', required: false, type: String })
+  @ApiQuery({ name: 'startDate', required: false, type: String })
+  @ApiQuery({ name: 'endDate', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, enum: AttendanceStatus })
+  @ApiResponse({ status: 200, description: 'Attendance report retrieved successfully' })
+  getReport(
+    @Query('userId') userId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('status') status?: AttendanceStatus,
+  ) {
+    return this.attendanceService.findForReport(userId, startDate, endDate, status);
+  }
+
   @Get()
   @Roles(Role.LAB_ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all attendance records (Admin only)' })

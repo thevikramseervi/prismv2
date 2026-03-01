@@ -20,12 +20,16 @@ export const attendanceApi = {
     return data;
   },
 
-  getAll: async (params?: {
+  /**
+   * Admin reporting endpoint: returns attendance records with user details.
+   */
+  getReport: async (params?: {
     userId?: string;
     startDate?: string;
     endDate?: string;
+    status?: string;
   }): Promise<Attendance[]> => {
-    const { data} = await api.get<Attendance[]>('/attendance', { params });
+    const { data } = await api.get<Attendance[]>('/attendance/report', { params });
     return data;
   },
 
