@@ -8,6 +8,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import RootOrApp from './components/RootOrApp';
 import DashboardLayout from './layouts/DashboardLayout';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Attendance from './pages/Attendance';
 import Leave from './pages/Leave';
@@ -133,6 +135,8 @@ function AppWithTheme() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/" element={<RootOrApp />}>
               <Route
                 element={

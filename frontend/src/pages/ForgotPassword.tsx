@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -9,47 +9,37 @@ import {
   Typography,
   Alert,
   Container,
-  InputAdornment,
   IconButton,
   useTheme,
-  useMediaQuery,
 } from '@mui/material';
-import {
-  Visibility,
-  VisibilityOff,
-  Login as LoginIcon,
-  Brightness4,
-  Brightness7,
-} from '@mui/icons-material';
-import { useAuth } from '../contexts/AuthContext';
+import { ArrowBack, Email as EmailIcon, Brightness4, Brightness7 } from '@mui/icons-material';
 import { useThemeMode } from '../contexts/ThemeModeContext';
+import { authApi } from '../api/auth';
 
-const Login: React.FC = () => {
+const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [success, setSuccess] = useState(false);
   const { mode, toggleMode } = useThemeMode();
-  const navigate = useNavigate();
-  const location = useLocation();
   const theme = useTheme();
-  const successMessage = (location.state as { message?: string })?.message;
-  const isSm = useMediaQuery(theme.breakpoints.up('sm'));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setSuccess(false);
     try {
-      await login({ email, password });
-      navigate('/');
+      await authApi.forgotPassword(email.trim());
+      setSuccess(true);
     } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          'Login failed. Please check your credentials.'
-      );
+      const status = err.response?.status;
+      const message = err.response?.data?.message;
+      if (status === 429) {
+        setError(message || 'Too many requests. Please try again later.');
+      } else {
+        setError(message || 'Something went wrong. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -117,22 +107,18 @@ const Login: React.FC = () => {
                 Attend Ease
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Automated Attendance & Payroll System
+                Reset your password
               </Typography>
             </Box>
 
-            {successMessage && (
-              <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
-                {successMessage}
+            {error && (
+              <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError('')}>
+                {error}
               </Alert>
             )}
-            {error && (
-              <Alert
-                severity="error"
-                sx={{ mb: 3, borderRadius: 2 }}
-                onClose={() => setError('')}
-              >
-                {error}
+            {success && (
+              <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
+                If an account exists for this email, you will receive a reset link. Check your inbox and spam folder.
               </Alert>
             )}
 
@@ -147,34 +133,10 @@ const Login: React.FC = () => {
                 margin="normal"
                 autoComplete="email"
                 autoFocus
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-              />
-              <TextField
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                fullWidth
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                margin="normal"
-                autoComplete="current-password"
+                disabled={success}
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                        size="small"
-                      >
-                        {showPassword ? (
-                          <VisibilityOff fontSize="small" />
-                        ) : (
-                          <Visibility fontSize="small" />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
+                  startAdornment: <EmailIcon sx={{ mr: 1, color: 'action.active' }} />,
                 }}
               />
               <Button
@@ -182,8 +144,7 @@ const Login: React.FC = () => {
                 fullWidth
                 variant="contained"
                 size="large"
-                disabled={loading}
-                startIcon={<LoginIcon />}
+                disabled={loading || success}
                 sx={{
                   mt: 3,
                   mb: 2,
@@ -194,47 +155,25 @@ const Login: React.FC = () => {
                   boxShadow: `0 4px 14px 0 ${theme.palette.primary.main}40`,
                 }}
               >
-                {loading ? 'Signing in…' : 'Sign In'}
+                {loading ? 'Sending…' : 'Send reset link'}
               </Button>
-              <Typography variant="body2" sx={{ textAlign: 'center', mt: 1 }}>
-                <Link
-                  to="/forgot-password"
-                  style={{
-                    color: theme.palette.primary.main,
-                    textDecoration: 'none',
-                    fontWeight: 600,
-                  }}
-                >
-                  Forgot password?
-                </Link>
-              </Typography>
             </form>
 
-            <Box
-              sx={{
-                mt: 3,
-                p: 2,
-                bgcolor: 'grey.50',
-                borderRadius: 2,
-                border: 1,
-                borderColor: 'grey.200',
-              }}
-            >
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                display="block"
-                fontWeight={600}
+            <Typography variant="body2" sx={{ textAlign: 'center', mt: 2 }}>
+              <Link
+                to="/login"
+                style={{
+                  color: theme.palette.primary.main,
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
               >
-                Demo credentials
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                Email: admin@cambridge.edu.in
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                Password: admin123
-              </Typography>
-            </Box>
+                <ArrowBack fontSize="small" /> Back to sign in
+              </Link>
+            </Typography>
           </CardContent>
         </Card>
       </Container>
@@ -242,4 +181,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default ForgotPassword;
