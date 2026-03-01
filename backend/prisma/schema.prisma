@@ -87,7 +87,6 @@ model User {
   payrolls          Payroll[] @relation("employee")
   generatedPayrolls Payroll[] @relation("generator")
   announcements     Announcement[]
-  announcementReads AnnouncementRead[]
   passwordResetTokens PasswordResetToken[]
 
   @@map("users")
@@ -245,22 +244,7 @@ model Announcement {
   updatedAt      DateTime              @updatedAt @map("updated_at")
 
   creator User               @relation(fields: [createdBy], references: [id])
-  reads   AnnouncementRead[]
 
   @@index([isActive, isPinned, createdAt])
   @@map("announcements")
-}
-
-model AnnouncementRead {
-  id             String   @id @default(uuid())
-  announcementId String   @map("announcement_id")
-  userId         String   @map("user_id")
-  readAt         DateTime @default(now()) @map("read_at")
-
-  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id])
-
-  @@unique([announcementId, userId])
-  @@index([userId])
-  @@map("announcement_reads")
 }
