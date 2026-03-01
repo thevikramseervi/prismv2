@@ -18,7 +18,7 @@ import {
   Paper,
   Divider,
 } from '@mui/material';
-import { MonetizationOn, Sync } from '@mui/icons-material';
+import { MonetizationOn, Sync, CloudUpload } from '@mui/icons-material';
 import { payrollApi } from '../api/payroll';
 import { usersApi } from '../api/users';
 import api from '../api/axios';
@@ -105,6 +105,46 @@ const Admin: React.FC = () => {
     syncBiometricMutation.mutate(syncDate);
   };
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const uploadBiometricMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await api.post('/biometric/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      const msg = `Import complete: ${data.logsCreated} logs created, ${data.datesProcessed?.length ?? 0} dates synced`;
+      setSnackbar({ open: true, message: msg, severity: 'success' });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    },
+    onError: (error: any) => {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || 'Failed to upload biometric file',
+        severity: 'error',
+      });
+    },
+  });
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.xlsx')) {
+      setSnackbar({
+        open: true,
+        message: 'Only .xlsx files are supported. Convert .xls to .xlsx first.',
+        severity: 'error',
+      });
+      return;
+    }
+    uploadBiometricMutation.mutate(file);
+  };
+
   const months = [
     'January',
     'February',
@@ -133,6 +173,57 @@ const Admin: React.FC = () => {
       </Typography>
 
       <Grid container spacing={3}>
+        {/* Upload Biometric File */}
+        <Grid size={{ xs: 12 }}>
+          <Card elevation={2}>
+            <CardContent>
+              <Box display="flex" alignItems="center" mb={2}>
+                <CloudUpload sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
+                <Box>
+                  <Typography variant="h6" fontWeight="bold">
+                    Upload Biometric File
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Upload Device Log Duration Report (.xlsx) from biometric device
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Button
+                fullWidth
+                variant="contained"
+                color="primary"
+                size="large"
+                component="label"
+                startIcon={<CloudUpload />}
+                disabled={uploadBiometricMutation.isPending}
+                sx={{ mt: 1 }}
+              >
+                {uploadBiometricMutation.isPending
+                  ? 'Importing...'
+                  : 'Choose & Upload Biometric Excel'}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx"
+                  onChange={handleFileSelect}
+                  hidden
+                />
+              </Button>
+
+              <Paper elevation={0} sx={{ mt: 2, p: 2, bgcolor: 'success.50', border: 1, borderColor: 'success.200' }}>
+                <Typography variant="caption" color="text.secondary">
+                  <strong>Workflow:</strong> Download the Device Log Duration Report from your
+                  biometric device, convert to .xlsx if needed, then upload here. The system will
+                  import logs and auto-sync all dates to attendance.
+                </Typography>
+              </Paper>
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* Payroll Generation */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Card elevation={2}>

@@ -30,6 +30,22 @@ interface CalendarDay {
   isCurrentMonth: boolean;
 }
 
+/** Format time from ISO string or Date (e.g. "1970-01-01T09:25:00.000Z") to HH:MM */
+const formatTime = (val: string | Date | null | undefined): string => {
+  if (!val) return '-';
+  try {
+    const d = typeof val === 'string' ? new Date(val) : val;
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  } catch {
+    return '-';
+  }
+};
+
 const buildMonthMatrix = (year: number, month: number): CalendarDay[] => {
   // month: 0-11, week starts on Monday (Mon = 0 ... Sun = 6)
   const firstOfMonth = new Date(year, month, 1);
@@ -293,8 +309,8 @@ const Attendance: React.FC = () => {
                             size="small"
                           />
                         </TableCell>
-                        <TableCell>{record.firstInTime || '-'}</TableCell>
-                        <TableCell>{record.lastOutTime || '-'}</TableCell>
+                        <TableCell>{formatTime(record.firstInTime)}</TableCell>
+                        <TableCell>{formatTime(record.lastOutTime)}</TableCell>
                         <TableCell>
                           {record.totalDuration
                             ? (Number(record.totalDuration) / 60).toFixed(2)

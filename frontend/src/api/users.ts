@@ -2,8 +2,10 @@ import api from './axios';
 import { User } from '../types';
 
 export const usersApi = {
-  getAll: async (): Promise<User[]> => {
-    const { data } = await api.get('/users');
+  getAll: async (params?: { limit?: number; page?: number }): Promise<User[]> => {
+    const limit = params?.limit ?? 5000;
+    const page = params?.page ?? 1;
+    const { data } = await api.get('/users', { params: { limit, page } });
     // API returns paginated { data: [...], meta: {...} } or plain array
     return Array.isArray(data) ? data : data.data || [];
   },

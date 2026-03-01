@@ -46,8 +46,12 @@ export class BiometricSyncService {
     return !!leave;
   }
 
-  async processBiometricData(entries: BiometricEntry[]): Promise<any> {
+  async processBiometricData(
+    entries: BiometricEntry[],
+    options?: { skipLogCreation?: boolean },
+  ): Promise<any> {
     this.logger.log(`Processing ${entries.length} biometric entries...`);
+    const skipLogCreation = options?.skipLogCreation ?? false;
 
     const results = {
       processed: 0,
@@ -83,21 +87,23 @@ export class BiometricSyncService {
           continue;
         }
 
-        // Store biometric logs
-        for (const entry of dateEntries) {
-          await this.prisma.biometricLog.create({
-            data: {
-              userId: user.id,
-              date: entry.date,
-              inTime: entry.inTime,
-              outTime: entry.outTime,
-              inDoor: entry.inDoor,
-              outDoor: entry.outDoor,
-              duration: entry.duration,
-              rawData: entry as any,
-              processed: false,
-            },
-          });
+        // Store biometric logs (skip when entries came from existing logs)
+        if (!skipLogCreation) {
+          for (const entry of dateEntries) {
+            await this.prisma.biometricLog.create({
+              data: {
+                userId: user.id,
+                date: entry.date,
+                inTime: entry.inTime,
+                outTime: entry.outTime,
+                inDoor: entry.inDoor,
+                outDoor: entry.outDoor,
+                duration: entry.duration,
+                rawData: entry as any,
+                processed: false,
+              },
+            });
+          }
         }
 
         // Calculate total duration for the day
@@ -106,9 +112,14 @@ export class BiometricSyncService {
           0,
         );
 
-        // Get first in and last out times
-        const firstIn = dateEntries[0].inTime;
-        const lastOut = dateEntries[dateEntries.length - 1].outTime;
+        // Sort by inTime for correct first-in / last-out
+        const sorted = [...dateEntries].sort((a, b) => {
+          const aTime = a.inTime?.getTime() ?? 0;
+          const bTime = b.inTime?.getTime() ?? 0;
+          return aTime - bTime;
+        });
+        const firstIn = sorted[0]?.inTime ?? null;
+        const lastOut = sorted[sorted.length - 1]?.outTime ?? null;
 
         // Determine attendance status
         let status: AttendanceStatus;
@@ -140,8 +151,8 @@ export class BiometricSyncService {
           },
           update: {
             status,
-            firstInTime: firstIn?.toTimeString().slice(0, 8) || null,
-            lastOutTime: lastOut?.toTimeString().slice(0, 8) || null,
+            firstInTime: firstIn ?? undefined,
+            lastOutTime: lastOut ?? undefined,
             totalDuration: totalDurationMinutes,
             biometricSynced: true,
           },
@@ -149,8 +160,8 @@ export class BiometricSyncService {
             userId: user.id,
             date,
             status,
-            firstInTime: firstIn?.toTimeString().slice(0, 8) || null,
-            lastOutTime: lastOut?.toTimeString().slice(0, 8) || null,
+            firstInTime: firstIn ?? undefined,
+            lastOutTime: lastOut ?? undefined,
             totalDuration: totalDurationMinutes,
             biometricSynced: true,
           },
@@ -191,11 +202,14 @@ export class BiometricSyncService {
     // TODO: Fetch data from actual biometric system API
     // For now, this is a placeholder for manual uploads or API integration
 
-    // Get unprocessed biometric logs for the date
+    // Get unprocessed biometric logs for the date (include user for employeeId)
     const unprocessedLogs = await this.prisma.biometricLog.findMany({
       where: {
         date,
         processed: false,
+      },
+      include: {
+        user: { select: { employeeId: true } },
       },
     });
 
@@ -206,7 +220,7 @@ export class BiometricSyncService {
 
     // Convert to BiometricEntry format
     const entries: BiometricEntry[] = unprocessedLogs.map((log) => ({
-      employeeId: '', // Will be populated from user lookup
+      employeeId: log.user.employeeId,
       date: log.date,
       inTime: log.inTime,
       outTime: log.outTime,
@@ -215,7 +229,7 @@ export class BiometricSyncService {
       duration: log.duration,
     }));
 
-    return this.processBiometricData(entries);
+    return this.processBiometricData(entries, { skipLogCreation: true });
   }
 
   async getUnprocessedLogs() {

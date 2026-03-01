@@ -33,6 +33,22 @@ import { usersApi } from '../api/users';
 import { AttendanceStatus, LeaveStatus, PaymentStatus } from '../types';
 import ExcelJS from 'exceljs';
 
+/** Format time from ISO string or Date to HH:MM */
+const formatTime = (val: string | Date | null | undefined): string => {
+  if (!val) return '-';
+  try {
+    const d = typeof val === 'string' ? new Date(val) : val;
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  } catch {
+    return '-';
+  }
+};
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -486,8 +502,8 @@ const Reports: React.FC = () => {
                               }
                             />
                           </TableCell>
-                          <TableCell>{record.firstInTime || '-'}</TableCell>
-                          <TableCell>{record.lastOutTime || '-'}</TableCell>
+                          <TableCell>{formatTime(record.firstInTime)}</TableCell>
+                          <TableCell>{formatTime(record.lastOutTime)}</TableCell>
                           <TableCell>
                             {record.totalDuration ? (Number(record.totalDuration) / 60).toFixed(2) : '-'}
                           </TableCell>
