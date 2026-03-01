@@ -28,12 +28,12 @@ Dev server proxies ` /api` to `http://localhost:3000`. Set `host: true` in `vite
 
 - **Landing** – Public landing page; app when authenticated
 - **Theme** – Light/dark mode (persisted)
-- **Auth** – Login, change password (user menu), protected routes
+- **Auth** – Login (with optional 2FA step for admins), change password (user menu), protected routes
 - **Dashboard** – Stats, leave balance, announcements
 - **Attendance** – Calendar and table views
 - **Leave** – Apply, history, balance
 - **Salary Slips** – List, detail view, PDF/Excel download
 - **Announcements** – List and (admin) create
-- **Admin** – Users, holidays, payroll generation, biometric sync, reports (with Excel export)
+- **Admin** – Users, holidays, payroll generation, biometric sync, reports (Excel export), Security / 2FA (enable/disable TOTP)
 
 See root [README.md](../README.md) and [QUICK_START.md](../QUICK_START.md) for full setup and usage.

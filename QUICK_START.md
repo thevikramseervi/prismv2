@@ -43,6 +43,7 @@ Password: employee123
 - ✅ Approve leaves
 - ✅ View reports
 - ✅ Manage holidays
+- ✅ Enable two-factor authentication (Admin → Security / 2FA); sign-in then asks for 6-digit code
 
 ---
 
@@ -103,4 +104,4 @@ If you need help:
 ---
 
 **System Status:** ✅ OPERATIONAL  
-**Last Updated:** February 15, 2026
+**Last Updated:** March 2026

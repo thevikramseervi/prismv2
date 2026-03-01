@@ -46,6 +46,8 @@ A comprehensive full-stack web application for automating attendance tracking, l
 ### System Features
 - ✅ **Role-Based Access Control** - Employee, Lab Admin, Super Admin
 - ✅ **JWT Authentication** - Secure token-based authentication
+- ✅ **Two-Factor Authentication (2FA)** - Optional TOTP for admins (e.g. Google Authenticator)
+- ✅ **Password Reset** - Forgot password and reset via email link
 - ✅ **Biometric Integration** - Process biometric logs into attendance
 - ✅ **Automatic Calculations** - Working days, pay days, salary computation
 - ✅ **Weekend & Holiday Detection** - Automatic marking
@@ -191,7 +193,7 @@ Role: Super Admin
 ## 📊 Database Schema
 
 ### Main Tables
-- **users** - Employee information and credentials
+- **users** - Employee information and credentials (includes optional 2FA fields for admins)
 - **attendance** - Daily attendance records
 - **biometric_logs** - Raw biometric data
 - **leave_applications** - Leave requests
@@ -199,7 +201,7 @@ Role: Super Admin
 - **payroll** - Monthly salary records
 - **holidays** - Company holidays
 - **announcements** - System announcements
-- **announcement_reads** - Announcement read tracking
+- **password_reset_tokens** - Password reset links (time-limited)
 
 ### User Roles
 - **EMPLOYEE** - Regular employee
@@ -209,10 +211,18 @@ Role: Super Admin
 ## 🌐 API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - User login
-- `GET /api/auth/me` - Get current user
+- `POST /api/auth/login` - User login (returns `requires2fa` + `twoFactorToken` for admins with 2FA enabled)
+- `POST /api/auth/2fa/verify` - Complete login with 2FA code (body: `token`, `code`)
+- `GET /api/auth/me` - Get current user (includes `twoFactorEnabled` for admins)
 - `PATCH /api/auth/me/password` - Change password (authenticated)
+- `POST /api/auth/forgot-password` - Request password reset email
+- `POST /api/auth/reset-password` - Set new password with reset token
 - `POST /api/auth/logout` - User logout
+
+### Two-Factor Authentication (admin only)
+- `POST /api/auth/2fa/setup` - Start 2FA setup (returns QR/secret for authenticator app)
+- `POST /api/auth/2fa/enable` - Enable 2FA after verifying code (body: `code`)
+- `POST /api/auth/2fa/disable` - Disable 2FA
 
 ### Attendance
 - `GET /api/attendance/my-attendance` - Get my attendance
@@ -251,10 +261,10 @@ Role: Super Admin
 - `DELETE /api/holidays/:id` - Delete holiday
 
 ### Announcements
-- `GET /api/announcements` - Get my announcements
+- `GET /api/announcements` - Get my announcements (filtered by target audience)
 - `POST /api/announcements` - Create announcement (Admin)
-- `POST /api/announcements/:id/mark-read` - Mark as read
-- `GET /api/announcements/unread-count` - Unread count
+- `POST /api/announcements/:id/mark-read` - Mark as read (no-op; kept for API compatibility)
+- `GET /api/announcements/unread-count` - Unread count (based on list; read state not persisted)
 
 ### Biometric (Admin only)
 - `POST /api/biometric/sync?date=YYYY-MM-DD` - Manual sync
@@ -332,11 +342,14 @@ The Reports page provides comprehensive analytics with Excel export:
 - **Form Validation** - Real-time validation
 - **Protected Routes** - Automatic redirection
 - **Change Password** - In-app change password (user menu)
+- **2FA for Admins** - Enable/disable TOTP in Admin panel; login prompts for 6-digit code when 2FA is on
 
 ## 🔒 Security
 
 - JWT token-based authentication
+- Optional TOTP two-factor authentication for admins (LAB_ADMIN, SUPER_ADMIN)
 - Password hashing with bcrypt
+- Password reset via time-limited email links
 - Role-based access control
 - Protected API routes with guards
 - SQL injection prevention (Prisma ORM)

@@ -85,4 +85,7 @@ Once the server is running, visit:
 Copy `.env` and update with your values:
 - DATABASE_URL - PostgreSQL connection string
 - JWT_SECRET - Secret key for JWT tokens
+- JWT_EXPIRATION - Token expiry (default: 7d)
 - PORT - Server port (default: 3000)
+- FRONTEND_URL - Base URL for password reset links (optional)
+- TWO_FACTOR_ISSUER - Issuer name shown in authenticator app (optional; default: "Attend Ease")
