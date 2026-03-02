@@ -177,3 +177,24 @@ export interface DashboardStats {
   casualLeaves: number;
   totalWorkingDays: number;
 }
+
+export interface ActivityEntry {
+  id: string;
+  userId: string;
+  date: string;
+  userType: string;
+  project: string;
+  task: string;
+  subTask?: string;
+  unit: string;
+  nos: number;
+  percentage: number;
+  productivity: number;
+  weightage: number;
+  user?: {
+    employeeId: string;
+    employeeNumber?: number;
+    name: string;
+    status?: UserStatus;
+  };
+}

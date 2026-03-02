@@ -12,6 +12,7 @@ import { PayrollModule } from './payroll/payroll.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 import { BiometricModule } from './biometric/biometric.module';
 import { HealthModule } from './health/health.module';
+import { ActivityModule } from './activity/activity.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -30,6 +31,7 @@ import { AppService } from './app.service';
     AttendanceModule,
     LeaveModule,
     PayrollModule,
+    ActivityModule,
     AnnouncementsModule,
     BiometricModule,
     HealthModule,

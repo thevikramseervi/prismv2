@@ -90,6 +90,8 @@ model User {
   generatedPayrolls Payroll[] @relation("generator")
   announcements     Announcement[]
   passwordResetTokens PasswordResetToken[]
+  activities        ActivityEntry[]
+  createdActivities ActivityEntry[] @relation("activity_creator")
 
   @@map("users")
 }
@@ -218,6 +220,31 @@ model Payroll {
   @@unique([userId, month, year])
   @@index([userId, month, year])
   @@map("payroll")
+}
+
+model ActivityEntry {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  date         DateTime @db.Date
+  userType     String   @map("user_type")
+  project      String
+  task         String
+  subTask      String?  @map("sub_task")
+  unit         String
+  nos          Int
+  percentage   Decimal  @db.Decimal(5, 2)
+  productivity Decimal  @db.Decimal(10, 2)
+  weightage    Decimal  @db.Decimal(10, 2)
+  createdById  String   @map("created_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user      User @relation(fields: [userId], references: [id])
+  createdBy User @relation("activity_creator", fields: [createdById], references: [id])
+
+  @@index([date, userId])
+  @@index([userId, date])
+  @@map("activity_entries")
 }
 
 model Holiday {

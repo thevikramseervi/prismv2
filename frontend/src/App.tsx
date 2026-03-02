@@ -21,6 +21,7 @@ import Holidays from './pages/Holidays';
 import Admin from './pages/Admin';
 import LeaveApproval from './pages/LeaveApproval';
 import Reports from './pages/Reports';
+import ActivityReport from './pages/ActivityReport';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -147,6 +148,7 @@ function AppWithTheme() {
               >
                 <Route index element={<Dashboard />} />
                 <Route path="attendance" element={<Attendance />} />
+                <Route path="activity" element={<ActivityReport />} />
                 <Route path="leave" element={<Leave />} />
                 <Route path="salary-slips" element={<SalarySlips />} />
                 <Route path="salary-slips/view/:id" element={<SalarySlipView />} />
