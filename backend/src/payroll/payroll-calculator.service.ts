@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceStatus } from '@prisma/client';
+import { isWeekend, toDateOnlyKey } from '../common/date.utils';
 
 interface SalaryCalculation {
   baseSalary: number;
@@ -19,19 +20,6 @@ interface SalaryCalculation {
 @Injectable()
 export class PayrollCalculatorService {
   constructor(private prisma: PrismaService) {}
-
-  private isWeekend(date: Date): boolean {
-    const dayOfWeek = date.getDay();
-    return dayOfWeek === 0 || dayOfWeek === 6; // Sunday = 0, Saturday = 6
-  }
-
-  /** Format as YYYY-MM-DD for timezone-safe date-only comparison. */
-  private toDateOnlyKey(date: Date): string {
-    const y = date.getUTCFullYear();
-    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(date.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
 
   /**
    * Working days = calendar days in month minus weekends (Sat/Sun) minus company holidays.
@@ -54,13 +42,13 @@ export class PayrollCalculatorService {
       },
     });
 
-    const holidayDates = new Set(holidays.map((h) => this.toDateOnlyKey(h.date)));
+    const holidayDates = new Set(holidays.map((h) => toDateOnlyKey(h.date)));
 
     let workingDays = 0;
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month - 1, day);
       const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      if (!this.isWeekend(date) && !holidayDates.has(dateKey)) {
+      if (!isWeekend(date) && !holidayDates.has(dateKey)) {
         workingDays++;
       }
     }

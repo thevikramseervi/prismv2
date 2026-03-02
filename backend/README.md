@@ -62,6 +62,7 @@ npm run start:dev
 - `npm run prisma:migrate` - Run database migrations
 - `npm run prisma:studio` - Open Prisma Studio (database GUI)
 - `npm run prisma:seed` - Seed the database with initial data
+- `npm test` - Run backend unit tests (Jest + ts-jest)
 
 ### Data migration (Excel import)
 

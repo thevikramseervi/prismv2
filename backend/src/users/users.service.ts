@@ -9,79 +9,81 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
-    // Check if email already exists
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: createUserDto.email },
+    return this.prisma.$transaction(async (tx) => {
+      // Check if email already exists
+      const existingUser = await tx.user.findUnique({
+        where: { email: createUserDto.email },
+      });
+
+      if (existingUser) {
+        throw new ConflictException('Email already exists');
+      }
+
+      // Check if employee ID already exists
+      const existingEmployeeId = await tx.user.findUnique({
+        where: { employeeId: createUserDto.employeeId },
+      });
+
+      if (existingEmployeeId) {
+        throw new ConflictException('Employee ID already exists');
+      }
+
+      // Check if employee number already exists
+      const existingEmployeeNumber = await tx.user.findUnique({
+        where: { employeeNumber: createUserDto.employeeNumber },
+      });
+
+      if (existingEmployeeNumber) {
+        throw new ConflictException('Employee number already exists');
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+
+      // Create user
+      const user = await tx.user.create({
+        data: {
+          employeeId: createUserDto.employeeId,
+          employeeNumber: createUserDto.employeeNumber,
+          name: createUserDto.name,
+          email: createUserDto.email,
+          passwordHash: hashedPassword,
+          designation: createUserDto.designation || 'Annotator',
+          role: createUserDto.role,
+          dateOfJoining: new Date(createUserDto.dateOfJoining),
+          baseSalary: createUserDto.baseSalary || 22000,
+          status: 'ACTIVE',
+        },
+        select: {
+          id: true,
+          employeeId: true,
+          employeeNumber: true,
+          name: true,
+          email: true,
+          designation: true,
+          role: true,
+          dateOfJoining: true,
+          baseSalary: true,
+          status: true,
+          createdAt: true,
+        },
+      });
+
+      // Create initial leave balance for current year
+      const currentYear = new Date().getFullYear();
+      await tx.leaveBalance.create({
+        data: {
+          userId: user.id,
+          year: currentYear,
+          casualLeaveTotal: 12,
+          casualLeaveUsed: 0,
+          casualLeavePending: 0,
+          casualLeaveAvailable: 12,
+        },
+      });
+
+      return user;
     });
-
-    if (existingUser) {
-      throw new ConflictException('Email already exists');
-    }
-
-    // Check if employee ID already exists
-    const existingEmployeeId = await this.prisma.user.findUnique({
-      where: { employeeId: createUserDto.employeeId },
-    });
-
-    if (existingEmployeeId) {
-      throw new ConflictException('Employee ID already exists');
-    }
-
-    // Check if employee number already exists
-    const existingEmployeeNumber = await this.prisma.user.findUnique({
-      where: { employeeNumber: createUserDto.employeeNumber },
-    });
-
-    if (existingEmployeeNumber) {
-      throw new ConflictException('Employee number already exists');
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-
-    // Create user
-    const user = await this.prisma.user.create({
-      data: {
-        employeeId: createUserDto.employeeId,
-        employeeNumber: createUserDto.employeeNumber,
-        name: createUserDto.name,
-        email: createUserDto.email,
-        passwordHash: hashedPassword,
-        designation: createUserDto.designation || 'Annotator',
-        role: createUserDto.role,
-        dateOfJoining: new Date(createUserDto.dateOfJoining),
-        baseSalary: createUserDto.baseSalary || 22000,
-        status: 'ACTIVE',
-      },
-      select: {
-        id: true,
-        employeeId: true,
-        employeeNumber: true,
-        name: true,
-        email: true,
-        designation: true,
-        role: true,
-        dateOfJoining: true,
-        baseSalary: true,
-        status: true,
-        createdAt: true,
-      },
-    });
-
-    // Create initial leave balance for current year
-    const currentYear = new Date().getFullYear();
-    await this.prisma.leaveBalance.create({
-      data: {
-        userId: user.id,
-        year: currentYear,
-        casualLeaveTotal: 12,
-        casualLeaveUsed: 0,
-        casualLeavePending: 0,
-        casualLeaveAvailable: 12,
-      },
-    });
-
-    return user;
   }
 
   async findAll(page = 1, limit = 50, search?: string, status?: string) {

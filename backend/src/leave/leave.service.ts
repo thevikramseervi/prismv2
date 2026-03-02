@@ -45,261 +45,262 @@ export class LeaveService {
       throw new BadRequestException('No working days in the selected date range');
     }
 
-    // Get leave balance for current year
+    // Get leave balance for current year and apply changes transactionally
     const year = fromDate.getFullYear();
-    const leaveBalance = await this.prisma.leaveBalance.findUnique({
-      where: {
-        userId_year: {
-          userId,
-          year,
-        },
-      },
-    });
 
-    if (!leaveBalance) {
-      // Create initial leave balance if not exists
-      await this.prisma.leaveBalance.create({
-        data: {
-          userId,
-          year,
-          casualLeaveTotal: 12,
-          casualLeaveUsed: 0,
-          casualLeavePending: 0,
-          casualLeaveAvailable: 12,
+    return this.prisma.$transaction(async (tx) => {
+      let leaveBalance = await tx.leaveBalance.findUnique({
+        where: {
+          userId_year: {
+            userId,
+            year,
+          },
         },
       });
-    }
 
-    const balance = leaveBalance || {
-      casualLeaveAvailable: 12,
-      casualLeavePending: 0,
-    };
-
-    // Check if sufficient leave available
-    if (balance.casualLeaveAvailable < totalDays) {
-      throw new BadRequestException(
-        `Insufficient leave balance. Available: ${balance.casualLeaveAvailable}, Requested: ${totalDays}`,
-      );
-    }
-
-    // Check for overlapping leave applications
-    const overlapping = await this.prisma.leaveApplication.findFirst({
-      where: {
-        userId,
-        status: {
-          in: [LeaveStatus.PENDING, LeaveStatus.APPROVED],
-        },
-        OR: [
-          {
-            fromDate: {
-              lte: toDate,
-            },
-            toDate: {
-              gte: fromDate,
-            },
-          },
-        ],
-      },
-    });
-
-    if (overlapping) {
-      throw new ConflictException('You already have a leave application for overlapping dates');
-    }
-
-    // Create leave application
-    const leaveApplication = await this.prisma.leaveApplication.create({
-      data: {
-        userId,
-        leaveType: applyLeaveDto.leaveType,
-        fromDate,
-        toDate,
-        totalDays,
-        reason: applyLeaveDto.reason,
-        status: LeaveStatus.PENDING,
-      },
-      include: {
-        user: {
-          select: {
-            employeeId: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
-
-    // Update leave balance (mark as pending)
-    await this.prisma.leaveBalance.update({
-      where: {
-        userId_year: {
-          userId,
-          year,
-        },
-      },
-      data: {
-        casualLeavePending: {
-          increment: totalDays,
-        },
-        casualLeaveAvailable: {
-          decrement: totalDays,
-        },
-      },
-    });
-
-    return leaveApplication;
-  }
-
-  async approveLeave(applicationId: string, reviewedBy: string, reviewLeaveDto?: ReviewLeaveDto) {
-    const application = await this.prisma.leaveApplication.findUnique({
-      where: { id: applicationId },
-      include: { user: true },
-    });
-
-    if (!application) {
-      throw new NotFoundException('Leave application not found');
-    }
-
-    if (application.status !== LeaveStatus.PENDING) {
-      throw new BadRequestException('Only pending leave applications can be approved');
-    }
-
-    // Update application status
-    await this.prisma.leaveApplication.update({
-      where: { id: applicationId },
-      data: {
-        status: LeaveStatus.APPROVED,
-        reviewedBy,
-        reviewedAt: new Date(),
-        reviewNotes: reviewLeaveDto?.reviewNotes,
-      },
-    });
-
-    // Update leave balance
-    const year = application.fromDate.getFullYear();
-    await this.prisma.leaveBalance.update({
-      where: {
-        userId_year: {
-          userId: application.userId,
-          year,
-        },
-      },
-      data: {
-        casualLeaveUsed: {
-          increment: application.totalDays,
-        },
-        casualLeavePending: {
-          decrement: application.totalDays,
-        },
-      },
-    });
-
-    // Create attendance records for leave dates (excluding weekends)
-    const current = new Date(application.fromDate);
-    const endDate = new Date(application.toDate);
-
-    while (current <= endDate) {
-      const dayOfWeek = current.getDay();
-      // Skip weekends
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        await this.prisma.attendance.upsert({
-          where: {
-            userId_date: {
-              userId: application.userId,
-              date: new Date(current),
-            },
-          },
-          update: {
-            status: AttendanceStatus.CASUAL_LEAVE,
-            manualOverride: true,
-          },
-          create: {
-            userId: application.userId,
-            date: new Date(current),
-            status: AttendanceStatus.CASUAL_LEAVE,
-            manualOverride: true,
-            biometricSynced: false,
+      if (!leaveBalance) {
+        leaveBalance = await tx.leaveBalance.create({
+          data: {
+            userId,
+            year,
+            casualLeaveTotal: 12,
+            casualLeaveUsed: 0,
+            casualLeavePending: 0,
+            casualLeaveAvailable: 12,
           },
         });
       }
-      current.setDate(current.getDate() + 1);
-    }
 
-    return this.prisma.leaveApplication.findUnique({
-      where: { id: applicationId },
-      include: {
-        user: {
-          select: {
-            employeeId: true,
-            name: true,
+      // Check if sufficient leave available
+      if (leaveBalance.casualLeaveAvailable < totalDays) {
+        throw new BadRequestException(
+          `Insufficient leave balance. Available: ${leaveBalance.casualLeaveAvailable}, Requested: ${totalDays}`,
+        );
+      }
+
+      // Check for overlapping leave applications
+      const overlapping = await tx.leaveApplication.findFirst({
+        where: {
+          userId,
+          status: {
+            in: [LeaveStatus.PENDING, LeaveStatus.APPROVED],
+          },
+          OR: [
+            {
+              fromDate: {
+                lte: toDate,
+              },
+              toDate: {
+                gte: fromDate,
+              },
+            },
+          ],
+        },
+      });
+
+      if (overlapping) {
+        throw new ConflictException('You already have a leave application for overlapping dates');
+      }
+
+      // Create leave application
+      const leaveApplication = await tx.leaveApplication.create({
+        data: {
+          userId,
+          leaveType: applyLeaveDto.leaveType,
+          fromDate,
+          toDate,
+          totalDays,
+          reason: applyLeaveDto.reason,
+          status: LeaveStatus.PENDING,
+        },
+        include: {
+          user: {
+            select: {
+              employeeId: true,
+              name: true,
+              email: true,
+            },
           },
         },
-        reviewer: {
-          select: {
-            name: true,
+      });
+
+      // Update leave balance (mark as pending)
+      await tx.leaveBalance.update({
+        where: {
+          userId_year: {
+            userId,
+            year,
           },
         },
-      },
+        data: {
+          casualLeavePending: {
+            increment: totalDays,
+          },
+          casualLeaveAvailable: {
+            decrement: totalDays,
+          },
+        },
+      });
+
+      return leaveApplication;
+    });
+  }
+
+  async approveLeave(applicationId: string, reviewedBy: string, reviewLeaveDto?: ReviewLeaveDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const application = await tx.leaveApplication.findUnique({
+        where: { id: applicationId },
+        include: { user: true },
+      });
+
+      if (!application) {
+        throw new NotFoundException('Leave application not found');
+      }
+
+      if (application.status !== LeaveStatus.PENDING) {
+        throw new BadRequestException('Only pending leave applications can be approved');
+      }
+
+      // Update application status
+      await tx.leaveApplication.update({
+        where: { id: applicationId },
+        data: {
+          status: LeaveStatus.APPROVED,
+          reviewedBy,
+          reviewedAt: new Date(),
+          reviewNotes: reviewLeaveDto?.reviewNotes,
+        },
+      });
+
+      // Update leave balance
+      const year = application.fromDate.getFullYear();
+      await tx.leaveBalance.update({
+        where: {
+          userId_year: {
+            userId: application.userId,
+            year,
+          },
+        },
+        data: {
+          casualLeaveUsed: {
+            increment: application.totalDays,
+          },
+          casualLeavePending: {
+            decrement: application.totalDays,
+          },
+        },
+      });
+
+      // Create attendance records for leave dates (excluding weekends)
+      const current = new Date(application.fromDate);
+      const endDate = new Date(application.toDate);
+
+      while (current <= endDate) {
+        const dayOfWeek = current.getDay();
+        // Skip weekends
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          await tx.attendance.upsert({
+            where: {
+              userId_date: {
+                userId: application.userId,
+                date: new Date(current),
+              },
+            },
+            update: {
+              status: AttendanceStatus.CASUAL_LEAVE,
+              manualOverride: true,
+            },
+            create: {
+              userId: application.userId,
+              date: new Date(current),
+              status: AttendanceStatus.CASUAL_LEAVE,
+              manualOverride: true,
+              biometricSynced: false,
+            },
+          });
+        }
+        current.setDate(current.getDate() + 1);
+      }
+
+      return tx.leaveApplication.findUnique({
+        where: { id: applicationId },
+        include: {
+          user: {
+            select: {
+              employeeId: true,
+              name: true,
+            },
+          },
+          reviewer: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
     });
   }
 
   async rejectLeave(applicationId: string, reviewedBy: string, reviewLeaveDto?: ReviewLeaveDto) {
-    const application = await this.prisma.leaveApplication.findUnique({
-      where: { id: applicationId },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const application = await tx.leaveApplication.findUnique({
+        where: { id: applicationId },
+      });
 
-    if (!application) {
-      throw new NotFoundException('Leave application not found');
-    }
+      if (!application) {
+        throw new NotFoundException('Leave application not found');
+      }
 
-    if (application.status !== LeaveStatus.PENDING) {
-      throw new BadRequestException('Only pending leave applications can be rejected');
-    }
+      if (application.status !== LeaveStatus.PENDING) {
+        throw new BadRequestException('Only pending leave applications can be rejected');
+      }
 
-    // Update application status
-    await this.prisma.leaveApplication.update({
-      where: { id: applicationId },
-      data: {
-        status: LeaveStatus.REJECTED,
-        reviewedBy,
-        reviewedAt: new Date(),
-        reviewNotes: reviewLeaveDto?.reviewNotes,
-      },
-    });
-
-    // Restore leave balance
-    const year = application.fromDate.getFullYear();
-    await this.prisma.leaveBalance.update({
-      where: {
-        userId_year: {
-          userId: application.userId,
-          year,
+      // Update application status
+      await tx.leaveApplication.update({
+        where: { id: applicationId },
+        data: {
+          status: LeaveStatus.REJECTED,
+          reviewedBy,
+          reviewedAt: new Date(),
+          reviewNotes: reviewLeaveDto?.reviewNotes,
         },
-      },
-      data: {
-        casualLeavePending: {
-          decrement: application.totalDays,
-        },
-        casualLeaveAvailable: {
-          increment: application.totalDays,
-        },
-      },
-    });
+      });
 
-    return this.prisma.leaveApplication.findUnique({
-      where: { id: applicationId },
-      include: {
-        user: {
-          select: {
-            employeeId: true,
-            name: true,
+      // Restore leave balance
+      const year = application.fromDate.getFullYear();
+      await tx.leaveBalance.update({
+        where: {
+          userId_year: {
+            userId: application.userId,
+            year,
           },
         },
-        reviewer: {
-          select: {
-            name: true,
+        data: {
+          casualLeavePending: {
+            decrement: application.totalDays,
+          },
+          casualLeaveAvailable: {
+            increment: application.totalDays,
           },
         },
-      },
+      });
+
+      return tx.leaveApplication.findUnique({
+        where: { id: applicationId },
+        include: {
+          user: {
+            select: {
+              employeeId: true,
+              name: true,
+            },
+          },
+          reviewer: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
     });
   }
 
@@ -429,49 +430,51 @@ export class LeaveService {
   }
 
   async cancelApplication(applicationId: string, userId: string) {
-    const application = await this.prisma.leaveApplication.findUnique({
-      where: { id: applicationId },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const application = await tx.leaveApplication.findUnique({
+        where: { id: applicationId },
+      });
 
-    if (!application) {
-      throw new NotFoundException('Leave application not found');
-    }
+      if (!application) {
+        throw new NotFoundException('Leave application not found');
+      }
 
-    if (application.userId !== userId) {
-      throw new BadRequestException('You can only cancel your own applications');
-    }
+      if (application.userId !== userId) {
+        throw new BadRequestException('You can only cancel your own applications');
+      }
 
-    if (application.status !== LeaveStatus.PENDING) {
-      throw new BadRequestException('Only pending applications can be cancelled');
-    }
+      if (application.status !== LeaveStatus.PENDING) {
+        throw new BadRequestException('Only pending applications can be cancelled');
+      }
 
-    // Update status
-    await this.prisma.leaveApplication.update({
-      where: { id: applicationId },
-      data: {
-        status: LeaveStatus.CANCELLED,
-      },
-    });
-
-    // Restore leave balance
-    const year = application.fromDate.getFullYear();
-    await this.prisma.leaveBalance.update({
-      where: {
-        userId_year: {
-          userId: application.userId,
-          year,
+      // Update status
+      await tx.leaveApplication.update({
+        where: { id: applicationId },
+        data: {
+          status: LeaveStatus.CANCELLED,
         },
-      },
-      data: {
-        casualLeavePending: {
-          decrement: application.totalDays,
-        },
-        casualLeaveAvailable: {
-          increment: application.totalDays,
-        },
-      },
-    });
+      });
 
-    return { message: 'Leave application cancelled successfully' };
+      // Restore leave balance
+      const year = application.fromDate.getFullYear();
+      await tx.leaveBalance.update({
+        where: {
+          userId_year: {
+            userId: application.userId,
+            year,
+          },
+        },
+        data: {
+          casualLeavePending: {
+            decrement: application.totalDays,
+          },
+          casualLeaveAvailable: {
+            increment: application.totalDays,
+          },
+        },
+      });
+
+      return { message: 'Leave application cancelled successfully' };
+    });
   }
 }

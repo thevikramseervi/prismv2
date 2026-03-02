@@ -256,31 +256,24 @@ export class AttendanceService {
 
   async getDashboardStats(userId: string) {
     const today = new Date();
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-    // Get today's attendance
-    const todayAttendance = await this.prisma.attendance.findUnique({
-      where: {
-        userId_date: {
-          userId,
-          date: today,
-        },
-      },
-    });
-
-    // Get monthly summary
+    // Reuse the monthly attendance summary for the current month
     const monthlyAttendance = await this.findMonthlyAttendance(
       userId,
       today.getFullYear(),
       today.getMonth() + 1,
     );
 
+    const summary = monthlyAttendance.summary;
+    const totalWorkingDays =
+      summary.totalDays - summary.weekend - summary.holiday;
+
     return {
-      today: todayAttendance,
-      monthly: monthlyAttendance.summary,
-      year: today.getFullYear(),
-      month: today.getMonth() + 1,
+      presentDays: summary.present,
+      absentDays: summary.absent,
+      halfDays: summary.halfDay,
+      casualLeaves: summary.casualLeave,
+      totalWorkingDays,
     };
   }
 }

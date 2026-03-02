@@ -1,4 +1,5 @@
 import api from './axios';
+import type { UserStatus } from '../types';
 
 export type LoginResponse =
   | { access_token: string; user: AuthUser }
@@ -7,10 +8,23 @@ export type LoginResponse =
 export interface AuthUser {
   id: string;
   employeeId: string;
+  // Optional when coming from /auth/me
+  employeeNumber?: number;
   name: string;
   email: string;
   role: string;
   designation: string;
+  // Optional flags that may be returned by /auth/me
+  twoFactorEnabled?: boolean;
+}
+
+// Shape returned by /auth/me (backend AuthService.validateUser)
+export interface MeResponse extends AuthUser {
+  employeeNumber: number;
+  dateOfJoining: string;
+  baseSalary: number;
+  status: UserStatus;
+  twoFactorEnabled: boolean;
 }
 
 export const authApi = {
@@ -48,8 +62,8 @@ export const authApi = {
     await api.post('/auth/2fa/disable');
   },
 
-  me: async (): Promise<any> => {
-    const { data } = await api.get('/auth/me');
+  me: async (): Promise<MeResponse> => {
+    const { data } = await api.get<MeResponse>('/auth/me');
     return data;
   },
 

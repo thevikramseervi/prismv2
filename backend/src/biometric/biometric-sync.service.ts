@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceStatus, LeaveStatus } from '@prisma/client';
+import { isWeekend } from '../common/date.utils';
+import { getStatusFromWorkDurationMinutes } from '../common/attendance.utils';
 
 interface BiometricEntry {
   employeeId: string;
@@ -18,34 +20,6 @@ export class BiometricSyncService {
 
   constructor(private prisma: PrismaService) {}
 
-  private isWeekend(date: Date): boolean {
-    const dayOfWeek = date.getDay();
-    return dayOfWeek === 0 || dayOfWeek === 6; // Sunday = 0, Saturday = 6
-  }
-
-  private async isHoliday(date: Date): Promise<boolean> {
-    const holiday = await this.prisma.holiday.findUnique({
-      where: { date },
-    });
-    return !!holiday;
-  }
-
-  private async hasApprovedLeave(userId: string, date: Date): Promise<boolean> {
-    const leave = await this.prisma.leaveApplication.findFirst({
-      where: {
-        userId,
-        status: LeaveStatus.APPROVED,
-        fromDate: {
-          lte: date,
-        },
-        toDate: {
-          gte: date,
-        },
-      },
-    });
-    return !!leave;
-  }
-
   async processBiometricData(
     entries: BiometricEntry[],
     options?: { skipLogCreation?: boolean },
@@ -61,58 +35,90 @@ export class BiometricSyncService {
 
     // Group entries by employee and date
     const grouped = new Map<string, BiometricEntry[]>();
+    const allDates: Date[] = [];
 
     for (const entry of entries) {
       const key = `${entry.employeeId}_${entry.date.toDateString()}`;
       if (!grouped.has(key)) {
         grouped.set(key, []);
+        allDates.push(entry.date);
       }
-      grouped.get(key).push(entry);
+      grouped.get(key)!.push(entry);
+    }
+
+    const uniqueEmployeeIds = [...new Set(entries.map((e) => e.employeeId))];
+    const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
+    const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
+
+    // Batch fetch users by employee IDs
+    const users = await this.prisma.user.findMany({
+      where: { employeeId: { in: uniqueEmployeeIds } },
+    });
+    const userByEmployeeId = new Map(users.map((u) => [u.employeeId, u]));
+
+    // Batch fetch holidays in date range
+    const holidays = await this.prisma.holiday.findMany({
+      where: { date: { gte: minDate, lte: maxDate } },
+    });
+    const holidayDateKeys = new Set(
+      holidays.map((h) => h.date.toISOString().slice(0, 10)),
+    );
+
+    // Batch fetch approved leaves overlapping date range for our users
+    const userIds = users.map((u) => u.id);
+    const leaves = await this.prisma.leaveApplication.findMany({
+      where: {
+        userId: { in: userIds },
+        status: LeaveStatus.APPROVED,
+        fromDate: { lte: maxDate },
+        toDate: { gte: minDate },
+      },
+    });
+    const leaveKeySet = new Set<string>();
+    for (const leave of leaves) {
+      const from = new Date(leave.fromDate);
+      const to = new Date(leave.toDate);
+      for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+        leaveKeySet.add(`${leave.userId}_${d.toISOString().slice(0, 10)}`);
+      }
     }
 
     // Process each employee's daily data
     for (const [key, dateEntries] of grouped) {
       try {
-        const [employeeId, dateStr] = key.split('_');
+        const [employeeId] = key.split('_');
         const date = dateEntries[0].date;
+        const dateKey = date.toISOString().slice(0, 10);
 
-        // Find user by employee ID
-        const user = await this.prisma.user.findUnique({
-          where: { employeeId },
-        });
-
+        const user = userByEmployeeId.get(employeeId);
         if (!user) {
           this.logger.warn(`User not found for employee ID: ${employeeId}`);
           results.skipped++;
           continue;
         }
 
-        // Store biometric logs (skip when entries came from existing logs)
-        if (!skipLogCreation) {
-          for (const entry of dateEntries) {
-            await this.prisma.biometricLog.create({
-              data: {
-                userId: user.id,
-                date: entry.date,
-                inTime: entry.inTime,
-                outTime: entry.outTime,
-                inDoor: entry.inDoor,
-                outDoor: entry.outDoor,
-                duration: entry.duration,
-                rawData: entry as any,
-                processed: false,
-              },
-            });
-          }
+        // Store biometric logs in batch (skip when entries came from existing logs)
+        if (!skipLogCreation && dateEntries.length > 0) {
+          await this.prisma.biometricLog.createMany({
+            data: dateEntries.map((entry) => ({
+              userId: user.id,
+              date: entry.date,
+              inTime: entry.inTime,
+              outTime: entry.outTime,
+              inDoor: entry.inDoor,
+              outDoor: entry.outDoor,
+              duration: entry.duration,
+              rawData: entry as object,
+              processed: false,
+            })),
+          });
         }
 
-        // Calculate total duration for the day
         const totalDurationMinutes = dateEntries.reduce(
           (sum, entry) => sum + entry.duration,
           0,
         );
 
-        // Sort by inTime for correct first-in / last-out
         const sorted = [...dateEntries].sort((a, b) => {
           const aTime = a.inTime?.getTime() ?? 0;
           const bTime = b.inTime?.getTime() ?? 0;
@@ -121,33 +127,20 @@ export class BiometricSyncService {
         const firstIn = sorted[0]?.inTime ?? null;
         const lastOut = sorted[sorted.length - 1]?.outTime ?? null;
 
-        // Determine attendance status
         let status: AttendanceStatus;
-
-        if (this.isWeekend(date)) {
+        if (isWeekend(date)) {
           status = AttendanceStatus.WEEKEND;
-        } else if (await this.isHoliday(date)) {
+        } else if (holidayDateKeys.has(dateKey)) {
           status = AttendanceStatus.HOLIDAY;
-        } else if (await this.hasApprovedLeave(user.id, date)) {
+        } else if (leaveKeySet.has(`${user.id}_${dateKey}`)) {
           status = AttendanceStatus.CASUAL_LEAVE;
         } else {
-          const totalHours = totalDurationMinutes / 60;
-          if (totalHours >= 8) {
-            status = AttendanceStatus.PRESENT;
-          } else if (totalHours >= 4) {
-            status = AttendanceStatus.HALF_DAY;
-          } else {
-            status = AttendanceStatus.ABSENT; // LOP
-          }
+          status = getStatusFromWorkDurationMinutes(totalDurationMinutes);
         }
 
-        // Create or update attendance record
         await this.prisma.attendance.upsert({
           where: {
-            userId_date: {
-              userId: user.id,
-              date,
-            },
+            userId_date: { userId: user.id, date },
           },
           update: {
             status,
@@ -167,25 +160,20 @@ export class BiometricSyncService {
           },
         });
 
-        // Mark biometric logs as processed
         await this.prisma.biometricLog.updateMany({
           where: {
             userId: user.id,
             date,
             processed: false,
           },
-          data: {
-            processed: true,
-          },
+          data: { processed: true },
         });
 
         results.processed++;
       } catch (error) {
-        this.logger.error(`Error processing entry: ${error.message}`);
-        results.errors.push({
-          key,
-          error: error.message,
-        });
+        const err = error instanceof Error ? error : new Error(String(error));
+        this.logger.error(`Error processing entry: ${err.message}`);
+        results.errors.push({ key, error: err.message });
       }
     }
 

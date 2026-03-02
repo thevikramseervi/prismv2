@@ -2,15 +2,14 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
-  HttpException,
-  HttpStatus,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { TwoFactorService } from './two-factor.service';
-import * as bcrypt from 'bcrypt';
+import { AuthPasswordService } from './auth-password.service';
+import { RateLimiterService } from './rate-limiter.service';
 import * as crypto from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -24,27 +23,36 @@ const FORGOT_PASSWORD_RATE_LIMIT = 3;
 const FORGOT_PASSWORD_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 
+const LOGIN_RATE_LIMIT = 10;
+const LOGIN_WINDOW_MS = 5 * 60 * 1000; // 5 minutes per IP/email combo
+
 @Injectable()
 export class AuthService {
-  private forgotPasswordAttempts = new Map<
-    string,
-    { count: number; windowStart: number }
-  >();
-
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private emailService: EmailService,
     private configService: ConfigService,
     private twoFactorService: TwoFactorService,
+    private passwordService: AuthPasswordService,
+    private rateLimiter: RateLimiterService,
   ) {}
 
   async login(
     loginDto: LoginDto,
+    ip?: string,
   ): Promise<
     | AuthResponseDto
     | { requires2fa: true; twoFactorToken: string }
   > {
+    const key = `${loginDto.email.toLowerCase().trim()}:${ip || 'unknown'}`;
+    this.rateLimiter.checkLimit(
+      `login:${key}`,
+      LOGIN_RATE_LIMIT,
+      LOGIN_WINDOW_MS,
+      'Too many login attempts. Please try again later.',
+    );
+
     const user = await this.prisma.user.findUnique({
       where: { email: loginDto.email },
       select: {
@@ -68,7 +76,7 @@ export class AuthService {
       throw new UnauthorizedException('User account is inactive');
     }
 
-    const isPasswordValid = await bcrypt.compare(
+    const isPasswordValid = await this.passwordService.compare(
       loginDto.password,
       user.passwordHash,
     );
@@ -241,14 +249,14 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-    const isCurrentValid = await bcrypt.compare(
+    const isCurrentValid = await this.passwordService.compare(
       dto.currentPassword,
       user.passwordHash,
     );
     if (!isCurrentValid) {
       throw new UnauthorizedException('Current password is incorrect');
     }
-    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    const passwordHash = await this.passwordService.hash(dto.newPassword);
     await this.prisma.user.update({
       where: { id: userId },
       data: { passwordHash },
@@ -257,22 +265,12 @@ export class AuthService {
 
   async requestPasswordReset(email: string): Promise<{ message: string }> {
     const key = email.toLowerCase().trim();
-    const now = Date.now();
-    const entry = this.forgotPasswordAttempts.get(key);
-    if (entry) {
-      if (now - entry.windowStart > FORGOT_PASSWORD_WINDOW_MS) {
-        this.forgotPasswordAttempts.set(key, { count: 1, windowStart: now });
-      } else if (entry.count >= FORGOT_PASSWORD_RATE_LIMIT) {
-        throw new HttpException(
-          'Too many reset requests. Please try again later.',
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
-      } else {
-        entry.count += 1;
-      }
-    } else {
-      this.forgotPasswordAttempts.set(key, { count: 1, windowStart: now });
-    }
+    this.rateLimiter.checkLimit(
+      `forgot-password:${key}`,
+      FORGOT_PASSWORD_RATE_LIMIT,
+      FORGOT_PASSWORD_WINDOW_MS,
+      'Too many reset requests. Please try again later.',
+    );
 
     const user = await this.prisma.user.findUnique({
       where: { email: key },
@@ -313,7 +311,7 @@ export class AuthService {
     if (!record || record.expiresAt < new Date()) {
       throw new BadRequestException('Invalid or expired reset link.');
     }
-    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    const passwordHash = await this.passwordService.hash(dto.newPassword);
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: record.userId },

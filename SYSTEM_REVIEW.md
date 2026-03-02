@@ -357,6 +357,7 @@ frontend/
 ```
 ✅ Compilation: PASS
 ✅ TypeScript: PASS (no errors)
+✅ Jest unit tests: PASS (auth, biometric sync, attendance helpers)
 ✅ Database connection: PASS
 ✅ Authentication: PASS
 ✅ User endpoints: PASS
@@ -372,7 +373,7 @@ frontend/
 ✅ Compilation: PASS
 ✅ TypeScript: PASS (no errors)
 ✅ Linting: PASS (no errors)
-✅ Login flow: PASS
+✅ Login + 2FA flow: PASS
 ✅ API integration: PASS
 ✅ Salary slip download: PASS
 ```
@@ -521,13 +522,14 @@ Salary Calculation:
 ✅ Seed data loaded
 ```
 
-### Services
+### Services & CI
 ```bash
 ✅ Backend compiled (backend/dist/)
 ✅ Frontend dependencies installed
 ✅ Both servers running
 ✅ No compilation errors
 ✅ No linting errors
+✅ GitHub Actions CI running backend tests + backend/frontend builds
 ```
 
 ---
@@ -653,8 +655,8 @@ Deductions = (Base Salary / Working Days) × LOP Days
 
 ### Remaining Optional Tasks (3/24)
 - ⏳ Scheduled cron jobs
-- ⏳ Unit/integration tests
-- ⏳ User documentation
+- ⏳ Broader integration/E2E test coverage
+- ⏳ Additional end‑user documentation
 
 ---
 

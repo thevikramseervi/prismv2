@@ -315,7 +315,7 @@ const Reports: React.FC = () => {
       holiday: 0,
     };
 
-    attendanceData.forEach((record: any) => {
+    attendanceData.forEach((record) => {
       switch (record.status) {
         case AttendanceStatus.PRESENT:
           summary.present++;
@@ -352,7 +352,7 @@ const Reports: React.FC = () => {
       cancelled: 0,
     };
 
-    leaveData.forEach((leave: any) => {
+    leaveData.forEach((leave) => {
       switch (leave.status) {
         case LeaveStatus.PENDING:
           summary.pending++;
@@ -384,7 +384,7 @@ const Reports: React.FC = () => {
       draft: 0,
     };
 
-    payrollData.forEach((payroll: any) => {
+    payrollData.forEach((payroll) => {
       summary.totalGross += Number(payroll.grossEarnings);
       summary.totalNet += Number(payroll.netSalary);
 

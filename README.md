@@ -180,6 +180,21 @@ attend-ease/
    ```
    App runs at: http://localhost:5173
 
+## ✅ Testing & CI
+
+### Backend tests
+- **Unit tests** use Jest with `ts-jest`.
+- Run all backend tests:
+  ```bash
+  cd backend
+  npm test
+  ```
+
+### Continuous Integration
+- GitHub Actions workflow at `.github/workflows/ci.yml` runs on every push/PR to `main`/`master`.
+- **Backend job**: install deps, generate Prisma client, build, and run `npm test`.
+- **Frontend job**: install deps and run `npm run build`.
+
 ## 🔐 Default Credentials
 
 After running the seed script:

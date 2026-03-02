@@ -117,7 +117,8 @@ const DashboardLayout: React.FC = () => {
 
   const filteredNavItems = navItems.filter((item) => {
     if (!item.roles) return true;
-    return user && item.roles.includes(user.role);
+    if (!user) return false;
+    return item.roles.includes(user.role as Role);
   });
 
   const drawer = (

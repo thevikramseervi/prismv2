@@ -34,6 +34,13 @@ Dev server proxies ` /api` to `http://localhost:3000`. Set `host: true` in `vite
 - **Leave** – Apply, history, balance
 - **Salary Slips** – List, detail view, PDF/Excel download
 - **Announcements** – List and (admin) create
-- **Admin** – Users, holidays, payroll generation, biometric sync, reports (Excel export), Security / 2FA (enable/disable TOTP)
+- **Admin** – Users, holidays, payroll generation, biometric upload + sync, reports (Excel export), Security / 2FA (enable/disable TOTP)
+
+## Patterns
+
+- **API hooks** – Shared `useApiQuery` / `useApiMutation` (in `src/hooks`) wrap TanStack Query:
+  - Centralized error handling with snackbar-level `onMessage`.
+  - Consistent cache invalidation via `invalidateKeys`.
+  - Prefer these over raw `useQuery` / `useMutation` in new code.
 
 See root [README.md](../README.md) and [QUICK_START.md](../QUICK_START.md) for full setup and usage.
