@@ -199,18 +199,18 @@ const Reports: React.FC = () => {
     { header: 'Status', value: (l) => l.status },
     {
       header: 'Applied On',
-      value: (l) => new Date(l.appliedAt).toLocaleDateString('en-IN'),
+      value: (l) => new Date(l.appliedAt).toLocaleString('en-IN'),
     },
     {
       header: 'Reviewed On',
       value: (l) =>
         l.reviewedAt
-          ? new Date(l.reviewedAt).toLocaleDateString('en-IN')
+          ? new Date(l.reviewedAt).toLocaleString('en-IN')
           : '-',
     },
     {
       header: 'Comments',
-      value: (l) => l.reviewerComments || '',
+      value: (l) => l.reviewNotes || '',
     },
   ];
 

@@ -7,7 +7,12 @@ export const leaveApi = {
     toDate: string;
     reason: string;
   }): Promise<LeaveApplication> => {
-    const { data } = await api.post<LeaveApplication>('/leave/apply', leaveData);
+    // Backend expects a leaveType enum; current UI only supports casual leave.
+    const payload = {
+      leaveType: 'CASUAL_LEAVE',
+      ...leaveData,
+    };
+    const { data } = await api.post<LeaveApplication>('/leave/apply', payload);
     return data;
   },
 

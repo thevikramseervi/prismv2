@@ -64,7 +64,7 @@ export interface LeaveApplication {
   appliedAt: string;
   reviewedAt?: string;
   reviewedBy?: string;
-  reviewerComments?: string;
+  reviewNotes?: string;
   user?: {
     name: string;
     employeeId: string;

@@ -21,8 +21,10 @@ import {
   Chip,
   Alert,
   Paper,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Add, Cancel as CancelIcon } from '@mui/icons-material';
 import { leaveApi } from '../api/leave';
 import { LeaveStatus } from '../types';
 
@@ -52,6 +54,14 @@ const Leave: React.FC = () => {
       setFromDate('');
       setToDate('');
       setReason('');
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => leaveApi.cancel(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-leave-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
     },
   });
 
@@ -117,6 +127,9 @@ const Leave: React.FC = () => {
                   <TableCell><strong>Reason</strong></TableCell>
                   <TableCell><strong>Status</strong></TableCell>
                   <TableCell><strong>Applied On</strong></TableCell>
+                  <TableCell><strong>Reviewed On</strong></TableCell>
+                  <TableCell><strong>Admin Comments</strong></TableCell>
+                  <TableCell><strong>Actions</strong></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -139,13 +152,41 @@ const Leave: React.FC = () => {
                         />
                       </TableCell>
                       <TableCell>
-                        {new Date(app.appliedAt).toLocaleDateString('en-IN')}
+                        {new Date(app.appliedAt).toLocaleString('en-IN')}
+                      </TableCell>
+                      <TableCell>
+                        {app.reviewedAt
+                          ? new Date(app.reviewedAt).toLocaleString('en-IN')
+                          : app.status === LeaveStatus.PENDING
+                          ? 'Pending'
+                          : '—'}
+                      </TableCell>
+                      <TableCell>
+                        {app.reviewNotes
+                          ? app.reviewNotes
+                          : app.status === LeaveStatus.PENDING
+                          ? '—'
+                          : 'No comments'}
+                      </TableCell>
+                      <TableCell>
+                        {app.status === LeaveStatus.PENDING && (
+                          <Tooltip title="Cancel application">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => cancelMutation.mutate(app.id)}
+                              disabled={cancelMutation.isPending}
+                            >
+                              <CancelIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">
+                    <TableCell colSpan={9} align="center">
                       No leave applications found
                     </TableCell>
                   </TableRow>

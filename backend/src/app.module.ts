@@ -11,6 +11,7 @@ import { LeaveModule } from './leave/leave.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 import { BiometricModule } from './biometric/biometric.module';
+import { HealthModule } from './health/health.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -31,6 +32,7 @@ import { AppService } from './app.service';
     PayrollModule,
     AnnouncementsModule,
     BiometricModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

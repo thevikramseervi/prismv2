@@ -168,7 +168,7 @@ export class LeaveService {
           status: LeaveStatus.APPROVED,
           reviewedBy,
           reviewedAt: new Date(),
-          reviewNotes: reviewLeaveDto?.reviewNotes,
+          reviewNotes: reviewLeaveDto?.comments,
         },
       });
 
@@ -262,7 +262,7 @@ export class LeaveService {
           status: LeaveStatus.REJECTED,
           reviewedBy,
           reviewedAt: new Date(),
-          reviewNotes: reviewLeaveDto?.reviewNotes,
+          reviewNotes: reviewLeaveDto?.comments,
         },
       });
 
@@ -426,7 +426,16 @@ export class LeaveService {
       });
     }
 
-    return leaveBalance;
+    // Map Prisma model fields to API shape expected by frontend
+    return {
+      id: leaveBalance.id,
+      userId: leaveBalance.userId,
+      year: leaveBalance.year,
+      totalLeaves: leaveBalance.casualLeaveTotal,
+      usedLeaves: leaveBalance.casualLeaveUsed,
+      pendingLeaves: leaveBalance.casualLeavePending,
+      availableLeaves: leaveBalance.casualLeaveAvailable,
+    };
   }
 
   async cancelApplication(applicationId: string, userId: string) {
