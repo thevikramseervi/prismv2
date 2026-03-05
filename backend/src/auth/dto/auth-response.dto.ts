@@ -12,5 +12,6 @@ export class AuthResponseDto {
     email: string;
     role: string;
     designation: string;
+    twoFactorEnabled?: boolean;
   };
 }

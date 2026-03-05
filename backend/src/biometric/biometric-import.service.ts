@@ -141,6 +141,21 @@ export class BiometricImportService {
         }
 
         try {
+          // Skip if same row already exists (e.g. re-upload of same file)
+          const existing = await this.prisma.biometricLog.findFirst({
+            where: {
+              userId: currentUser.id,
+              date,
+              inTime: inTime ?? null,
+              outTime: outTime ?? null,
+            },
+          });
+          if (existing) {
+            result.logsSkipped++;
+            datesSet.add(date.toISOString().slice(0, 10));
+            continue;
+          }
+
           await this.prisma.biometricLog.create({
             data: {
               userId: currentUser.id,

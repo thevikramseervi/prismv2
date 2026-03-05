@@ -51,7 +51,7 @@ A comprehensive full-stack web application for automating attendance tracking, l
 - ✅ **Biometric Integration** - Process biometric logs into attendance
 - ✅ **Automatic Calculations** - Working days, pay days, salary computation
 - ✅ **Weekend & Holiday Detection** - Automatic marking
-- ✅ **Leave Balance Tracking** - 12 casual leaves per year
+- ✅ **Leave Balance Tracking** - 12 casual leaves per year (pro-rata for mid-year joiners)
 - ✅ **Salary Slip Generation** - Professional PDF & Excel formats
 
 ## 🎯 Business Logic
@@ -423,7 +423,7 @@ See [DATA_MIGRATION_GUIDE.md](backend/DATA_MIGRATION_GUIDE.md) for detailed inst
 ## 📝 Notes
 
 - Base salary for all employees: ₹22,000
-- Casual leave quota: 12 days per year
+- Casual leave quota: 12 days per year; pro-rata by remaining months if the employee joins mid-year (e.g. April → 9 days)
 - No half-day casual leave
 - Weekends: Saturday & Sunday
 - Working hours: 8 hours = full day

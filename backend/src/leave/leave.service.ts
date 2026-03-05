@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ApplyLeaveDto } from './dto/apply-leave.dto';
 import { ReviewLeaveDto } from './dto/review-leave.dto';
 import { LeaveStatus, AttendanceStatus } from '@prisma/client';
+import { getProRataCasualLeaveForYear } from './leave.utils';
 
 @Injectable()
 export class LeaveService {
@@ -59,14 +60,21 @@ export class LeaveService {
       });
 
       if (!leaveBalance) {
+        const user = await tx.user.findUnique({
+          where: { id: userId },
+          select: { dateOfJoining: true },
+        });
+        const proRataTotal = user
+          ? getProRataCasualLeaveForYear(user.dateOfJoining, year)
+          : 12;
         leaveBalance = await tx.leaveBalance.create({
           data: {
             userId,
             year,
-            casualLeaveTotal: 12,
+            casualLeaveTotal: proRataTotal,
             casualLeaveUsed: 0,
             casualLeavePending: 0,
-            casualLeaveAvailable: 12,
+            casualLeaveAvailable: proRataTotal,
           },
         });
       }
@@ -412,16 +420,23 @@ export class LeaveService {
       },
     });
 
-    // Create if doesn't exist
+    // Create if doesn't exist (pro-rata if joined mid-year)
     if (!leaveBalance) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { dateOfJoining: true },
+      });
+      const proRataTotal = user
+        ? getProRataCasualLeaveForYear(user.dateOfJoining, year)
+        : 12;
       leaveBalance = await this.prisma.leaveBalance.create({
         data: {
           userId,
           year,
-          casualLeaveTotal: 12,
+          casualLeaveTotal: proRataTotal,
           casualLeaveUsed: 0,
           casualLeavePending: 0,
-          casualLeaveAvailable: 12,
+          casualLeaveAvailable: proRataTotal,
         },
       });
     }

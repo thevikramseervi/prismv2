@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as path from 'path';
 import { readSheetAsJson } from './lib/excel-reader';
+import { getProRataCasualLeaveForYear } from '../src/leave/leave.utils';
 
 const prisma = new PrismaClient();
 
@@ -92,15 +93,17 @@ async function importUsers(filePath: string) {
           },
         });
 
-        // Create leave balance for current year
+        // Create leave balance for current year (pro-rata if joined mid-year)
+        const currentYear = new Date().getFullYear();
+        const proRataTotal = getProRataCasualLeaveForYear(joiningDate, currentYear);
         await prisma.leaveBalance.create({
           data: {
             userId: user.id,
-            year: new Date().getFullYear(),
-            totalLeaves: 12,
-            usedLeaves: 0,
-            pendingLeaves: 0,
-            availableLeaves: 12,
+            year: currentYear,
+            casualLeaveTotal: proRataTotal,
+            casualLeaveUsed: 0,
+            casualLeavePending: 0,
+            casualLeaveAvailable: proRataTotal,
           },
         });
 

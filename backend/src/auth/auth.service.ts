@@ -111,6 +111,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         designation: user.designation,
+        twoFactorEnabled: user.twoFactorEnabled,
       },
     };
   }
@@ -203,6 +204,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         designation: user.designation,
+        twoFactorEnabled: user.twoFactorEnabled,
       },
     };
   }

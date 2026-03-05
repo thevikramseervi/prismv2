@@ -97,10 +97,19 @@ export class BiometricSyncService {
           continue;
         }
 
+        // Deduplicate entries (e.g. same file uploaded twice) so duration/attendance are not doubled
+        const seenKey = new Set<string>();
+        const uniqueEntries = dateEntries.filter((e) => {
+          const k = `${e.inTime?.getTime() ?? 'n'}_${e.outTime?.getTime() ?? 'n'}_${e.duration}`;
+          if (seenKey.has(k)) return false;
+          seenKey.add(k);
+          return true;
+        });
+
         // Store biometric logs in batch (skip when entries came from existing logs)
-        if (!skipLogCreation && dateEntries.length > 0) {
+        if (!skipLogCreation && uniqueEntries.length > 0) {
           await this.prisma.biometricLog.createMany({
-            data: dateEntries.map((entry) => ({
+            data: uniqueEntries.map((entry) => ({
               userId: user.id,
               date: entry.date,
               inTime: entry.inTime,
@@ -114,12 +123,12 @@ export class BiometricSyncService {
           });
         }
 
-        const totalDurationMinutes = dateEntries.reduce(
+        const totalDurationMinutes = uniqueEntries.reduce(
           (sum, entry) => sum + entry.duration,
           0,
         );
 
-        const sorted = [...dateEntries].sort((a, b) => {
+        const sorted = [...uniqueEntries].sort((a, b) => {
           const aTime = a.inTime?.getTime() ?? 0;
           const bTime = b.inTime?.getTime() ?? 0;
           return aTime - bTime;

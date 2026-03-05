@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { getProRataCasualLeaveForYear } from '../leave/leave.utils';
 
 @Injectable()
 export class UsersService {
@@ -69,16 +70,17 @@ export class UsersService {
         },
       });
 
-      // Create initial leave balance for current year
+      // Create initial leave balance for current year (pro-rata if joined mid-year)
       const currentYear = new Date().getFullYear();
+      const proRataTotal = getProRataCasualLeaveForYear(user.dateOfJoining, currentYear);
       await tx.leaveBalance.create({
         data: {
           userId: user.id,
           year: currentYear,
-          casualLeaveTotal: 12,
+          casualLeaveTotal: proRataTotal,
           casualLeaveUsed: 0,
           casualLeavePending: 0,
-          casualLeaveAvailable: 12,
+          casualLeaveAvailable: proRataTotal,
         },
       });
 

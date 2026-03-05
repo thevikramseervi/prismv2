@@ -49,53 +49,31 @@ async function importAttendanceWide(filePath: string) {
           dateOfJoining = new Date('2024-01-01'); // Default
         }
 
-        // Check if user exists, if not create
+        // Check if user exists; if not, we SKIP instead of auto-creating.
+        // This avoids issues with duplicate employee numbers when historical
+        // attendance contains ex-employees or inconsistent IDs.
         let user = await prisma.user.findUnique({
           where: { employeeId },
         });
 
         if (!user) {
-          // Create user
-          const email = `${employeeId.toLowerCase()}@cambridge.edu.in`;
-          const passwordHash = await bcrypt.hash('employee123', 10);
-
-          user = await prisma.user.create({
-            data: {
-              employeeId,
-              employeeNumber: employeeNumber || 0,
-              name,
-              email,
-              passwordHash,
-              designation,
-              dateOfJoining,
-              baseSalary: 22000,
-              role: 'EMPLOYEE',
-              status: 'ACTIVE',
-            },
-          });
-
-          // Create leave balance
-          await prisma.leaveBalance.create({
-            data: {
-              userId: user.id,
-              year: 2025,
-              casualLeaveTotal: 12,
-              casualLeaveUsed: 0,
-              casualLeavePending: 0,
-              casualLeaveAvailable: 12,
-            },
-          });
-
-          console.log(`✅ Created user: ${name} (${employeeId})`);
-          usersCreated++;
-        } else {
-          usersSkipped++;
+          console.warn(
+            `⚠️  Skipping employee row - user not found for employeeId=${employeeId}, name=${name}`
+          );
+          errors++;
+          continue;
         }
 
-        // Process each date column
-        const dateColumns = Object.keys(employeeData).filter((key) =>
-          key.match(/^\d{1,2}\/\d{1,2}\/\d{2}$/)
-        );
+        usersSkipped++;
+
+        // Process each date column.
+        // We treat any column whose header can be parsed as a valid Date
+        // (e.g. "Mon Dec 01 2025 00:00:00 GMT+0000 (Coordinated Universal Time)")
+        // as a day column.
+        const dateColumns = Object.keys(employeeData).filter((key) => {
+          const d = new Date(key);
+          return !isNaN(d.getTime());
+        });
 
         for (const dateCol of dateColumns) {
           try {
@@ -104,10 +82,12 @@ async function importAttendanceWide(filePath: string) {
               continue;
             }
 
-            // Parse date from column name (MM/DD/YY format)
-            const [month, day, year] = dateCol.split('/').map(Number);
-            const fullYear = 2000 + year; // Convert 25 to 2025
-            const date = new Date(fullYear, month - 1, day);
+            // Parse date from column name using JavaScript Date parsing.
+            const date = new Date(dateCol);
+            if (isNaN(date.getTime())) {
+              console.warn(`⚠️  Unable to parse date column "${dateCol}"`);
+              continue;
+            }
 
             // Map status code to enum
             let status: AttendanceStatus;
