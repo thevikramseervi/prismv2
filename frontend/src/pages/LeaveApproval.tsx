@@ -252,7 +252,17 @@ const LeaveApproval: React.FC = () => {
         <DialogContent>
           {actionDialog.application && (
             <Box>
-              <Box mb={2} p={2} bgcolor="grey.100" borderRadius={2}>
+              <Box
+                mb={2}
+                p={2}
+                borderRadius={2}
+                sx={(theme) => ({
+                  bgcolor: theme.palette.mode === 'dark' ? 'background.default' : 'grey.100',
+                  color: theme.palette.mode === 'dark' ? 'text.primary' : 'inherit',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                })}
+              >
                 <Typography variant="subtitle2" gutterBottom>
                   <strong>Employee:</strong> {actionDialog.application.user?.name}
                 </Typography>
