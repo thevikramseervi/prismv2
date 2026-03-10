@@ -46,6 +46,11 @@ export interface Attendance {
 }
 
 // Leave types
+export enum LeaveType {
+  CASUAL_LEAVE = 'CASUAL_LEAVE',
+  UNPAID_LEAVE = 'UNPAID_LEAVE',
+}
+
 export enum LeaveStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
@@ -56,6 +61,7 @@ export enum LeaveStatus {
 export interface LeaveApplication {
   id: string;
   userId: string;
+  leaveType?: LeaveType;
   fromDate: string;
   toDate: string;
   totalDays: number;

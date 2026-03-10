@@ -25,7 +25,7 @@ import {
 } from '@mui/material';
 import { Add, Cancel as CancelIcon } from '@mui/icons-material';
 import { leaveApi } from '../api/leave';
-import { LeaveStatus } from '../types';
+import { LeaveStatus, LeaveType } from '../types';
 import PageHeader from '../components/PageHeader';
 
 const Leave: React.FC = () => {
@@ -33,6 +33,7 @@ const Leave: React.FC = () => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [reason, setReason] = useState('');
+  const [leaveType, setLeaveType] = useState<LeaveType>(LeaveType.CASUAL_LEAVE);
   const queryClient = useQueryClient();
 
   const {
@@ -58,6 +59,7 @@ const Leave: React.FC = () => {
       setFromDate('');
       setToDate('');
       setReason('');
+      setLeaveType(LeaveType.CASUAL_LEAVE);
     },
   });
 
@@ -70,7 +72,7 @@ const Leave: React.FC = () => {
   });
 
   const handleSubmit = () => {
-    applyMutation.mutate({ fromDate, toDate, reason });
+    applyMutation.mutate({ fromDate, toDate, reason, leaveType });
   };
 
   const getStatusColor = (
@@ -131,6 +133,7 @@ const Leave: React.FC = () => {
             <Table>
               <TableHead>
                 <TableRow>
+                  <TableCell><strong>Type</strong></TableCell>
                   <TableCell><strong>From Date</strong></TableCell>
                   <TableCell><strong>To Date</strong></TableCell>
                   <TableCell><strong>Days</strong></TableCell>
@@ -146,6 +149,9 @@ const Leave: React.FC = () => {
                 {applications && applications.length > 0 ? (
                   applications.map((app) => (
                     <TableRow key={app.id} hover>
+                      <TableCell>
+                        {app.leaveType === LeaveType.UNPAID_LEAVE ? 'Unpaid' : 'Casual'}
+                      </TableCell>
                       <TableCell>
                         {new Date(app.fromDate).toLocaleDateString('en-IN')}
                       </TableCell>
@@ -211,6 +217,19 @@ const Leave: React.FC = () => {
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Apply for Leave</DialogTitle>
         <DialogContent>
+          <Box display="flex" gap={2} mt={1}>
+            <TextField
+              label="Leave Type"
+              select
+              fullWidth
+              value={leaveType}
+              onChange={(e) => setLeaveType(e.target.value as LeaveType)}
+              SelectProps={{ native: true }}
+            >
+              <option value={LeaveType.CASUAL_LEAVE}>Casual Leave (paid)</option>
+              <option value={LeaveType.UNPAID_LEAVE}>Unpaid Leave (LOP)</option>
+            </TextField>
+          </Box>
           <TextField
             label="From Date"
             type="date"

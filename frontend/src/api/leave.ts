@@ -6,13 +6,9 @@ export const leaveApi = {
     fromDate: string;
     toDate: string;
     reason: string;
+    leaveType: 'CASUAL_LEAVE' | 'UNPAID_LEAVE';
   }): Promise<LeaveApplication> => {
-    // Backend expects a leaveType enum; current UI only supports casual leave.
-    const payload = {
-      leaveType: 'CASUAL_LEAVE',
-      ...leaveData,
-    };
-    const { data } = await api.post<LeaveApplication>('/leave/apply', payload);
+    const { data } = await api.post<LeaveApplication>('/leave/apply', leaveData);
     return data;
   },
 

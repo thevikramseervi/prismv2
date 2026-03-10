@@ -33,6 +33,7 @@ enum AttendanceStatus {
 
 enum LeaveType {
   CASUAL_LEAVE
+  UNPAID_LEAVE
 }
 
 enum LeaveStatus {

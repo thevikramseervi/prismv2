@@ -27,7 +27,7 @@ import {
 } from '@mui/material';
 import { CheckCircle, Cancel } from '@mui/icons-material';
 import { leaveApi } from '../api/leave';
-import { LeaveApplication } from '../types';
+import { LeaveApplication, LeaveType } from '../types';
 
 const LeaveApproval: React.FC = () => {
   const [actionDialog, setActionDialog] = useState<{
@@ -149,7 +149,10 @@ const LeaveApproval: React.FC = () => {
             <TableContainer component={Paper} elevation={0}>
               <Table>
                 <TableHead>
-                  <TableRow>
+                      <TableRow>
+                        <TableCell>
+                          <strong>Type</strong>
+                        </TableCell>
                     <TableCell>
                       <strong>Employee</strong>
                     </TableCell>
@@ -178,7 +181,12 @@ const LeaveApproval: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {pendingApplications.map((application) => (
-                    <TableRow key={application.id} hover>
+                        <TableRow key={application.id} hover>
+                          <TableCell>
+                            {application.leaveType === LeaveType.UNPAID_LEAVE
+                              ? 'Unpaid'
+                              : 'Casual'}
+                          </TableCell>
                       <TableCell>
                         <Box>
                           <Typography variant="body2" fontWeight="bold">
@@ -196,11 +204,9 @@ const LeaveApproval: React.FC = () => {
                       <TableCell>
                         {new Date(application.toDate).toLocaleDateString('en-IN')}
                       </TableCell>
+                      <TableCell>{application.totalDays}</TableCell>
                       <TableCell>
-                        <Chip label={application.totalDays} size="small" color="info" />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
+                        <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
                           {application.reason}
                         </Typography>
                       </TableCell>
@@ -249,6 +255,12 @@ const LeaveApproval: React.FC = () => {
               <Box mb={2} p={2} bgcolor="grey.100" borderRadius={2}>
                 <Typography variant="subtitle2" gutterBottom>
                   <strong>Employee:</strong> {actionDialog.application.user?.name}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Type:</strong>{' '}
+                  {actionDialog.application.leaveType === LeaveType.UNPAID_LEAVE
+                    ? 'Unpaid Leave (LOP)'
+                    : 'Casual Leave (paid)'}
                 </Typography>
                 <Typography variant="body2" gutterBottom>
                   <strong>Duration:</strong>{' '}

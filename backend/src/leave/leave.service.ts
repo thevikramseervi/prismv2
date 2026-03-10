@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { ApplyLeaveDto } from './dto/apply-leave.dto';
 import { ReviewLeaveDto } from './dto/review-leave.dto';
-import { LeaveStatus, AttendanceStatus } from '@prisma/client';
+import { LeaveStatus, AttendanceStatus, LeaveType } from '@prisma/client';
 import { getProRataCasualLeaveForYear } from './leave.utils';
 
 @Injectable()
@@ -50,43 +50,112 @@ export class LeaveService {
     const year = fromDate.getFullYear();
 
     return this.prisma.$transaction(async (tx) => {
-      let leaveBalance = await tx.leaveBalance.findUnique({
-        where: {
-          userId_year: {
-            userId,
-            year,
+      // For CASUAL_LEAVE, we track against leave balance.
+      if (applyLeaveDto.leaveType === LeaveType.CASUAL_LEAVE) {
+        let leaveBalance = await tx.leaveBalance.findUnique({
+          where: {
+            userId_year: {
+              userId,
+              year,
+            },
           },
-        },
-      });
-
-      if (!leaveBalance) {
-        const user = await tx.user.findUnique({
-          where: { id: userId },
-          select: { dateOfJoining: true },
         });
-        const proRataTotal = user
-          ? getProRataCasualLeaveForYear(user.dateOfJoining, year)
-          : 12;
-        leaveBalance = await tx.leaveBalance.create({
+
+        if (!leaveBalance) {
+          const user = await tx.user.findUnique({
+            where: { id: userId },
+            select: { dateOfJoining: true },
+          });
+          const proRataTotal = user
+            ? getProRataCasualLeaveForYear(user.dateOfJoining, year)
+            : 12;
+          leaveBalance = await tx.leaveBalance.create({
+            data: {
+              userId,
+              year,
+              casualLeaveTotal: proRataTotal,
+              casualLeaveUsed: 0,
+              casualLeavePending: 0,
+              casualLeaveAvailable: proRataTotal,
+            },
+          });
+        }
+
+        // Check if sufficient leave available
+        if (leaveBalance.casualLeaveAvailable < totalDays) {
+          throw new BadRequestException(
+            `Insufficient leave balance. Available: ${leaveBalance.casualLeaveAvailable}, Requested: ${totalDays}`,
+          );
+        }
+
+        // Check for overlapping leave applications
+        const overlapping = await tx.leaveApplication.findFirst({
+          where: {
+            userId,
+            status: {
+              in: [LeaveStatus.PENDING, LeaveStatus.APPROVED],
+            },
+            OR: [
+              {
+                fromDate: {
+                  lte: toDate,
+                },
+                toDate: {
+                  gte: fromDate,
+                },
+              },
+            ],
+          },
+        });
+
+        if (overlapping) {
+          throw new ConflictException('You already have a leave application for overlapping dates');
+        }
+
+        // Create leave application
+        const leaveApplication = await tx.leaveApplication.create({
           data: {
             userId,
-            year,
-            casualLeaveTotal: proRataTotal,
-            casualLeaveUsed: 0,
-            casualLeavePending: 0,
-            casualLeaveAvailable: proRataTotal,
+            leaveType: applyLeaveDto.leaveType,
+            fromDate,
+            toDate,
+            totalDays,
+            reason: applyLeaveDto.reason,
+            status: LeaveStatus.PENDING,
+          },
+          include: {
+            user: {
+              select: {
+                employeeId: true,
+                name: true,
+                email: true,
+              },
+            },
           },
         });
+
+        // Update leave balance (mark as pending)
+        await tx.leaveBalance.update({
+          where: {
+            userId_year: {
+              userId,
+              year,
+            },
+          },
+          data: {
+            casualLeavePending: {
+              increment: totalDays,
+            },
+            casualLeaveAvailable: {
+              decrement: totalDays,
+            },
+          },
+        });
+
+        return leaveApplication;
       }
 
-      // Check if sufficient leave available
-      if (leaveBalance.casualLeaveAvailable < totalDays) {
-        throw new BadRequestException(
-          `Insufficient leave balance. Available: ${leaveBalance.casualLeaveAvailable}, Requested: ${totalDays}`,
-        );
-      }
-
-      // Check for overlapping leave applications
+      // For UNPAID_LEAVE, we don't touch leave balance, but still enforce overlap rules.
       const overlapping = await tx.leaveApplication.findFirst({
         where: {
           userId,
@@ -110,8 +179,7 @@ export class LeaveService {
         throw new ConflictException('You already have a leave application for overlapping dates');
       }
 
-      // Create leave application
-      const leaveApplication = await tx.leaveApplication.create({
+      return tx.leaveApplication.create({
         data: {
           userId,
           leaveType: applyLeaveDto.leaveType,
@@ -131,26 +199,6 @@ export class LeaveService {
           },
         },
       });
-
-      // Update leave balance (mark as pending)
-      await tx.leaveBalance.update({
-        where: {
-          userId_year: {
-            userId,
-            year,
-          },
-        },
-        data: {
-          casualLeavePending: {
-            increment: totalDays,
-          },
-          casualLeaveAvailable: {
-            decrement: totalDays,
-          },
-        },
-      });
-
-      return leaveApplication;
     });
   }
 
@@ -180,24 +228,26 @@ export class LeaveService {
         },
       });
 
-      // Update leave balance
-      const year = application.fromDate.getFullYear();
-      await tx.leaveBalance.update({
-        where: {
-          userId_year: {
-            userId: application.userId,
-            year,
+      // For CASUAL_LEAVE, update leave balance; for UNPAID_LEAVE, don't touch balance.
+      if (application.leaveType === LeaveType.CASUAL_LEAVE) {
+        const year = application.fromDate.getFullYear();
+        await tx.leaveBalance.update({
+          where: {
+            userId_year: {
+              userId: application.userId,
+              year,
+            },
           },
-        },
-        data: {
-          casualLeaveUsed: {
-            increment: application.totalDays,
+          data: {
+            casualLeaveUsed: {
+              increment: application.totalDays,
+            },
+            casualLeavePending: {
+              decrement: application.totalDays,
+            },
           },
-          casualLeavePending: {
-            decrement: application.totalDays,
-          },
-        },
-      });
+        });
+      }
 
       // Create attendance records for leave dates (excluding weekends)
       const current = new Date(application.fromDate);
@@ -207,6 +257,10 @@ export class LeaveService {
         const dayOfWeek = current.getDay();
         // Skip weekends
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          const statusForDay =
+            application.leaveType === LeaveType.CASUAL_LEAVE
+              ? AttendanceStatus.CASUAL_LEAVE
+              : AttendanceStatus.ABSENT;
           await tx.attendance.upsert({
             where: {
               userId_date: {
@@ -215,13 +269,13 @@ export class LeaveService {
               },
             },
             update: {
-              status: AttendanceStatus.CASUAL_LEAVE,
+              status: statusForDay,
               manualOverride: true,
             },
             create: {
               userId: application.userId,
               date: new Date(current),
-              status: AttendanceStatus.CASUAL_LEAVE,
+              status: statusForDay,
               manualOverride: true,
               biometricSynced: false,
             },
@@ -274,24 +328,26 @@ export class LeaveService {
         },
       });
 
-      // Restore leave balance
-      const year = application.fromDate.getFullYear();
-      await tx.leaveBalance.update({
-        where: {
-          userId_year: {
-            userId: application.userId,
-            year,
+      // Restore leave balance only for CASUAL_LEAVE applications
+      if (application.leaveType === LeaveType.CASUAL_LEAVE) {
+        const year = application.fromDate.getFullYear();
+        await tx.leaveBalance.update({
+          where: {
+            userId_year: {
+              userId: application.userId,
+              year,
+            },
           },
-        },
-        data: {
-          casualLeavePending: {
-            decrement: application.totalDays,
+          data: {
+            casualLeavePending: {
+              decrement: application.totalDays,
+            },
+            casualLeaveAvailable: {
+              increment: application.totalDays,
+            },
           },
-          casualLeaveAvailable: {
-            increment: application.totalDays,
-          },
-        },
-      });
+        });
+      }
 
       return tx.leaveApplication.findUnique({
         where: { id: applicationId },
@@ -478,25 +534,26 @@ export class LeaveService {
           status: LeaveStatus.CANCELLED,
         },
       });
-
-      // Restore leave balance
-      const year = application.fromDate.getFullYear();
-      await tx.leaveBalance.update({
-        where: {
-          userId_year: {
-            userId: application.userId,
-            year,
+      // Restore leave balance only for CASUAL_LEAVE
+      if (application.leaveType === LeaveType.CASUAL_LEAVE) {
+        const year = application.fromDate.getFullYear();
+        await tx.leaveBalance.update({
+          where: {
+            userId_year: {
+              userId: application.userId,
+              year,
+            },
           },
-        },
-        data: {
-          casualLeavePending: {
-            decrement: application.totalDays,
+          data: {
+            casualLeavePending: {
+              decrement: application.totalDays,
+            },
+            casualLeaveAvailable: {
+              increment: application.totalDays,
+            },
           },
-          casualLeaveAvailable: {
-            increment: application.totalDays,
-          },
-        },
-      });
+        });
+      }
 
       return { message: 'Leave application cancelled successfully' };
     });
