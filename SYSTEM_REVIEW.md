@@ -569,7 +569,8 @@ Declared holidays = HOLIDAY
 ### Salary Calculation ✅
 ```
 Formula: (Base Salary / Working Days) × Total Pay Days
-Total Pay Days = Present + (Half Days × 0.5) + Casual Leave
+Total Pay Days = Present + Casual Leave + (Half Days × 0.5) + Weekends + Holidays
+Working Days = Total calendar days in the month
 Deductions = (Base Salary / Working Days) × LOP Days
 ```
 

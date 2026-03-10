@@ -66,9 +66,9 @@ A comprehensive full-stack web application for automating attendance tracking, l
 
 ### Salary Calculation
 ```
-Total Pay Days = Present Days + Casual Leave Days + (Half Days × 0.5)
+Total Pay Days = Present Days + Casual Leave Days + (Half Days × 0.5) + Weekend Days + Holidays
 Net Salary = (Total Pay Days / Working Days) × Base Salary
-Working Days = Total Days - Weekends - Holidays
+Working Days = Total Days in the month
 ```
 
 ### Leave Management

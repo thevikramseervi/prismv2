@@ -22,38 +22,12 @@ export class PayrollCalculatorService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Working days = calendar days in month minus weekends (Sat/Sun) minus company holidays.
+   * Working days = total calendar days in the month.
    * Company operates in India only. Month is 1-12 (January = 1).
-   * Holiday comparison uses date-only keys so the count is correct regardless of server timezone.
    */
   private async calculateWorkingDays(year: number, month: number): Promise<number> {
-    // Last day of month: new Date(year, month, 0) since day 0 = last day of previous month (month is 1-12 here, so month=12 => Jan next year, day 0 = Dec 31)
-    const daysInMonth = new Date(year, month, 0).getDate();
-
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
-
-    const holidays = await this.prisma.holiday.findMany({
-      where: {
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-    });
-
-    const holidayDates = new Set(holidays.map((h) => toDateOnlyKey(h.date)));
-
-    let workingDays = 0;
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month - 1, day);
-      const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      if (!isWeekend(date) && !holidayDates.has(dateKey)) {
-        workingDays++;
-      }
-    }
-
-    return workingDays;
+    // Last day of month: new Date(year, month, 0) since day 0 = last day of previous month
+    return new Date(year, month, 0).getDate();
   }
 
   async calculateSalary(
@@ -72,7 +46,7 @@ export class PayrollCalculatorService {
 
     const baseSalary = Number(user.baseSalary);
 
-    // Calculate working days for the month
+    // Calculate working days for the month (calendar days)
     const workingDays = await this.calculateWorkingDays(year, month);
 
     // Get attendance records for the month
@@ -109,12 +83,43 @@ export class PayrollCalculatorService {
         case AttendanceStatus.ABSENT:
           lossOfPayDays++;
           break;
-        // WEEKEND and HOLIDAY don't count towards working days
       }
     });
 
-    // Calculate total pay days
-    const totalPayDays = presentDays + casualLeaveDays + halfDays * 0.5;
+    // Count weekends and holidays in the month so they are treated as paid days.
+    const holidays = await this.prisma.holiday.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
+    const holidayDateKeys = new Set(holidays.map((h) => toDateOnlyKey(h.date)));
+
+    let weekendDays = 0;
+    let holidayDays = 0;
+    const daysInMonth = workingDays;
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month - 1, day);
+      const dateKey = toDateOnlyKey(date);
+      if (isWeekend(date)) {
+        weekendDays++;
+      } else if (holidayDateKeys.has(dateKey)) {
+        holidayDays++;
+      }
+    }
+
+    // Calculate total pay days:
+    // - Present and casual leave count fully
+    // - Half days count as 0.5
+    // - Weekends and holidays are treated as paid off-days
+    const totalPayDays =
+      presentDays +
+      casualLeaveDays +
+      halfDays * 0.5 +
+      weekendDays +
+      holidayDays;
 
     // Calculate gross earnings (prorated); guard against no working days
     if (workingDays <= 0) {
