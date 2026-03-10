@@ -57,9 +57,9 @@ A comprehensive full-stack web application for automating attendance tracking, l
 ## 🎯 Business Logic
 
 ### Attendance Rules
-- **Full Day (Present)**: ≥8 hours worked
-- **Half Day**: 4-8 hours worked
-- **Absent (LOP)**: <4 hours worked
+- **Full Day (Present)**: ≥8 hours 30 minutes worked
+- **Half Day**: ≥3 hours 45 minutes and <8 hours 30 minutes worked
+- **Absent (LOP)**: <3 hours 45 minutes worked
 - **Weekends**: Saturday & Sunday (automatically marked)
 - **Holidays**: Company holidays (configurable)
 - **Casual Leave**: Approved leave applications
@@ -428,7 +428,7 @@ See [DATA_MIGRATION_GUIDE.md](backend/DATA_MIGRATION_GUIDE.md) for detailed inst
 - Casual leave quota: 12 days per year; pro-rata by remaining months if the employee joins mid-year (e.g. April → 9 days)
 - No half-day casual leave
 - Weekends: Saturday & Sunday
-- Working hours: 8 hours = full day
+- Working hours: 8 hours 30 minutes = full day
 
 ## 🐛 Troubleshooting
 

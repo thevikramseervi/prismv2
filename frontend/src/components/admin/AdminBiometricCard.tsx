@@ -177,13 +177,13 @@ const AdminBiometricCard: React.FC<AdminBiometricCardProps> = ({ onMessage, sect
               Attendance Rules:
             </Typography>
             <Typography variant="caption" display="block" color="text.secondary">
-              • ≥8 hours = Present
+              • ≥8 hours 30 minutes = Present
             </Typography>
             <Typography variant="caption" display="block" color="text.secondary">
-              • 4-8 hours = Half Day
+              • ≥3 hours 45 minutes and &lt;8 hours 30 minutes = Half Day
             </Typography>
             <Typography variant="caption" display="block" color="text.secondary">
-              • &lt;4 hours = Absent (LOP)
+              • &lt;3 hours 45 minutes = Absent (LOP)
             </Typography>
             <Typography variant="caption" display="block" color="text.secondary">
               • Weekends & holidays are automatically marked

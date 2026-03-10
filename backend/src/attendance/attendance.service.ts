@@ -8,6 +8,20 @@ import { AttendanceStatus } from '@prisma/client';
 export class AttendanceService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Format a time-of-day Date (stored as TIME without time zone in DB)
+   * to simple "HH:MM" string, using UTC fields so we don't apply any
+   * server-local timezone offset.
+   */
+  private formatTimeOfDay(time?: Date | null): string | null {
+    if (!time) return null;
+    const hours = time.getUTCHours();
+    const minutes = time.getUTCMinutes();
+    const hh = String(hours).padStart(2, '0');
+    const mm = String(minutes).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+
   async create(createAttendanceDto: CreateAttendanceDto, manualOverride = true) {
     // Check if attendance already exists for this user and date
     const existing = await this.prisma.attendance.findUnique({
@@ -60,7 +74,7 @@ export class AttendanceService {
       };
     }
 
-    return this.prisma.attendance.findMany({
+    const records = await this.prisma.attendance.findMany({
       where,
       orderBy: { date: 'desc' },
       include: {
@@ -72,6 +86,13 @@ export class AttendanceService {
         },
       },
     });
+
+    // Return times as simple HH:MM strings so frontend can display exactly what was recorded.
+    return records.map((record) => ({
+      ...record,
+      firstInTime: this.formatTimeOfDay(record.firstInTime),
+      lastOutTime: this.formatTimeOfDay(record.lastOutTime),
+    })) as any;
   }
 
   async findMonthlyAttendance(userId: string, year: number, month: number) {
@@ -140,7 +161,7 @@ export class AttendanceService {
       where.status = status;
     }
 
-    return this.prisma.attendance.findMany({
+    const records = await this.prisma.attendance.findMany({
       where,
       include: {
         user: {
@@ -157,6 +178,12 @@ export class AttendanceService {
         { user: { employeeNumber: 'asc' } },
       ],
     });
+
+    return records.map((record) => ({
+      ...record,
+      firstInTime: this.formatTimeOfDay(record.firstInTime),
+      lastOutTime: this.formatTimeOfDay(record.lastOutTime),
+    })) as any;
   }
 
   async findForReport(
@@ -192,7 +219,7 @@ export class AttendanceService {
       where.status = status;
     }
 
-    return this.prisma.attendance.findMany({
+    const records = await this.prisma.attendance.findMany({
       where,
       include: {
         user: {
@@ -209,6 +236,12 @@ export class AttendanceService {
         { user: { employeeNumber: 'asc' } },
       ],
     });
+
+    return records.map((record) => ({
+      ...record,
+      firstInTime: this.formatTimeOfDay(record.firstInTime),
+      lastOutTime: this.formatTimeOfDay(record.lastOutTime),
+    })) as any;
   }
 
   async findOne(id: string) {
@@ -229,7 +262,11 @@ export class AttendanceService {
       throw new NotFoundException('Attendance record not found');
     }
 
-    return attendance;
+    return {
+      ...attendance,
+      firstInTime: this.formatTimeOfDay(attendance.firstInTime),
+      lastOutTime: this.formatTimeOfDay(attendance.lastOutTime),
+    } as any;
   }
 
   async update(id: string, updateAttendanceDto: UpdateAttendanceDto) {

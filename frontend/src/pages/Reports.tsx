@@ -41,20 +41,34 @@ import {
 import ExcelJS from 'exceljs';
 import PageHeader from '../components/PageHeader';
 
-/** Format time from ISO string or Date to HH:MM */
+/** Format time to HH:MM. Backend now sends plain "HH:MM" strings for in/out times. */
 const formatTime = (val: string | Date | null | undefined): string => {
   if (!val) return '-';
   try {
-    const d = typeof val === 'string' ? new Date(val) : val;
+    if (typeof val === 'string') {
+      if (/^\d{2}:\d{2}(:\d{2})?$/.test(val)) {
+        return val.slice(0, 5);
+      }
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return '-';
+      return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+    }
+    const d = val instanceof Date ? val : new Date(val);
     if (isNaN(d.getTime())) return '-';
-    return d.toLocaleTimeString('en-IN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
+    return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
   } catch {
     return '-';
   }
+};
+
+/** Format duration (minutes) as H:MM, e.g. 525 -> "8:45". */
+const formatDuration = (minutes?: number | null): string => {
+  if (minutes == null) return '-';
+  const total = Number(minutes);
+  if (Number.isNaN(total)) return '-';
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+  return `${hours}:${String(mins).padStart(2, '0')}`;
 };
 
 interface TabPanelProps {
@@ -181,9 +195,8 @@ const Reports: React.FC = () => {
       value: (r) => (r.lastOutTime ? formatTime(r.lastOutTime) : '-'),
     },
     {
-      header: 'Duration (hrs)',
-      value: (r) =>
-        r.totalDuration ? (Number(r.totalDuration) / 60).toFixed(2) : '-',
+      header: 'Duration (H:MM)',
+      value: (r) => formatDuration(r.totalDuration),
     },
   ];
 
@@ -578,7 +591,7 @@ const Reports: React.FC = () => {
                         <TableCell><strong>Status</strong></TableCell>
                         <TableCell><strong>First In</strong></TableCell>
                         <TableCell><strong>Last Out</strong></TableCell>
-                        <TableCell><strong>Duration (hrs)</strong></TableCell>
+                        <TableCell><strong>Duration (H:MM)</strong></TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -608,9 +621,7 @@ const Reports: React.FC = () => {
                           </TableCell>
                           <TableCell>{formatTime(record.firstInTime)}</TableCell>
                           <TableCell>{formatTime(record.lastOutTime)}</TableCell>
-                          <TableCell>
-                            {record.totalDuration ? (Number(record.totalDuration) / 60).toFixed(2) : '-'}
-                          </TableCell>
+                          <TableCell>{formatDuration(record.totalDuration)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

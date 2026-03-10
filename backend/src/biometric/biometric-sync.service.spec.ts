@@ -46,7 +46,7 @@ describe('BiometricSyncService', () => {
   });
 
   describe('processBiometricData', () => {
-    it('computes PRESENT for >= 8h work on a weekday', async () => {
+    it('computes PRESENT for >= 8h 30m work on a weekday', async () => {
       const tuesday = new Date('2025-06-03T10:00:00Z');
       (prisma.user.findMany as jest.Mock).mockResolvedValue([mockUser]);
       (prisma.holiday.findMany as jest.Mock).mockResolvedValue([]);
@@ -60,10 +60,10 @@ describe('BiometricSyncService', () => {
           employeeId: 'E001',
           date: tuesday,
           inTime: new Date('2025-06-03T09:00:00Z'),
-          outTime: new Date('2025-06-03T17:00:00Z'),
+          outTime: new Date('2025-06-03T17:30:00Z'),
           inDoor: null,
           outDoor: null,
-          duration: 480,
+          duration: 510,
         },
       ];
 
@@ -75,7 +75,7 @@ describe('BiometricSyncService', () => {
       expect(upsertCall.update.status).toBe(AttendanceStatus.PRESENT);
     });
 
-    it('computes HALF_DAY for 4–8h work', async () => {
+    it('computes HALF_DAY for >= 3h 45m and < 8h 30m work', async () => {
       const wednesday = new Date('2025-06-04T10:00:00Z');
       (prisma.user.findMany as jest.Mock).mockResolvedValue([mockUser]);
       (prisma.holiday.findMany as jest.Mock).mockResolvedValue([]);
@@ -102,7 +102,7 @@ describe('BiometricSyncService', () => {
       expect(upsertCall.create.status).toBe(AttendanceStatus.HALF_DAY);
     });
 
-    it('computes ABSENT for < 4h work', async () => {
+    it('computes ABSENT for < 3h 45m work', async () => {
       const thursday = new Date('2025-06-05T10:00:00Z');
       (prisma.user.findMany as jest.Mock).mockResolvedValue([mockUser]);
       (prisma.holiday.findMany as jest.Mock).mockResolvedValue([]);

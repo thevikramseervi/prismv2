@@ -559,9 +559,9 @@ Salary Calculation:
 
 ### Attendance Rules ✅
 ```
->= 8 hours = PRESENT
-4-8 hours = HALF_DAY
-< 4 hours = ABSENT
+>= 8h 30m = PRESENT
+>= 3h 45m and < 8h 30m = HALF_DAY
+< 3h 45m = ABSENT
 Saturday/Sunday = WEEKEND
 Declared holidays = HOLIDAY
 ```

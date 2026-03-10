@@ -81,9 +81,9 @@ Required columns:
 - `Duration (hrs)` - Total hours worked (e.g., 9)
 
 **Status Options:**
-- `PRESENT` or `P` - Full day present
-- `ABSENT` or `A` or `LOP` - Absent/Loss of Pay
-- `HALF_DAY` or `HD` or `HALF` - Half day
+- `PRESENT` or `P` - Full day present (≥8h 30m worked)
+- `ABSENT` or `A` or `LOP` - Absent/Loss of Pay (<3h 45m worked)
+- `HALF_DAY` or `HD` or `HALF` - Half day (≥3h 45m and <8h 30m worked)
 - `CASUAL_LEAVE` or `CL` or `LEAVE` - Casual leave
 - `WEEKEND` or `W` or `WO` - Weekend off
 - `HOLIDAY` or `H` - Public holiday

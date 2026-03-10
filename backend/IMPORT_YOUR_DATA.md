@@ -115,9 +115,9 @@ Your file might have columns like:
 - `Status` or `P/A/HD/CL` → Maps to Status
 
 The script automatically handles variations like:
-- `P` → PRESENT
-- `A` or `LOP` → ABSENT
-- `HD` or `HALF` → HALF_DAY
+- `P` → PRESENT (≥8h 30m worked)
+- `A` or `LOP` → ABSENT/Loss of Pay (<3h 45m worked)
+- `HD` or `HALF` → HALF_DAY (≥3h 45m and <8h 30m worked)
 - `CL` or `LEAVE` → CASUAL_LEAVE
 - `W` or `WO` → WEEKEND
 - `H` → HOLIDAY
