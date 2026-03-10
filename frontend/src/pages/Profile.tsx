@@ -1,7 +1,8 @@
 import React from 'react';
-import { Box, Card, CardContent, Typography, Divider, Grid, CircularProgress, Alert } from '@mui/material';
+import { Box, Card, CardContent, Typography, Divider, CircularProgress, Alert } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { authApi, type MeResponse } from '../api/auth';
+import AdminSecurity2faCard from '../components/admin/AdminSecurity2faCard';
 
 const formatDate = (d?: string) => {
     if (!d) return '—';
@@ -45,7 +46,7 @@ const Profile: React.FC = () => {
         Your account and employment details.
       </Typography>
 
-      <Card elevation={2}>
+      <Card elevation={2} sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h6" fontWeight="bold" gutterBottom>
             Personal Information
@@ -128,6 +129,16 @@ const Profile: React.FC = () => {
           </Box>
         </CardContent>
       </Card>
+
+      {(me.role === 'LAB_ADMIN' || me.role === 'SUPER_ADMIN') && (
+        <AdminSecurity2faCard
+          onMessage={(message, severity) => {
+            // Surface messages via a simple alert-style snackbar pattern later if needed.
+            // For now, console for visibility in development.
+            console[severity === 'error' ? 'error' : 'log'](message);
+          }}
+        />
+      )}
     </Box>
   );
 };
