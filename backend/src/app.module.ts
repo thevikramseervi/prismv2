@@ -10,6 +10,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { LeaveModule } from './leave/leave.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { BiometricModule } from './biometric/biometric.module';
 import { HealthModule } from './health/health.module';
 import { ActivityModule } from './activity/activity.module';
@@ -33,6 +34,7 @@ import { AppService } from './app.service';
     PayrollModule,
     ActivityModule,
     AnnouncementsModule,
+    NotificationsModule,
     BiometricModule,
     HealthModule,
   ],

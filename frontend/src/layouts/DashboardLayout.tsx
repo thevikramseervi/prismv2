@@ -41,6 +41,8 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeMode } from '../contexts/ThemeModeContext';
+import { useQuery } from '@tanstack/react-query';
+import { notificationsApi } from '../api/notifications';
 import ChangePasswordDialog from '../components/ChangePasswordDialog';
 import { Role } from '../types';
 
@@ -96,11 +98,18 @@ const navItems: NavItem[] = [
 const DashboardLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [notificationsAnchorEl, setNotificationsAnchorEl] = useState<null | HTMLElement>(null);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const { user, logout } = useAuth();
   const { mode, toggleMode } = useThemeMode();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const { data: unreadData } = useQuery({
+    queryKey: ['notifications-unread-count'],
+    queryFn: notificationsApi.getUnreadCount,
+    staleTime: 60_000,
+  });
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -117,6 +126,14 @@ const DashboardLayout: React.FC = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleNotificationsOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setNotificationsAnchorEl(event.currentTarget);
+  };
+
+  const handleNotificationsClose = () => {
+    setNotificationsAnchorEl(null);
   };
 
   const filteredNavItems = navItems.filter((item) => {
@@ -211,8 +228,8 @@ const DashboardLayout: React.FC = () => {
               'Dashboard'}
           </Typography>
 
-          <IconButton color="inherit" sx={{ mr: 1 }}>
-            <Badge badgeContent={0} color="error">
+          <IconButton color="inherit" sx={{ mr: 1 }} onClick={handleNotificationsOpen}>
+            <Badge badgeContent={unreadData?.unreadCount ?? 0} color="error">
               <Notifications />
             </Badge>
           </IconButton>
@@ -262,6 +279,17 @@ const DashboardLayout: React.FC = () => {
             <Divider />
             <MenuItem
               onClick={() => {
+                navigate('/profile');
+                handleMenuClose();
+              }}
+            >
+              <ListItemIcon>
+                <Settings fontSize="small" />
+              </ListItemIcon>
+              My profile
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
                 setChangePasswordOpen(true);
                 handleMenuClose();
               }}
@@ -276,6 +304,22 @@ const DashboardLayout: React.FC = () => {
                 <Logout fontSize="small" />
               </ListItemIcon>
               Logout
+            </MenuItem>
+          </Menu>
+          <Menu
+            anchorEl={notificationsAnchorEl}
+            open={Boolean(notificationsAnchorEl)}
+            onClose={handleNotificationsClose}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+          >
+            <MenuItem
+              onClick={() => {
+                handleNotificationsClose();
+                navigate('/notifications');
+              }}
+            >
+              <ListItemText primary="View notifications" />
             </MenuItem>
           </Menu>
           <ChangePasswordDialog

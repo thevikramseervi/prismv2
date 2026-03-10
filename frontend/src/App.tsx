@@ -16,6 +16,8 @@ import Leave from './pages/Leave';
 import SalarySlips from './pages/SalarySlips';
 import SalarySlipView from './pages/SalarySlipView';
 import Announcements from './pages/Announcements';
+import Notifications from './pages/Notifications';
+import Profile from './pages/Profile';
 import Users from './pages/Users';
 import Holidays from './pages/Holidays';
 import MyHolidays from './pages/MyHolidays';
@@ -146,6 +148,8 @@ function AppWithTheme() {
                 <Route path="salary-slips" element={<SalarySlips />} />
                 <Route path="salary-slips/view/:id" element={<SalarySlipView />} />
                 <Route path="announcements" element={<Announcements />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="profile" element={<Profile />} />
                 <Route path="my-holidays" element={<MyHolidays />} />
                 <Route path="users" element={<Users />} />
                 <Route path="holidays" element={<Holidays />} />

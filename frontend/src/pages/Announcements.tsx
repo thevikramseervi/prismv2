@@ -66,6 +66,19 @@ const Announcements: React.FC = () => {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<{ isPinned: boolean }>;
+    }) => announcementsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+    },
+  });
+
   const handleSubmit = () => {
     createMutation.mutate(formData);
   };
@@ -114,7 +127,7 @@ const Announcements: React.FC = () => {
                     {announcement.title}
                   </Typography>
                 </Box>
-                <Box display="flex" gap={1}>
+                <Box display="flex" gap={1} alignItems="center">
                   <Chip
                     label={announcement.priority}
                     color={getPriorityColor(announcement.priority)}
@@ -122,6 +135,20 @@ const Announcements: React.FC = () => {
                   />
                   {announcement.isPinned && (
                     <Chip label="Pinned" color="info" size="small" variant="outlined" />
+                  )}
+                  {isAdmin && (
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() =>
+                        updateMutation.mutate({
+                          id: announcement.id,
+                          data: { isPinned: !announcement.isPinned },
+                        })
+                      }
+                    >
+                      {announcement.isPinned ? 'Unpin' : 'Pin'}
+                    </Button>
                   )}
                 </Box>
               </Box>

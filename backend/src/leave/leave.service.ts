@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { ApplyLeaveDto } from './dto/apply-leave.dto';
 import { ReviewLeaveDto } from './dto/review-leave.dto';
-import { LeaveStatus, AttendanceStatus, LeaveType } from '@prisma/client';
+import { LeaveStatus, AttendanceStatus, LeaveType, Role } from '@prisma/client';
 import { getProRataCasualLeaveForYear } from './leave.utils';
 
 @Injectable()
@@ -152,6 +152,40 @@ export class LeaveService {
           },
         });
 
+        // Notify admins about new leave request
+        const admins = await tx.user.findMany({
+          where: {
+            status: 'ACTIVE',
+            role: {
+              in: [Role.LAB_ADMIN, Role.SUPER_ADMIN],
+            },
+          },
+          select: { id: true },
+        });
+
+        const fromStr = fromDate.toISOString().slice(0, 10);
+        const toStr = toDate.toISOString().slice(0, 10);
+        const leaveLabel = 'casual leave';
+
+        await Promise.all(
+          admins.map((admin) =>
+            tx.notification.create({
+              data: {
+                userId: admin.id,
+                type: 'LEAVE_REQUEST',
+                title: 'New leave request',
+                body: `${leaveApplication.user.name} applied for ${leaveApplication.totalDays} day(s) of ${leaveLabel} from ${fromStr} to ${toStr}.`,
+                data: {
+                  applicationId: leaveApplication.id,
+                  userId,
+                  totalDays: leaveApplication.totalDays,
+                  leaveType: leaveApplication.leaveType,
+                },
+              },
+            }),
+          ),
+        );
+
         return leaveApplication;
       }
 
@@ -179,7 +213,7 @@ export class LeaveService {
         throw new ConflictException('You already have a leave application for overlapping dates');
       }
 
-      return tx.leaveApplication.create({
+      const application = await tx.leaveApplication.create({
         data: {
           userId,
           leaveType: applyLeaveDto.leaveType,
@@ -199,6 +233,42 @@ export class LeaveService {
           },
         },
       });
+
+      // Notify admins about new unpaid leave request
+      const admins = await tx.user.findMany({
+        where: {
+          status: 'ACTIVE',
+          role: {
+            in: [Role.LAB_ADMIN, Role.SUPER_ADMIN],
+          },
+        },
+        select: { id: true },
+      });
+
+      const fromStr = fromDate.toISOString().slice(0, 10);
+      const toStr = toDate.toISOString().slice(0, 10);
+      const leaveLabel = 'unpaid leave';
+
+      await Promise.all(
+        admins.map((admin) =>
+          tx.notification.create({
+            data: {
+              userId: admin.id,
+              type: 'LEAVE_REQUEST',
+              title: 'New leave request',
+              body: `${application.user.name} applied for ${application.totalDays} day(s) of ${leaveLabel} from ${fromStr} to ${toStr}.`,
+              data: {
+                applicationId: application.id,
+                userId,
+                totalDays: application.totalDays,
+                leaveType: application.leaveType,
+              },
+            },
+          }),
+        ),
+      );
+
+      return application;
     });
   }
 
@@ -284,7 +354,7 @@ export class LeaveService {
         current.setDate(current.getDate() + 1);
       }
 
-      return tx.leaveApplication.findUnique({
+      const updated = await tx.leaveApplication.findUnique({
         where: { id: applicationId },
         include: {
           user: {
@@ -300,6 +370,24 @@ export class LeaveService {
           },
         },
       });
+
+      await tx.notification.create({
+        data: {
+          userId: application.userId,
+          type: 'LEAVE_APPROVED',
+          title: 'Leave approved',
+          body: `Your leave from ${application.fromDate.toISOString().slice(0, 10)} to ${application.toDate
+            .toISOString()
+            .slice(0, 10)} has been approved.`,
+          data: {
+            applicationId: application.id,
+            totalDays: application.totalDays,
+            leaveType: application.leaveType,
+          },
+        },
+      });
+
+      return updated;
     });
   }
 
@@ -349,7 +437,7 @@ export class LeaveService {
         });
       }
 
-      return tx.leaveApplication.findUnique({
+      const updated = await tx.leaveApplication.findUnique({
         where: { id: applicationId },
         include: {
           user: {
@@ -365,6 +453,24 @@ export class LeaveService {
           },
         },
       });
+
+      await tx.notification.create({
+        data: {
+          userId: application.userId,
+          type: 'LEAVE_REJECTED',
+          title: 'Leave rejected',
+          body: `Your leave from ${application.fromDate.toISOString().slice(0, 10)} to ${application.toDate
+            .toISOString()
+            .slice(0, 10)} has been rejected.`,
+          data: {
+            applicationId: application.id,
+            totalDays: application.totalDays,
+            leaveType: application.leaveType,
+          },
+        },
+      });
+
+      return updated;
     });
   }
 

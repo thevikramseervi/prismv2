@@ -156,6 +156,17 @@ export interface Announcement {
   readAt?: string;
 }
 
+// Notification types
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  readAt?: string;
+  data?: any;
+}
+
 // Holiday type
 export interface Holiday {
   id: string;

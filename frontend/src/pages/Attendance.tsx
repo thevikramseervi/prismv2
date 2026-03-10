@@ -246,9 +246,18 @@ const Attendance: React.FC = () => {
                 {monthDays.map((day) => {
                   const key = formatKey(day.date);
                   const attendanceStatus = statusByDate.get(key);
-                  // If there's no attendance record but the date is a holiday, still show it as HOLIDAY
-                  const status =
-                    attendanceStatus || (holidayDateKeys.has(key) ? AttendanceStatus.HOLIDAY : undefined);
+                  // Derive status when there is no record: prefer HOLIDAY, then WEEKEND
+                  let status = attendanceStatus as AttendanceStatus | undefined;
+                  if (!status) {
+                    if (holidayDateKeys.has(key)) {
+                      status = AttendanceStatus.HOLIDAY;
+                    } else {
+                      const dow = day.date.getDay(); // 0 = Sun, 6 = Sat
+                      if (dow === 0 || dow === 6) {
+                        status = AttendanceStatus.WEEKEND;
+                      }
+                    }
+                  }
                   const isToday =
                     formatKey(day.date) === formatKey(new Date()) && day.isCurrentMonth;
 
