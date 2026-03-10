@@ -15,7 +15,7 @@ export class AbsenceReminderService {
    * covering that date, send a notification suggesting they apply for
    * unpaid leave.
    */
-  @Cron(CronExpression.EVERY_DAY_AT_06_00)
+  @Cron(CronExpression.EVERY_DAY_AT_6AM)
   async remindForUnpaidLeave() {
     const today = new Date();
     const yesterday = new Date(today);
