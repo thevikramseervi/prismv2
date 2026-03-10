@@ -22,12 +22,18 @@ export interface AdminBiometricCardProps {
 
 const AdminBiometricCard: React.FC<AdminBiometricCardProps> = ({ onMessage, section = 'both' }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [syncDate, setSyncDate] = React.useState(
+  const [syncStartDate, setSyncStartDate] = React.useState(
+    () => new Date(Date.now() - 86400000).toISOString().split('T')[0]
+  );
+  const [syncEndDate, setSyncEndDate] = React.useState(
     () => new Date(Date.now() - 86400000).toISOString().split('T')[0]
   );
 
   const syncBiometricMutation = useApiMutation({
-    mutationFn: (date: string) => api.post<{ processed?: number }>(`/biometric/sync?date=${date}`),
+    mutationFn: (params: { startDate: string; endDate: string }) =>
+      api.post<{ processed?: number }>(
+        `/biometric/sync-range?startDate=${params.startDate}&endDate=${params.endDate}`,
+      ),
     successMessage: (res: { data?: { processed?: number } }) =>
       `Biometric sync completed! Processed: ${res.data?.processed ?? 0}`,
     errorMessage: 'Failed to sync biometric data',
@@ -142,13 +148,22 @@ const AdminBiometricCard: React.FC<AdminBiometricCardProps> = ({ onMessage, sect
 
           <TextField
             fullWidth
-            label="Sync Date"
+            label="Start Date"
             type="date"
-            value={syncDate}
-            onChange={(e) => setSyncDate(e.target.value)}
+            value={syncStartDate}
+            onChange={(e) => setSyncStartDate(e.target.value)}
             margin="normal"
             InputLabelProps={{ shrink: true }}
-            helperText="Select the date for which to sync biometric data"
+          />
+          <TextField
+            fullWidth
+            label="End Date"
+            type="date"
+            value={syncEndDate}
+            onChange={(e) => setSyncEndDate(e.target.value)}
+            margin="normal"
+            InputLabelProps={{ shrink: true }}
+            helperText="Sync biometric data for all dates in this range (inclusive)"
           />
 
           <Button
@@ -157,8 +172,17 @@ const AdminBiometricCard: React.FC<AdminBiometricCardProps> = ({ onMessage, sect
             color="primary"
             size="large"
             startIcon={<Sync />}
-            onClick={() => syncBiometricMutation.mutate(syncDate)}
-            disabled={syncBiometricMutation.isPending}
+            onClick={() =>
+              syncBiometricMutation.mutate({
+                startDate: syncStartDate,
+                endDate: syncEndDate,
+              })
+            }
+            disabled={
+              syncBiometricMutation.isPending ||
+              !syncStartDate ||
+              !syncEndDate
+            }
             sx={{ mt: 2 }}
           >
             {syncBiometricMutation.isPending ? 'Syncing...' : 'Sync Biometric Data'}

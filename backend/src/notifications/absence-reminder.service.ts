@@ -15,7 +15,7 @@ export class AbsenceReminderService {
    * covering that date, send a notification suggesting they apply for
    * unpaid leave.
    */
-  @Cron(CronExpression.EVERY_DAY_AT_6AM)
+  @Cron(CronExpression.EVERY_DAY_AT_2PM)
   async remindForUnpaidLeave() {
     const today = new Date();
     const yesterday = new Date(today);
@@ -53,11 +53,13 @@ export class AbsenceReminderService {
 
     const userIds = Array.from(new Set(absentRecords.map((r) => r.userId)));
 
-    // Check for unpaid leave applications overlapping yesterday
+    // Check for CASUAL or UNPAID leave applications overlapping yesterday
     const leaveApplications = await this.prisma.leaveApplication.findMany({
       where: {
         userId: { in: userIds },
-        leaveType: LeaveType.UNPAID_LEAVE,
+        leaveType: {
+          in: [LeaveType.UNPAID_LEAVE, LeaveType.CASUAL_LEAVE],
+        },
         status: {
           in: [LeaveStatus.PENDING, LeaveStatus.APPROVED],
         },
@@ -69,9 +71,9 @@ export class AbsenceReminderService {
       },
     });
 
-    const usersWithUnpaidLeave = new Set(leaveApplications.map((l) => l.userId));
+    const usersWithAnyLeave = new Set(leaveApplications.map((l) => l.userId));
 
-    const usersNeedingReminder = userIds.filter((id) => !usersWithUnpaidLeave.has(id));
+    const usersNeedingReminder = userIds.filter((id) => !usersWithAnyLeave.has(id));
 
     if (usersNeedingReminder.length === 0) {
       return;

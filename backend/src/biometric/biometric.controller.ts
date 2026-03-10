@@ -37,6 +37,30 @@ export class BiometricController {
     return this.biometricSyncService.syncBiometricDataForDate(date);
   }
 
+  @Post('sync-range')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Manually trigger biometric sync for a date range (Super Admin only)' })
+  @ApiQuery({ name: 'startDate', required: true, type: String, description: 'Start date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', required: true, type: String, description: 'End date (YYYY-MM-DD)' })
+  @ApiResponse({ status: 200, description: 'Biometric range sync triggered successfully' })
+  async syncBiometricRange(
+    @Query('startDate') startDateStr: string,
+    @Query('endDate') endDateStr: string,
+  ) {
+    if (!startDateStr || !endDateStr) {
+      throw new BadRequestException('startDate and endDate are required');
+    }
+    const start = new Date(startDateStr);
+    const end = new Date(endDateStr);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid startDate or endDate');
+    }
+    if (start > end) {
+      throw new BadRequestException('startDate must be before or equal to endDate');
+    }
+    return this.biometricSyncService.syncBiometricDataForRange(start, end);
+  }
+
   @Post('upload')
   @Roles(Role.SUPER_ADMIN)
   @UseInterceptors(

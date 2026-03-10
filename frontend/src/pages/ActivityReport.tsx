@@ -12,12 +12,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Paper,
   IconButton,
   Alert,
@@ -355,75 +349,80 @@ const ActivityReport: React.FC = () => {
       />
       <Card elevation={2} sx={{ mb: 3 }}>
         <CardContent>
-          <Grid container spacing={2} mb={2}>
-            <Grid size={{ xs: 12, md: 3 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              mb: 2,
+            }}
+          >
+            <TextField
+              fullWidth
+              label="Date"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+
+            {isAdmin ? (
+              <FormControl fullWidth>
+                <InputLabel>Employee</InputLabel>
+                <Select
+                  value={selectedUserId}
+                  label="Employee"
+                  onChange={(e) => {
+                    setSelectedUserId(e.target.value);
+                    setRows([]);
+                  }}
+                >
+                  <MenuItem value="">
+                    <em>Select employee</em>
+                  </MenuItem>
+                  {users?.map((u) => (
+                    <MenuItem key={u.id} value={u.id}>
+                      {u.name} ({u.employeeId})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
               <TextField
                 fullWidth
-                label="Date"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
+                label="Employee"
+                value={currentUserLabel}
+                InputProps={{ readOnly: true }}
               />
-            </Grid>
+            )}
 
-            <Grid size={{ xs: 12, md: 5 }}>
-              {isAdmin ? (
-                <FormControl fullWidth>
-                  <InputLabel>Employee</InputLabel>
-                  <Select
-                    value={selectedUserId}
-                    label="Employee"
-                    onChange={(e) => {
-                      setSelectedUserId(e.target.value);
-                      setRows([]);
-                    }}
-                  >
-                    <MenuItem value="">
-                      <em>Select employee</em>
-                    </MenuItem>
-                    {users?.map((u) => (
-                      <MenuItem key={u.id} value={u.id}>
-                        {u.name} ({u.employeeId})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              ) : (
-                <TextField
-                  fullWidth
-                  label="Employee"
-                  value={currentUserLabel}
-                  InputProps={{ readOnly: true }}
-                />
-              )}
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 2 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 2,
+              }}
+            >
               <Button
                 fullWidth
                 variant="outlined"
                 onClick={handleLoad}
                 disabled={activitiesQuery.isFetching}
-                sx={{ height: '56px' }}
               >
                 {activitiesQuery.isFetching ? <CircularProgress size={24} /> : 'Load Activities'}
               </Button>
-            </Grid>
 
-            <Grid size={{ xs: 12, md: 2 }}>
               <Button
                 fullWidth
                 variant="contained"
                 onClick={handleAddRow}
                 disabled={isBusy || (isAdmin && !selectedUserId)}
                 startIcon={<Add />}
-                sx={{ height: '56px' }}
               >
                 Add Row
               </Button>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
 
           {message && (
             <Box mb={2}>
@@ -450,157 +449,182 @@ const ActivityReport: React.FC = () => {
             </Button>
           </Box>
 
-          <TableContainer component={Paper} elevation={0}>
-            <Table size="small" stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell><strong>Date</strong></TableCell>
-                  <TableCell><strong>Student Name</strong></TableCell>
-                  <TableCell><strong>User Type</strong></TableCell>
-                  <TableCell><strong>User Status</strong></TableCell>
-                  <TableCell><strong>Project</strong></TableCell>
-                  <TableCell><strong>Task</strong></TableCell>
-                  <TableCell><strong>Sub Task</strong></TableCell>
-                  <TableCell><strong>Unit</strong></TableCell>
-                  <TableCell align="right"><strong>Nos</strong></TableCell>
-                  <TableCell align="right"><strong>%</strong></TableCell>
-                  <TableCell align="right"><strong>Productivity</strong></TableCell>
-                  <TableCell align="right"><strong>Weightage</strong></TableCell>
-                  <TableCell align="center"><strong>Actions</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={13} align="center">
-                      No activity rows for this date. Click &quot;Add Row&quot; to get started.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  rows.map((row, index) => (
-                    <TableRow key={row.id ?? index}>
-                      <TableCell>
-                        <TextField
-                          type="date"
-                          value={row.date}
-                          onChange={(e) => updateRowField(index, 'date', e.target.value)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          value={row.userName}
-                          size="small"
-                          InputProps={{ readOnly: !isAdmin }}
-                          onChange={(e) => updateRowField(index, 'userName', e.target.value)}
-                        />
+          {rows.length === 0 ? (
+            <Paper elevation={0} sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                No activity rows for this date. Click &quot;Add Row&quot; to get started.
+              </Typography>
+            </Paper>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {rows.map((row, index) => (
+                <Paper
+                  key={row.id ?? index}
+                  elevation={0}
+                  sx={{ p: 2, borderRadius: 2, border: 1, borderColor: 'divider' }}
+                >
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', sm: '160px 1fr' },
+                      rowGap: 1,
+                      columnGap: 3,
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary">
+                      Date
+                    </Typography>
+                    <TextField
+                      type="date"
+                      value={row.date}
+                      onChange={(e) => updateRowField(index, 'date', e.target.value)}
+                      size="small"
+                    />
+
+                    <Typography variant="body2" color="text.secondary">
+                      Student Name
+                    </Typography>
+                    <Box>
+                      <TextField
+                        value={row.userName}
+                        size="small"
+                        InputProps={{ readOnly: !isAdmin }}
+                        onChange={(e) => updateRowField(index, 'userName', e.target.value)}
+                      />
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {row.employeeId}
+                      </Typography>
+                    </Box>
+
+                    <Typography variant="body2" color="text.secondary">
+                      User Type
+                    </Typography>
+                    <TextField
+                      value={row.userType}
+                      onChange={(e) => updateRowField(index, 'userType', e.target.value)}
+                      size="small"
+                    />
+
+                    <Typography variant="body2" color="text.secondary">
+                      User Status
+                    </Typography>
+                    <Box>
+                      {row.userStatus ? (
+                        <Chip label={row.userStatus} size="small" />
+                      ) : (
                         <Typography variant="caption" color="text.secondary">
-                          {row.employeeId}
+                          -
                         </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          value={row.userType}
-                          onChange={(e) => updateRowField(index, 'userType', e.target.value)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {row.userStatus ? (
-                          <Chip label={row.userStatus} size="small" />
-                        ) : (
-                          <Typography variant="caption" color="text.secondary">
-                            -
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          value={row.project}
-                          onChange={(e) => updateRowField(index, 'project', e.target.value)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          value={row.task}
-                          onChange={(e) => updateRowField(index, 'task', e.target.value)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          value={row.subTask ?? ''}
-                          onChange={(e) => updateRowField(index, 'subTask', e.target.value)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          value={row.unit}
-                          onChange={(e) => updateRowField(index, 'unit', e.target.value)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <TextField
-                          value={row.nos}
-                          onChange={(e) => updateRowField(index, 'nos', e.target.value)}
-                          size="small"
-                          type="number"
-                          inputProps={{ min: 0 }}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <TextField
-                          value={row.percentage}
-                          onChange={(e) => updateRowField(index, 'percentage', e.target.value)}
-                          size="small"
-                          type="number"
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <TextField
-                          value={row.productivity}
-                          onChange={(e) => updateRowField(index, 'productivity', e.target.value)}
-                          size="small"
-                          type="number"
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <TextField
-                          value={row.weightage}
-                          onChange={(e) => updateRowField(index, 'weightage', e.target.value)}
-                          size="small"
-                          type="number"
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          aria-label="save"
-                          color="primary"
-                          onClick={() => handleSaveRow(row, index)}
-                          disabled={isBusy}
-                          size="small"
-                        >
-                          <Save fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          aria-label="delete"
-                          color="error"
-                          onClick={() => handleDeleteRow(row, index)}
-                          disabled={isBusy}
-                          size="small"
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                      )}
+                    </Box>
+
+                    <Typography variant="body2" color="text.secondary">
+                      Project
+                    </Typography>
+                    <TextField
+                      value={row.project}
+                      onChange={(e) => updateRowField(index, 'project', e.target.value)}
+                      size="small"
+                    />
+
+                    <Typography variant="body2" color="text.secondary">
+                      Task
+                    </Typography>
+                    <TextField
+                      value={row.task}
+                      onChange={(e) => updateRowField(index, 'task', e.target.value)}
+                      size="small"
+                    />
+
+                    <Typography variant="body2" color="text.secondary">
+                      Sub Task
+                    </Typography>
+                    <TextField
+                      value={row.subTask ?? ''}
+                      onChange={(e) => updateRowField(index, 'subTask', e.target.value)}
+                      size="small"
+                    />
+
+                    <Typography variant="body2" color="text.secondary">
+                      Unit
+                    </Typography>
+                    <TextField
+                      value={row.unit}
+                      onChange={(e) => updateRowField(index, 'unit', e.target.value)}
+                      size="small"
+                    />
+
+                    <Typography variant="body2" color="text.secondary">
+                      Nos
+                    </Typography>
+                    <TextField
+                      value={row.nos}
+                      onChange={(e) => updateRowField(index, 'nos', e.target.value)}
+                      size="small"
+                      type="number"
+                      inputProps={{ min: 0 }}
+                    />
+
+                    <Typography variant="body2" color="text.secondary">
+                      %
+                    </Typography>
+                    <TextField
+                      value={row.percentage}
+                      onChange={(e) => updateRowField(index, 'percentage', e.target.value)}
+                      size="small"
+                      type="number"
+                    />
+
+                    <Typography variant="body2" color="text.secondary">
+                      Productivity
+                    </Typography>
+                    <TextField
+                      value={row.productivity}
+                      onChange={(e) => updateRowField(index, 'productivity', e.target.value)}
+                      size="small"
+                      type="number"
+                    />
+
+                    <Typography variant="body2" color="text.secondary">
+                      Weightage
+                    </Typography>
+                    <TextField
+                      value={row.weightage}
+                      onChange={(e) => updateRowField(index, 'weightage', e.target.value)}
+                      size="small"
+                      type="number"
+                    />
+                  </Box>
+
+                  <Box
+                    mt={2}
+                    display="flex"
+                    justifyContent="flex-end"
+                    gap={1}
+                  >
+                    <IconButton
+                      aria-label="save"
+                      color="primary"
+                      onClick={() => handleSaveRow(row, index)}
+                      disabled={isBusy}
+                      size="small"
+                    >
+                      <Save fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      aria-label="delete"
+                      color="error"
+                      onClick={() => handleDeleteRow(row, index)}
+                      disabled={isBusy}
+                      size="small"
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Paper>
+              ))}
+            </Box>
+          )}
         </CardContent>
       </Card>
     </Box>

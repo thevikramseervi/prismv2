@@ -229,6 +229,36 @@ export class BiometricSyncService {
     return this.processBiometricData(entries, { skipLogCreation: true });
   }
 
+  async syncBiometricDataForRange(startDate: Date, endDate: Date): Promise<any> {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(0, 0, 0, 0);
+
+    if (start > end) {
+      throw new Error('startDate must be before or equal to endDate');
+    }
+
+    let totalProcessed = 0;
+    let totalSkipped = 0;
+    const errors: Array<{ date: string; error: string }> = [];
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const result = await this.syncBiometricDataForDate(new Date(d));
+      totalProcessed += result?.processed ?? 0;
+      totalSkipped += result?.skipped ?? 0;
+      (result?.errors ?? []).forEach((e: any) =>
+        errors.push({ date: d.toISOString().slice(0, 10), error: e.error ?? String(e) }),
+      );
+    }
+
+    return {
+      processed: totalProcessed,
+      skipped: totalSkipped,
+      errors,
+    };
+  }
+
   async getUnprocessedLogs() {
     return this.prisma.biometricLog.findMany({
       where: { processed: false },
