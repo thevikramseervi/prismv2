@@ -28,7 +28,10 @@ export const announcementsApi = {
     return data;
   },
 
-  update: async (id: string, updateData: any): Promise<Announcement> => {
+  update: async (
+    id: string,
+    updateData: Partial<Pick<Announcement, 'title' | 'content' | 'priority' | 'isPinned' | 'targetAudience' | 'expiresAt'>>,
+  ): Promise<Announcement> => {
     const { data } = await api.patch<Announcement>(`/announcements/${id}`, updateData);
     return data;
   },

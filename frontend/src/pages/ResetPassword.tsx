@@ -59,8 +59,9 @@ const ResetPassword: React.FC = () => {
           state: { message: 'Password updated. You can now sign in.' },
         });
       }, 1500);
-    } catch (err: any) {
-      const message = err.response?.data?.message;
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      const message = error.response?.data?.message;
       setError(
         message || 'Invalid or expired link. Please request a new reset link.'
       );

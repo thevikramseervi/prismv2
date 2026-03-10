@@ -15,7 +15,6 @@ import {
   Chip,
   Alert,
   Snackbar,
-  Paper,
   FormControl,
   InputLabel,
   Select,
@@ -24,12 +23,17 @@ import {
 import { Add, Campaign } from '@mui/icons-material';
 import { announcementsApi } from '../api/announcements';
 import { useAuth } from '../contexts/AuthContext';
+import PageHeader from '../components/PageHeader';
 
 const Announcements: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'LAB_ADMIN';
   const [open, setOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({ open: false, message: '', severity: 'success' });
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
@@ -52,8 +56,13 @@ const Announcements: React.FC = () => {
       setFormData({ title: '', content: '', priority: 'MEDIUM', targetAudience: 'ALL' });
       setSnackbar({ open: true, message: 'Announcement created!', severity: 'success' });
     },
-    onError: (error: any) => {
-      setSnackbar({ open: true, message: error.response?.data?.message || 'Failed to create announcement', severity: 'error' });
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to create announcement',
+        severity: 'error',
+      });
     },
   });
 
@@ -61,7 +70,9 @@ const Announcements: React.FC = () => {
     createMutation.mutate(formData);
   };
 
-  const getPriorityColor = (priority: string): any => {
+  const getPriorityColor = (
+    priority: string,
+  ): 'default' | 'error' | 'warning' | 'primary' | 'info' | 'success' => {
     switch (priority) {
       case 'HIGH': return 'error';
       case 'MEDIUM': return 'warning';
@@ -80,21 +91,17 @@ const Announcements: React.FC = () => {
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold">
-            Announcements
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Company announcements and updates
-          </Typography>
-        </Box>
-        {isAdmin && (
-          <Button variant="contained" startIcon={<Add />} onClick={() => setOpen(true)}>
-            New Announcement
-          </Button>
-        )}
-      </Box>
+      <PageHeader
+        title="Announcements"
+        subtitle="Company announcements and updates."
+        actions={
+          isAdmin && (
+            <Button variant="contained" startIcon={<Add />} onClick={() => setOpen(true)}>
+              New Announcement
+            </Button>
+          )
+        }
+      />
 
       {announcements && announcements.length > 0 ? (
         announcements.map((announcement) => (

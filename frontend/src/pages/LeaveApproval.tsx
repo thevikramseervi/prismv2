@@ -25,12 +25,11 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import { CheckCircle, Cancel, Visibility } from '@mui/icons-material';
+import { CheckCircle, Cancel } from '@mui/icons-material';
 import { leaveApi } from '../api/leave';
-import { LeaveApplication, LeaveStatus } from '../types';
+import { LeaveApplication } from '../types';
 
 const LeaveApproval: React.FC = () => {
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [actionDialog, setActionDialog] = useState<{
     open: boolean;
     application: LeaveApplication | null;
@@ -61,10 +60,11 @@ const LeaveApproval: React.FC = () => {
         severity: 'success',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 'Failed to approve leave',
+        message: err.response?.data?.message || 'Failed to approve leave',
         severity: 'error',
       });
     },
@@ -82,10 +82,11 @@ const LeaveApproval: React.FC = () => {
         severity: 'success',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 'Failed to reject leave',
+        message: err.response?.data?.message || 'Failed to reject leave',
         severity: 'error',
       });
     },

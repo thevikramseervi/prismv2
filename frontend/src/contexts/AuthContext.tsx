@@ -1,5 +1,7 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authApi, type LoginResponse, type AuthUser } from '../api/auth';
+import { queryClient } from '../queryClient';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -87,6 +89,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     authApi.logout().catch(console.error);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    queryClient.clear();
     setUser(null);
   };
 

@@ -29,7 +29,11 @@ import { User, Role, UserStatus } from '../types';
 const Users: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({ open: false, message: '', severity: 'success' });
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
@@ -44,7 +48,11 @@ const Users: React.FC = () => {
     baseSalary: '22000',
   });
 
-  const { data: users, isLoading } = useQuery({
+  const {
+    data: users,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersApi.getAll(),
   });
@@ -56,20 +64,31 @@ const Users: React.FC = () => {
       handleClose();
       setSnackbar({ open: true, message: 'User created successfully!', severity: 'success' });
     },
-    onError: (error: any) => {
-      setSnackbar({ open: true, message: error.response?.data?.message || 'Failed to create user', severity: 'error' });
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to create user',
+        severity: 'error',
+      });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => usersApi.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<User> }) =>
+      usersApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       handleClose();
       setSnackbar({ open: true, message: 'User updated successfully!', severity: 'success' });
     },
-    onError: (error: any) => {
-      setSnackbar({ open: true, message: error.response?.data?.message || 'Failed to update user', severity: 'error' });
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to update user',
+        severity: 'error',
+      });
     },
   });
 
@@ -217,6 +236,14 @@ const Users: React.FC = () => {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+        <Typography color="error">Failed to load users. Please try again.</Typography>
       </Box>
     );
   }

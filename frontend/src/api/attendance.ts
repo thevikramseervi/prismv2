@@ -10,8 +10,13 @@ export const attendanceApi = {
     return data;
   },
 
-  getMonthlyAttendance: async (year: number, month: number): Promise<any> => {
-    const { data } = await api.get(`/attendance/monthly/${year}/${month}`);
+  getMonthlyAttendance: async (
+    year: number,
+    month: number,
+  ): Promise<Record<string, Attendance[]>> => {
+    const { data } = await api.get<Record<string, Attendance[]>>(
+      `/attendance/monthly/${year}/${month}`,
+    );
     return data;
   },
 

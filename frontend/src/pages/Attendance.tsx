@@ -21,7 +21,8 @@ import {
 } from '@mui/material';
 import { CalendarMonth, TableRows, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { attendanceApi } from '../api/attendance';
-import { AttendanceStatus } from '../types';
+import { type Attendance, AttendanceStatus } from '../types';
+import PageHeader from '../components/PageHeader';
 
 type ViewMode = 'table' | 'calendar';
 
@@ -76,7 +77,11 @@ const formatKey = (date: Date) => {
 const Attendance: React.FC = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
-  const { data: attendance, isLoading } = useQuery({
+  const {
+    data: attendance,
+    isLoading,
+    isError,
+  } = useQuery<Attendance[]>({
     queryKey: ['my-attendance'],
     queryFn: () => attendanceApi.getMyAttendance(),
   });
@@ -86,7 +91,7 @@ const Attendance: React.FC = () => {
 
   const statusByDate = useMemo(() => {
     const map = new Map<string, AttendanceStatus>();
-    (attendance || []).forEach((record: any) => {
+    (attendance || []).forEach((record) => {
       // API returns ISO date string; normalise using local Y-M-D
       const date = new Date(record.date);
       const key = formatKey(date);
@@ -100,7 +105,9 @@ const Attendance: React.FC = () => {
     [currentMonth]
   );
 
-  const getStatusColor = (status: AttendanceStatus): any => {
+  const getStatusColor = (
+    status: AttendanceStatus,
+  ): 'default' | 'error' | 'warning' | 'primary' | 'info' | 'success' => {
     switch (status) {
       case AttendanceStatus.PRESENT:
         return 'success';
@@ -135,17 +142,23 @@ const Attendance: React.FC = () => {
     );
   }
 
+  if (isError) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+        <Typography color="error">Failed to load attendance. Please try again.</Typography>
+      </Box>
+    );
+  }
+
   // Week header starting Monday
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        My Attendance
-      </Typography>
-      <Typography variant="body1" color="text.secondary" mb={3}>
-        View your daily attendance as a calendar or detailed table
-      </Typography>
+      <PageHeader
+        title="My Attendance"
+        subtitle="View your daily attendance as a calendar or detailed table."
+      />
 
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <ToggleButtonGroup
@@ -297,7 +310,7 @@ const Attendance: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {attendance && attendance.length > 0 ? (
-                    attendance.map((record: any) => (
+                    attendance.map((record) => (
                       <TableRow key={record.id} hover>
                         <TableCell>
                           {new Date(record.date).toLocaleDateString('en-IN')}

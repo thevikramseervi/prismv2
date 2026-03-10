@@ -37,7 +37,9 @@ const SalarySlips: React.FC = () => {
     });
   }, [salarySlipsRaw]);
 
-  const getStatusColor = (status: PaymentStatus): any => {
+  const getStatusColor = (
+    status: PaymentStatus,
+  ): 'default' | 'error' | 'warning' | 'primary' | 'info' | 'success' => {
     switch (status) {
       case PaymentStatus.PAID:
         return 'success';

@@ -70,9 +70,10 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({
         newPassword,
       });
       handleClose();
-    } catch (err: any) {
-      const status = err.response?.status;
-      const message = err.response?.data?.message;
+    } catch (err: unknown) {
+      const error = err as { response?: { status?: number; data?: { message?: string } } };
+      const status = error.response?.status;
+      const message = error.response?.data?.message;
       if (status === 401 || message?.toLowerCase().includes('current password')) {
         setError('Current password is incorrect');
       } else {

@@ -18,6 +18,7 @@ import {
   MenuItem,
   Badge,
   Chip,
+  Container,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -315,14 +316,15 @@ const DashboardLayout: React.FC = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, sm: 3 },
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           minHeight: '100vh',
           bgcolor: 'background.default',
         }}
       >
         <Toolbar />
-        <Outlet />
+        <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3 } }}>
+          <Outlet />
+        </Container>
       </Box>
     </Box>
   );

@@ -39,6 +39,7 @@ import {
   Payroll,
 } from '../types';
 import ExcelJS from 'exceljs';
+import PageHeader from '../components/PageHeader';
 
 /** Format time from ISO string or Date to HH:MM */
 const formatTime = (val: string | Date | null | undefined): string => {
@@ -91,7 +92,10 @@ const Reports: React.FC = () => {
   const [payrollYear, setPayrollYear] = useState(new Date().getFullYear());
   const [payrollMonth, setPayrollMonth] = useState(new Date().getMonth() + 1);
 
-  const { data: users } = useQuery({
+  const {
+    data: users,
+    isError: usersError,
+  } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersApi.getAll(),
   });
@@ -418,13 +422,10 @@ const Reports: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Reports & Analytics
-      </Typography>
-      <Typography variant="body1" color="text.secondary" mb={3}>
-        Generate and export detailed reports
-      </Typography>
-
+      <PageHeader
+        title="Reports & Analytics"
+        subtitle="Generate and export detailed attendance, leave, and payroll reports."
+      />
       <Card elevation={2}>
         <CardContent>
           <Tabs
@@ -491,6 +492,12 @@ const Reports: React.FC = () => {
                 </Button>
               </Grid>
             </Grid>
+
+            {usersError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                Failed to load users. Employee filters may be incomplete.
+              </Alert>
+            )}
 
             {attendanceSummary && (
               <Box mb={3}>
@@ -575,7 +582,7 @@ const Reports: React.FC = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {attendanceData.map((record: any) => (
+                      {attendanceData.map((record) => (
                         <TableRow key={record.id} hover>
                           <TableCell>{new Date(record.date).toLocaleDateString('en-IN')}</TableCell>
                           <TableCell>
@@ -701,7 +708,7 @@ const Reports: React.FC = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {leaveData.map((leave: any) => (
+                      {leaveData.map((leave) => (
                         <TableRow key={leave.id} hover>
                           <TableCell>
                             {leave.user?.name || 'N/A'}
@@ -883,7 +890,7 @@ const Reports: React.FC = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {payrollData.map((payroll: any) => (
+                      {payrollData.map((payroll) => (
                         <TableRow key={payroll.id} hover>
                           <TableCell>
                             {payroll.user?.name || 'N/A'}

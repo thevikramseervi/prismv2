@@ -1,16 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  CircularProgress,
-  Alert,
-  Paper,
-  Chip,
-} from '@mui/material';
+import { Grid, Card, CardContent, Typography, Box, CircularProgress, Alert, Paper, Chip } from '@mui/material';
 import {
   CheckCircle,
   Cancel,
@@ -21,6 +11,7 @@ import { attendanceApi } from '../api/attendance';
 import { leaveApi } from '../api/leave';
 import { announcementsApi } from '../api/announcements';
 import { useAuth } from '../contexts/AuthContext';
+import PageHeader from '../components/PageHeader';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -82,15 +73,10 @@ const Dashboard: React.FC = () => {
 
   return (
     <Box>
-      <Box mb={4}>
-        <Typography variant="h4" fontWeight={700} gutterBottom>
-          Welcome back, {user?.name}!
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Here’s an overview of your attendance this month
-        </Typography>
-      </Box>
-
+      <PageHeader
+        title={user ? `Welcome back, ${user.name}!` : 'Dashboard'}
+        subtitle="Here’s an overview of your attendance and updates for this month."
+      />
       <Grid container spacing={3}>
         {statCards.map((card, index) => (
           <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>

@@ -32,9 +32,10 @@ const ForgotPassword: React.FC = () => {
     try {
       await authApi.forgotPassword(email.trim());
       setSuccess(true);
-    } catch (err: any) {
-      const status = err.response?.status;
-      const message = err.response?.data?.message;
+    } catch (err: unknown) {
+      const error = err as { response?: { status?: number; data?: { message?: string } } };
+      const status = error.response?.status;
+      const message = error.response?.data?.message;
       if (status === 429) {
         setError(message || 'Too many requests. Please try again later.');
       } else {

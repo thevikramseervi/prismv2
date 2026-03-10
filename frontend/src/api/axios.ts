@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { queryClient } from '../queryClient';
 
 const api = axios.create({
   baseURL: '/api',
@@ -29,6 +30,7 @@ api.interceptors.response.use(
       // Unauthorized - clear token and redirect to login
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      queryClient.clear();
       window.location.href = '/login';
     }
     return Promise.reject(error);

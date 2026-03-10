@@ -16,6 +16,7 @@ import { MonetizationOn } from '@mui/icons-material';
 import { useApiMutation } from '../../hooks';
 import { payrollApi } from '../../api/payroll';
 import type { User } from '../../types';
+import { QUERY_KEYS } from '../../queryKeys';
 
 export interface AdminPayrollCardProps {
   users: User[] | undefined;
@@ -39,7 +40,10 @@ const AdminPayrollCard: React.FC<AdminPayrollCardProps> = ({ users, onMessage })
         ? `Payroll generated! Success: ${result.success}, Failed: ${result.failed}`
         : 'Payroll generated successfully!',
     errorMessage: 'Failed to generate payroll',
-    invalidateKeys: [['payroll']],
+    invalidateKeys: [
+      [ ...QUERY_KEYS.mySalarySlips ],
+      [ ...QUERY_KEYS.payroll ],
+    ],
     onMessage,
   });
 

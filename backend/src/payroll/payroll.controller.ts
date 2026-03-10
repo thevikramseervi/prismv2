@@ -33,6 +33,15 @@ export class PayrollController {
     private readonly excelGenerator: ExcelGeneratorService,
   ) {}
 
+  private safeFilenamePart(value: string): string {
+    return value
+      .normalize('NFKD')
+      .replace(/[^\w.-]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 80);
+  }
+
   @Post('generate')
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Generate payroll for a user or all users (Super Admin only)' })
@@ -118,7 +127,7 @@ export class PayrollController {
     const pdfStream = await this.pdfGenerator.generateSalarySlipPDF(payrollData);
 
     const monthName = new Date(payroll.year, payroll.month - 1).toLocaleString('default', { month: 'long' });
-    const filename = `Salary_Slip_${payroll.user.name.replace(/\s+/g, '_')}_${monthName}_${payroll.year}.pdf`;
+    const filename = `Salary_Slip_${this.safeFilenamePart(payroll.user.name)}_${this.safeFilenamePart(monthName)}_${payroll.year}.pdf`;
 
     res.set({
       'Content-Type': 'application/pdf',
@@ -151,7 +160,7 @@ export class PayrollController {
     const buffer = await this.excelGenerator.generateSalarySlipExcel(payrollData);
 
     const monthName = new Date(payroll.year, payroll.month - 1).toLocaleString('default', { month: 'long' });
-    const filename = `Salary_Slip_${payroll.user.name.replace(/\s+/g, '_')}_${monthName}_${payroll.year}.xlsx`;
+    const filename = `Salary_Slip_${this.safeFilenamePart(payroll.user.name)}_${this.safeFilenamePart(monthName)}_${payroll.year}.xlsx`;
 
     res.set({
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

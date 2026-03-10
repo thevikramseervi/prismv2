@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { ThemeModeProvider, useThemeMode } from './contexts/ThemeModeContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -22,15 +22,7 @@ import Admin from './pages/Admin';
 import LeaveApproval from './pages/LeaveApproval';
 import Reports from './pages/Reports';
 import ActivityReport from './pages/ActivityReport';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
+import { queryClient } from './queryClient';
 
 function getTheme(mode: 'light' | 'dark') {
   return createTheme({

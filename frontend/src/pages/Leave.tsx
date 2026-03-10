@@ -19,7 +19,6 @@ import {
   TableHead,
   TableRow,
   Chip,
-  Alert,
   Paper,
   IconButton,
   Tooltip,
@@ -27,6 +26,7 @@ import {
 import { Add, Cancel as CancelIcon } from '@mui/icons-material';
 import { leaveApi } from '../api/leave';
 import { LeaveStatus } from '../types';
+import PageHeader from '../components/PageHeader';
 
 const Leave: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -35,7 +35,11 @@ const Leave: React.FC = () => {
   const [reason, setReason] = useState('');
   const queryClient = useQueryClient();
 
-  const { data: applications, isLoading } = useQuery({
+  const {
+    data: applications,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['my-leave-applications'],
     queryFn: () => leaveApi.getMyApplications(),
   });
@@ -69,7 +73,9 @@ const Leave: React.FC = () => {
     applyMutation.mutate({ fromDate, toDate, reason });
   };
 
-  const getStatusColor = (status: LeaveStatus): any => {
+  const getStatusColor = (
+    status: LeaveStatus,
+  ): 'default' | 'error' | 'warning' | 'primary' | 'info' | 'success' => {
     switch (status) {
       case LeaveStatus.APPROVED:
         return 'success';
@@ -92,25 +98,29 @@ const Leave: React.FC = () => {
     );
   }
 
+  if (isError) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+        <Typography color="error">Failed to load leave applications. Please try again.</Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>
-            Leave Management
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Available Leaves: <strong>{balance?.availableLeaves || 0}</strong> / {balance?.totalLeaves || 12}
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => setOpen(true)}
-        >
-          Apply Leave
-        </Button>
-      </Box>
+      <PageHeader
+        title="Leave Management"
+        subtitle={`Available Leaves: ${balance?.availableLeaves ?? 0} / ${balance?.totalLeaves ?? 12}`}
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => setOpen(true)}
+          >
+            Apply Leave
+          </Button>
+        }
+      />
 
       <Card elevation={2}>
         <CardContent>

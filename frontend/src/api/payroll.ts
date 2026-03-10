@@ -25,8 +25,11 @@ export const payrollApi = {
     year: number;
     month: number;
     userId?: string;
-  }): Promise<any> => {
-    const { data } = await api.post('/payroll/generate', generateData);
+  }): Promise<{ success?: number; failed?: number }> => {
+    const { data } = await api.post<{ success?: number; failed?: number }>(
+      '/payroll/generate',
+      generateData,
+    );
     return data;
   },
 

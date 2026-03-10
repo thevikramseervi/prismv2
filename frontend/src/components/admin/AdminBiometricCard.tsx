@@ -12,6 +12,7 @@ import {
 import { CloudUpload, Sync } from '@mui/icons-material';
 import { useApiMutation } from '../../hooks';
 import api from '../../api/axios';
+import { QUERY_KEYS } from '../../queryKeys';
 
 export interface AdminBiometricCardProps {
   onMessage: (message: string, severity: 'success' | 'error') => void;
@@ -30,7 +31,10 @@ const AdminBiometricCard: React.FC<AdminBiometricCardProps> = ({ onMessage, sect
     successMessage: (res: { data?: { processed?: number } }) =>
       `Biometric sync completed! Processed: ${res.data?.processed ?? 0}`,
     errorMessage: 'Failed to sync biometric data',
-    invalidateKeys: [['attendance']],
+    invalidateKeys: [
+      [ ...QUERY_KEYS.myAttendance ],
+      [ ...QUERY_KEYS.attendanceDashboard ],
+    ],
     onMessage,
   });
 
@@ -46,7 +50,10 @@ const AdminBiometricCard: React.FC<AdminBiometricCardProps> = ({ onMessage, sect
     successMessage: (data: { logsCreated?: number; datesProcessed?: unknown[] }) =>
       `Import complete: ${data.logsCreated ?? 0} logs created, ${data.datesProcessed?.length ?? 0} dates synced`,
     errorMessage: 'Failed to upload biometric file',
-    invalidateKeys: [['attendance']],
+    invalidateKeys: [
+      [ ...QUERY_KEYS.myAttendance ],
+      [ ...QUERY_KEYS.attendanceDashboard ],
+    ],
     onMessage,
     onSuccess: () => {
       if (fileInputRef.current) fileInputRef.current.value = '';

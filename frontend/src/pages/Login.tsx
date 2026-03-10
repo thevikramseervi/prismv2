@@ -12,7 +12,6 @@ import {
   InputAdornment,
   IconButton,
   useTheme,
-  useMediaQuery,
 } from '@mui/material';
 import {
   Visibility,
@@ -39,7 +38,6 @@ const Login: React.FC = () => {
   const location = useLocation();
   const theme = useTheme();
   const successMessage = (location.state as { message?: string })?.message;
-  const isSm = useMediaQuery(theme.breakpoints.up('sm'));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,9 +51,10 @@ const Login: React.FC = () => {
       } else {
         navigate('/');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
       setError(
-        err.response?.data?.message ||
+        error.response?.data?.message ||
           'Login failed. Please check your credentials.'
       );
     } finally {
@@ -70,9 +69,10 @@ const Login: React.FC = () => {
     try {
       await complete2fa(twoFactorToken, twoFactorCode);
       navigate('/');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
       setError(
-        err.response?.data?.message || 'Invalid code. Please try again.'
+        error.response?.data?.message || 'Invalid code. Please try again.'
       );
     } finally {
       setLoading(false);
@@ -93,74 +93,107 @@ const Login: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-        position: 'relative',
-        overflow: 'hidden',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: '-50%',
-          right: '-50%',
-          width: '100%',
-          height: '100%',
-          background: `radial-gradient(circle, ${theme.palette.primary.light}30 0%, transparent 70%)`,
-          pointerEvents: 'none',
-        },
+        bgcolor: (theme) => (theme.palette.mode === 'light' ? '#F3F4F6' : 'background.default'),
+        px: 2,
       }}
     >
       <IconButton
         onClick={toggleMode}
         aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         sx={{
-          position: 'absolute',
+          position: 'fixed',
           top: 16,
           right: 16,
-          color: 'white',
-          bgcolor: 'rgba(255,255,255,0.2)',
-          '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
-          zIndex: 1,
+          color: 'text.primary',
+          bgcolor: 'rgba(15,23,42,0.5)',
+          '&:hover': { bgcolor: 'rgba(15,23,42,0.8)' },
+          zIndex: 10,
         }}
       >
         {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
       </IconButton>
-      <Container maxWidth="sm">
+
+      <Container maxWidth="md">
         <Card
-          elevation={0}
+          elevation={2}
           sx={{
             borderRadius: 4,
             overflow: 'hidden',
-            boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+            bgcolor: (theme) =>
+              theme.palette.mode === 'light'
+                ? theme.palette.common.white
+                : theme.palette.background.paper,
+            border: (theme) =>
+              theme.palette.mode === 'light'
+                ? '1px solid #E5E7EB'
+                : '1px solid rgba(148,163,184,0.3)',
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            minHeight: { md: 480 },
           }}
         >
-          <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
-            <Box sx={{ textAlign: 'center', mb: 4 }}>
-              <Typography
-                variant="h4"
-                fontWeight={800}
-                gutterBottom
+          {/* Left image / brand panel */}
+          <Box
+            sx={{
+              flex: { xs: '0 0 180px', md: '0 0 45%' },
+              position: 'relative',
+              backgroundImage: 'url("/login-hero.jpg")',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                bgcolor: 'rgba(15,23,42,0.15)',
+              }}
+            />
+            {/* Image-only panel; overlay handled by background + dark scrim */}
+          </Box>
+
+          {/* Right form panel */}
+          <CardContent
+            sx={{
+              flex: 1,
+              p: { xs: 3, sm: 4 },
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+            }}
+          >
+            <Box sx={{ mb: 3 }}>
+              <Box
                 sx={{
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  color: 'transparent',
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  bgcolor: 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 2,
                 }}
               >
-                Attend Ease
+                <LoginIcon sx={{ color: 'common.white' }} />
+              </Box>
+              <Typography variant="h4" fontWeight={700} gutterBottom>
+                Welcome back
               </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Automated Attendance & Payroll System
+              <Typography variant="body2" color="text.secondary">
+                Sign in to access your dashboard.
               </Typography>
             </Box>
 
             {successMessage && (
-              <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
+              <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
                 {successMessage}
               </Alert>
             )}
             {error && (
               <Alert
                 severity="error"
-                sx={{ mb: 3, borderRadius: 2 }}
+                sx={{ mb: 2, borderRadius: 2 }}
                 onClose={() => setError('')}
               >
                 {error}
@@ -181,7 +214,6 @@ const Login: React.FC = () => {
                   inputProps={{ maxLength: 6, inputMode: 'numeric', pattern: '[0-9]*' }}
                   margin="normal"
                   autoFocus
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
                 <Button
                   type="submit"
@@ -224,7 +256,7 @@ const Login: React.FC = () => {
             ) : (
               <form onSubmit={handleSubmit}>
                 <TextField
-                  label="Email"
+                  label="Email address"
                   type="email"
                   fullWidth
                   value={email}
@@ -233,7 +265,6 @@ const Login: React.FC = () => {
                   margin="normal"
                   autoComplete="email"
                   autoFocus
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
                 <TextField
                   label="Password"
@@ -244,7 +275,6 @@ const Login: React.FC = () => {
                   required
                   margin="normal"
                   autoComplete="current-password"
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
@@ -282,7 +312,7 @@ const Login: React.FC = () => {
                 >
                   {loading ? 'Signing in…' : 'Sign In'}
                 </Button>
-                <Typography variant="body2" sx={{ textAlign: 'center', mt: 1 }}>
+                <Typography variant="body2" sx={{ textAlign: 'right', mt: 1 }}>
                   <Link
                     to="/forgot-password"
                     style={{
@@ -297,31 +327,6 @@ const Login: React.FC = () => {
               </form>
             )}
 
-            <Box
-              sx={{
-                mt: 3,
-                p: 2,
-                bgcolor: 'grey.50',
-                borderRadius: 2,
-                border: 1,
-                borderColor: 'grey.200',
-              }}
-            >
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                display="block"
-                fontWeight={600}
-              >
-                Demo credentials
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                Email: admin@cambridge.edu.in
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                Password: admin123
-              </Typography>
-            </Box>
           </CardContent>
         </Card>
       </Container>

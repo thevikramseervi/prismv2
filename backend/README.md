@@ -90,3 +90,4 @@ Copy `.env` and update with your values:
 - PORT - Server port (default: 3000)
 - FRONTEND_URL - Base URL for password reset links (optional)
 - TWO_FACTOR_ISSUER - Issuer name shown in authenticator app (optional; default: "Attend Ease")
+ - DEV_LOG_PASSWORD_RESET_LINK - When set to `"true"` in non-production, logs password reset links if SMTP is not configured (never enable in production)

@@ -39,7 +39,19 @@ export class EmailService {
       return;
     }
 
-    // No SMTP configured: log the link for local/dev use
-    console.log('[Password reset] No SMTP configured. Reset link:', resetLink);
+    // No SMTP configured: avoid leaking reset tokens into logs by default.
+    // For local development you can explicitly enable logging the link.
+    const allowLog =
+      this.configService.get<string>('DEV_LOG_PASSWORD_RESET_LINK') === 'true' &&
+      process.env.NODE_ENV !== 'production';
+
+    if (allowLog) {
+      // eslint-disable-next-line no-console
+      console.log('[Password reset] No SMTP configured. Reset link:', resetLink);
+      return;
+    }
+
+    // eslint-disable-next-line no-console
+    console.log('[Password reset] No SMTP configured. Email not sent.');
   }
 }

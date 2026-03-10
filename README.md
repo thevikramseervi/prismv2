@@ -141,6 +141,8 @@ attend-ease/
    JWT_EXPIRATION="7d"
    PORT=3000
    NODE_ENV="development"
+   # Optional: enable only in local dev to log reset links when SMTP is missing
+   DEV_LOG_PASSWORD_RESET_LINK="false"
    ```
 
 4. **Setup database**

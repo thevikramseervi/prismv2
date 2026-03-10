@@ -30,6 +30,7 @@ import { activityApi, type CreateActivityPayload } from '../api/activity';
 import { usersApi } from '../api/users';
 import { ActivityEntry, Role } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import PageHeader from '../components/PageHeader';
 
 type EditableRow = {
   id?: string;
@@ -110,8 +111,12 @@ const ActivityReport: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
       setMessage({ type: 'success', text: 'Activity saved successfully' });
     },
-    onError: (error: any) => {
-      setMessage({ type: 'error', text: error?.response?.data?.message ?? 'Failed to save activity' });
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      setMessage({
+        type: 'error',
+        text: err?.response?.data?.message ?? 'Failed to save activity',
+      });
     },
   });
 
@@ -122,8 +127,12 @@ const ActivityReport: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
       setMessage({ type: 'success', text: 'Activity updated successfully' });
     },
-    onError: (error: any) => {
-      setMessage({ type: 'error', text: error?.response?.data?.message ?? 'Failed to update activity' });
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      setMessage({
+        type: 'error',
+        text: err?.response?.data?.message ?? 'Failed to update activity',
+      });
     },
   });
 
@@ -133,8 +142,12 @@ const ActivityReport: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
       setMessage({ type: 'success', text: 'Activity deleted successfully' });
     },
-    onError: (error: any) => {
-      setMessage({ type: 'error', text: error?.response?.data?.message ?? 'Failed to delete activity' });
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      setMessage({
+        type: 'error',
+        text: err?.response?.data?.message ?? 'Failed to delete activity',
+      });
     },
   });
 
@@ -175,8 +188,8 @@ const ActivityReport: React.FC = () => {
       id: user.id,
       name: user.name,
       employeeId: user.employeeId,
-      status: undefined,
-    } as any;
+      status: undefined as string | undefined,
+    };
   };
 
   const handleAddRow = () => {
@@ -204,8 +217,12 @@ const ActivityReport: React.FC = () => {
 
       setRows((prev) => [...prev, newRow]);
       setMessage(null);
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message ?? 'Unable to add row' });
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      setMessage({
+        type: 'error',
+        text: error.message ?? 'Unable to add row',
+      });
     }
   };
 
@@ -332,13 +349,10 @@ const ActivityReport: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Activity Report
-      </Typography>
-      <Typography variant="body1" color="text.secondary" mb={3}>
-        Enter your daily activities in a format similar to the Excel report.
-      </Typography>
-
+      <PageHeader
+        title="Activity Report"
+        subtitle="Enter and review daily activities in a format similar to the Excel report."
+      />
       <Card elevation={2} sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} mb={2}>
