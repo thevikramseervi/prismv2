@@ -34,6 +34,13 @@ const Users: React.FC = () => {
     message: string;
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    mode: 'activate' | 'deactivate' | null;
+    user: User | null;
+    hasLeft: boolean;
+    leavingDate: string;
+  }>({ open: false, mode: null, user: null, hasLeft: true, leavingDate: '' });
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
@@ -45,6 +52,7 @@ const Users: React.FC = () => {
     designation: 'Annotator',
     role: Role.EMPLOYEE,
     dateOfJoining: '',
+    dateOfLeaving: '',
     baseSalary: '22000',
   });
 
@@ -120,6 +128,7 @@ const Users: React.FC = () => {
       designation: 'Annotator',
       role: Role.EMPLOYEE,
       dateOfJoining: '',
+      dateOfLeaving: '',
       baseSalary: '22000',
     });
   };
@@ -136,6 +145,7 @@ const Users: React.FC = () => {
         designation: user.designation,
         role: user.role,
         dateOfJoining: user.dateOfJoining.split('T')[0],
+        dateOfLeaving: user.dateOfLeaving ? user.dateOfLeaving.split('T')[0] : '',
         baseSalary: user.baseSalary.toString(),
       });
     }
@@ -151,6 +161,7 @@ const Users: React.FC = () => {
           designation: formData.designation,
           role: formData.role,
           baseSalary: parseFloat(formData.baseSalary),
+          dateOfLeaving: formData.dateOfLeaving || undefined,
         },
       });
     } else {
@@ -165,6 +176,36 @@ const Users: React.FC = () => {
         dateOfJoining: formData.dateOfJoining,
         baseSalary: parseFloat(formData.baseSalary),
       });
+    }
+  };
+
+  const handleConfirmClose = () => {
+    setConfirmDialog({ open: false, mode: null, user: null, hasLeft: true, leavingDate: '' });
+  };
+
+  const handleConfirmAction = () => {
+    if (!confirmDialog.user || !confirmDialog.mode) return;
+    if (confirmDialog.mode === 'deactivate') {
+      if (confirmDialog.hasLeft && !confirmDialog.leavingDate) {
+        setSnackbar({
+          open: true,
+          message: 'Please select the date of leaving.',
+          severity: 'error',
+        });
+        return;
+      }
+
+      updateMutation.mutate({
+        id: confirmDialog.user.id,
+        data: {
+          status: UserStatus.INACTIVE,
+          dateOfLeaving: confirmDialog.hasLeft ? confirmDialog.leavingDate : undefined,
+        },
+      });
+      handleConfirmClose();
+    } else {
+      activateMutation.mutate(confirmDialog.user.id);
+      handleConfirmClose();
     }
   };
 
@@ -186,13 +227,13 @@ const Users: React.FC = () => {
       field: 'status',
       headerName: 'Status',
       width: 100,
-      renderCell: (params) => (
-        <Chip
-          label={params.value}
-          color={params.value === UserStatus.ACTIVE ? 'success' : 'default'}
-          size="small"
-        />
-      ),
+      renderCell: (params) => {
+        const isActive = params.value === UserStatus.ACTIVE;
+        const hasLeft = !!params.row.dateOfLeaving;
+        const label = isActive ? 'Active' : hasLeft ? 'Left Organization' : 'Inactive';
+        const color = isActive ? 'success' : hasLeft ? 'error' : 'default';
+        return <Chip label={label} color={color} size="small" />;
+      },
     },
     {
       field: 'baseSalary',
@@ -214,7 +255,17 @@ const Users: React.FC = () => {
             <IconButton
               size="small"
               color="error"
-              onClick={() => deactivateMutation.mutate(params.row.id)}
+              onClick={() =>
+                setConfirmDialog({
+                  open: true,
+                  mode: 'deactivate',
+                  user: params.row as User,
+                  hasLeft: true,
+                  leavingDate: (params.row as User).dateOfLeaving
+                    ? (params.row as User).dateOfLeaving!.split('T')[0]
+                    : '',
+                })
+              }
             >
               <Block fontSize="small" />
             </IconButton>
@@ -222,13 +273,41 @@ const Users: React.FC = () => {
             <IconButton
               size="small"
               color="success"
-              onClick={() => activateMutation.mutate(params.row.id)}
+              onClick={() =>
+                setConfirmDialog({
+                  open: true,
+                  mode: 'activate',
+                  user: params.row as User,
+                  hasLeft: false,
+                  leavingDate: (params.row as User).dateOfLeaving
+                    ? (params.row as User).dateOfLeaving!.split('T')[0]
+                    : '',
+                })
+              }
             >
               <CheckCircle fontSize="small" />
             </IconButton>
           )}
         </Box>
       ),
+    },
+    {
+      field: 'dateOfJoining',
+      headerName: 'Date of Joining',
+      width: 140,
+      renderCell: (params) =>
+        params.value
+          ? new Date(params.value as string).toLocaleDateString('en-IN')
+          : '-',
+    },
+    {
+      field: 'dateOfLeaving',
+      headerName: 'Date of Leaving',
+      width: 140,
+      renderCell: (params) =>
+        params.value
+          ? new Date(params.value as string).toLocaleDateString('en-IN')
+          : '-',
     },
   ];
 
@@ -353,6 +432,19 @@ const Users: React.FC = () => {
                 required
               />
               <TextField
+                label="Date of Leaving"
+                type="date"
+                value={formData.dateOfLeaving}
+                onChange={(e) => setFormData({ ...formData, dateOfLeaving: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                disabled={!editUser}
+                helperText={
+                  editUser && editUser.status === UserStatus.INACTIVE
+                    ? 'Set when the employee has left the organization'
+                    : 'Optional'
+                }
+              />
+              <TextField
                 label="Base Salary"
                 type="number"
                 value={formData.baseSalary}
@@ -373,6 +465,87 @@ const Users: React.FC = () => {
               : editUser
               ? 'Update'
               : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={confirmDialog.open}
+        onClose={handleConfirmClose}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>
+          {confirmDialog.mode === 'deactivate' ? 'Deactivate User' : 'Activate User'}
+        </DialogTitle>
+        <DialogContent>
+          {confirmDialog.user && (
+            <Box sx={{ mt: 1 }}>
+              <Typography variant="body2" gutterBottom>
+                {confirmDialog.mode === 'deactivate'
+                  ? `Do you want to mark ${confirmDialog.user.name} as having left the organization, or just deactivate them temporarily?`
+                  : `Are you sure you want to activate ${confirmDialog.user.name}? They will regain access to the system.`}
+              </Typography>
+              {confirmDialog.mode === 'deactivate' && (
+                <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <Box>
+                    <Button
+                      variant={confirmDialog.hasLeft ? 'contained' : 'outlined'}
+                      size="small"
+                      color="error"
+                      onClick={() =>
+                        setConfirmDialog((prev) => ({
+                          ...prev,
+                          hasLeft: true,
+                        }))
+                      }
+                      sx={{ mr: 1 }}
+                    >
+                      Left organization
+                    </Button>
+                    <Button
+                      variant={!confirmDialog.hasLeft ? 'contained' : 'outlined'}
+                      size="small"
+                      onClick={() =>
+                        setConfirmDialog((prev) => ({
+                          ...prev,
+                          hasLeft: false,
+                          leavingDate: '',
+                        }))
+                      }
+                    >
+                      Temporarily inactive
+                    </Button>
+                  </Box>
+                  {confirmDialog.hasLeft && (
+                    <TextField
+                      label="Date of Leaving"
+                      type="date"
+                      value={confirmDialog.leavingDate}
+                      onChange={(e) =>
+                        setConfirmDialog((prev) => ({
+                          ...prev,
+                          leavingDate: e.target.value,
+                        }))
+                      }
+                      InputLabelProps={{ shrink: true }}
+                      fullWidth
+                    />
+                  )}
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleConfirmClose}>Cancel</Button>
+          <Button
+            onClick={handleConfirmAction}
+            variant="contained"
+            color={confirmDialog.mode === 'deactivate' ? 'error' : 'success'}
+            disabled={deactivateMutation.isPending || activateMutation.isPending}
+          >
+            {confirmDialog.mode === 'deactivate' ? 'Deactivate' : 'Activate'}
           </Button>
         </DialogActions>
       </Dialog>
