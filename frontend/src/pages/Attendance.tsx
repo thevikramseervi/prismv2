@@ -21,7 +21,8 @@ import {
 } from '@mui/material';
 import { CalendarMonth, TableRows, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { attendanceApi } from '../api/attendance';
-import { type Attendance, AttendanceStatus } from '../types';
+import { holidaysApi } from '../api/holidays';
+import { type Attendance, AttendanceStatus, type Holiday } from '../types';
 import PageHeader from '../components/PageHeader';
 
 type ViewMode = 'table' | 'calendar';
@@ -102,6 +103,11 @@ const Attendance: React.FC = () => {
     queryFn: () => attendanceApi.getMyAttendance(),
   });
 
+  const { data: holidays } = useQuery<Holiday[]>({
+    queryKey: ['holidays'],
+    queryFn: () => holidaysApi.getAll(),
+  });
+
   const [viewMode, setViewMode] = useState<ViewMode>('calendar');
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
 
@@ -115,6 +121,15 @@ const Attendance: React.FC = () => {
     });
     return map;
   }, [attendance]);
+
+  const holidayDateKeys = useMemo(() => {
+    const set = new Set<string>();
+    (holidays || []).forEach((holiday) => {
+      const date = new Date(holiday.date);
+      set.add(formatKey(date));
+    });
+    return set;
+  }, [holidays]);
 
   const monthDays = useMemo(
     () => buildMonthMatrix(currentMonth.getFullYear(), currentMonth.getMonth()),
@@ -230,7 +245,10 @@ const Attendance: React.FC = () => {
 
                 {monthDays.map((day) => {
                   const key = formatKey(day.date);
-                  const status = statusByDate.get(key);
+                  const attendanceStatus = statusByDate.get(key);
+                  // If there's no attendance record but the date is a holiday, still show it as HOLIDAY
+                  const status =
+                    attendanceStatus || (holidayDateKeys.has(key) ? AttendanceStatus.HOLIDAY : undefined);
                   const isToday =
                     formatKey(day.date) === formatKey(new Date()) && day.isCurrentMonth;
 

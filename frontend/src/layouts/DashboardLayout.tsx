@@ -60,6 +60,7 @@ const navItems: NavItem[] = [
   { title: 'Leave', path: '/leave', icon: <BeachAccess /> },
   { title: 'Salary Slips', path: '/salary-slips', icon: <Receipt /> },
   { title: 'Announcements', path: '/announcements', icon: <Campaign /> },
+  { title: 'Holidays', path: '/my-holidays', icon: <EventNote /> },
   {
     title: 'Leave Approval',
     path: '/leave-approval',
@@ -79,7 +80,7 @@ const navItems: NavItem[] = [
     roles: [Role.LAB_ADMIN, Role.SUPER_ADMIN],
   },
   {
-    title: 'Holidays',
+    title: 'Manage Holidays',
     path: '/holidays',
     icon: <EventNote />,
     roles: [Role.LAB_ADMIN, Role.SUPER_ADMIN],
