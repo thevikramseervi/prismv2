@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -15,6 +16,7 @@ import { Notification } from '../types';
 
 const Notifications: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: notifications, isLoading } = useQuery({
     queryKey: ['notifications'],
@@ -23,6 +25,14 @@ const Notifications: React.FC = () => {
 
   const markAllMutation = useMutation({
     mutationFn: notificationsApi.markAllAsRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+    },
+  });
+
+  const markOneMutation = useMutation({
+    mutationFn: (id: string) => notificationsApi.markAsRead(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
@@ -80,7 +90,23 @@ const Notifications: React.FC = () => {
                     </Typography>
                   </Box>
                 </Box>
-                <Typography variant="body2">{notification.body}</Typography>
+                <Typography variant="body2" sx={{ mb: 1.5 }}>
+                  {notification.body}
+                </Typography>
+                {notification.type === 'LEAVE_REQUEST' && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => {
+                      if (!notification.readAt) {
+                        markOneMutation.mutate(notification.id);
+                      }
+                      navigate('/leave-approval');
+                    }}
+                  >
+                    Review leave requests
+                  </Button>
+                )}
               </CardContent>
             </Card>
           );

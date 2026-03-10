@@ -153,8 +153,13 @@ const Reports: React.FC = () => {
     isLoading: leaveLoading,
     refetch: refetchLeave,
   } = useQuery<LeaveApplication[]>({
-    queryKey: ['leave-report'],
-    queryFn: () => leaveApi.getReport(),
+    queryKey: ['leave-report', selectedUserId, startDate, endDate],
+    queryFn: () =>
+      leaveApi.getReport({
+        userId: selectedUserId || undefined,
+        fromDate: startDate,
+        toDate: endDate,
+      }),
     enabled: false,
   });
 
@@ -215,6 +220,45 @@ const Reports: React.FC = () => {
       }));
       refetchAttendance();
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+  });
+
+  const [leaveActionDialog, setLeaveActionDialog] = useState<{
+    open: boolean;
+    application: LeaveApplication | null;
+    action: 'approve' | 'reject' | null;
+  }>({ open: false, application: null, action: null });
+  const [leaveComments, setLeaveComments] = useState('');
+
+  const approveLeaveMutation = useMutation({
+    mutationFn: ({
+      id,
+      comments,
+    }: {
+      id: string;
+      comments?: string;
+    }) => leaveApi.approve(id, comments),
+    onSuccess: () => {
+      setLeaveActionDialog({ open: false, application: null, action: null });
+      setLeaveComments('');
+      refetchLeave();
+      queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
+    },
+  });
+
+  const rejectLeaveMutation = useMutation({
+    mutationFn: ({
+      id,
+      comments,
+    }: {
+      id: string;
+      comments: string;
+    }) => leaveApi.reject(id, comments),
+    onSuccess: () => {
+      setLeaveActionDialog({ open: false, application: null, action: null });
+      setLeaveComments('');
+      refetchLeave();
+      queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
     },
   });
 
@@ -764,15 +808,58 @@ const Reports: React.FC = () => {
 
           {/* Leave Report */}
           <TabPanel value={tabValue} index={1}>
-            <Box mb={3}>
-              <Button
-                variant="contained"
-                onClick={handleGenerateReport}
-                disabled={leaveLoading}
-              >
-                {leaveLoading ? <CircularProgress size={24} /> : 'Generate Report'}
-              </Button>
-            </Box>
+            <Grid container spacing={2} mb={3}>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  fullWidth
+                  label="Start Date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  fullWidth
+                  label="End Date"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <FormControl fullWidth>
+                  <InputLabel>Employee (Optional)</InputLabel>
+                  <Select
+                    value={selectedUserId}
+                    label="Employee (Optional)"
+                    onChange={(e) => setSelectedUserId(e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>All Employees</em>
+                    </MenuItem>
+                    {users?.map((user) => (
+                      <MenuItem key={user.id} value={user.id}>
+                        {user.name} ({user.employeeId})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid size={{ xs: 12, md: 2 }}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={handleGenerateReport}
+                  disabled={leaveLoading}
+                  sx={{ height: '56px' }}
+                >
+                  {leaveLoading ? <CircularProgress size={24} /> : 'Generate'}
+                </Button>
+              </Grid>
+            </Grid>
 
             {leaveSummary && (
               <Box mb={3}>
@@ -880,6 +967,9 @@ const Reports: React.FC = () => {
                         <TableCell><strong>Reason</strong></TableCell>
                         <TableCell><strong>Status</strong></TableCell>
                         <TableCell><strong>Applied On</strong></TableCell>
+                        {authUser && (authUser.role === 'LAB_ADMIN' || authUser.role === 'SUPER_ADMIN') && (
+                          <TableCell><strong>Actions</strong></TableCell>
+                        )}
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -911,6 +1001,43 @@ const Reports: React.FC = () => {
                             />
                           </TableCell>
                           <TableCell>{new Date(leave.appliedAt).toLocaleDateString('en-IN')}</TableCell>
+                          {authUser && (authUser.role === 'LAB_ADMIN' || authUser.role === 'SUPER_ADMIN') && (
+                            <TableCell>
+                              {leave.status === LeaveStatus.PENDING ? (
+                                <Box display="flex" gap={1}>
+                                  <Button
+                                    size="small"
+                                    variant="text"
+                                    onClick={() =>
+                                      setLeaveActionDialog({
+                                        open: true,
+                                        application: leave,
+                                        action: 'approve',
+                                      })
+                                    }
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    color="error"
+                                    variant="text"
+                                    onClick={() =>
+                                      setLeaveActionDialog({
+                                        open: true,
+                                        application: leave,
+                                        action: 'reject',
+                                      })
+                                    }
+                                  >
+                                    Reject
+                                  </Button>
+                                </Box>
+                              ) : (
+                                '—'
+                              )}
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1142,7 +1269,7 @@ const Reports: React.FC = () => {
           </TabPanel>
         </CardContent>
       </Card>
-      {authUser?.role === 'SUPER_ADMIN' && (
+      {authUser && (authUser.role === 'LAB_ADMIN' || authUser.role === 'SUPER_ADMIN') && (
         <>
           <Dialog
             open={editDialog.open}
@@ -1305,6 +1432,93 @@ const Reports: React.FC = () => {
                 }}
               >
                 {createAttendanceMutation.isPending ? 'Saving...' : 'Save'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <Dialog
+            open={leaveActionDialog.open}
+            onClose={() => {
+              setLeaveActionDialog({ open: false, application: null, action: null });
+              setLeaveComments('');
+            }}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>
+              {leaveActionDialog.action === 'approve' ? 'Approve Leave' : 'Reject Leave'}
+            </DialogTitle>
+            <DialogContent>
+              {leaveActionDialog.application && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2" gutterBottom>
+                    <strong>Employee:</strong> {leaveActionDialog.application.user?.name}{' '}
+                    ({leaveActionDialog.application.user?.employeeId})
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    <strong>Duration:</strong>{' '}
+                    {new Date(leaveActionDialog.application.fromDate).toLocaleDateString('en-IN')} to{' '}
+                    {new Date(leaveActionDialog.application.toDate).toLocaleDateString('en-IN')} (
+                    {leaveActionDialog.application.totalDays} days)
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    <strong>Reason:</strong> {leaveActionDialog.application.reason}
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    margin="normal"
+                    label={
+                      leaveActionDialog.action === 'reject'
+                        ? 'Comments (required)'
+                        : 'Comments (optional)'
+                    }
+                    multiline
+                    rows={3}
+                    value={leaveComments}
+                    onChange={(e) => setLeaveComments(e.target.value)}
+                    required={leaveActionDialog.action === 'reject'}
+                  />
+                </Box>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => {
+                  setLeaveActionDialog({ open: false, application: null, action: null });
+                  setLeaveComments('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                color={leaveActionDialog.action === 'approve' ? 'success' : 'error'}
+                disabled={
+                  !leaveActionDialog.application ||
+                  (!leaveComments.trim() && leaveActionDialog.action === 'reject') ||
+                  approveLeaveMutation.isPending ||
+                  rejectLeaveMutation.isPending
+                }
+                onClick={() => {
+                  if (!leaveActionDialog.application || !leaveActionDialog.action) return;
+                  if (leaveActionDialog.action === 'approve') {
+                    approveLeaveMutation.mutate({
+                      id: leaveActionDialog.application.id,
+                      comments: leaveComments.trim() || undefined,
+                    });
+                  } else {
+                    rejectLeaveMutation.mutate({
+                      id: leaveActionDialog.application.id,
+                      comments: leaveComments.trim(),
+                    });
+                  }
+                }}
+              >
+                {approveLeaveMutation.isPending || rejectLeaveMutation.isPending
+                  ? 'Processing...'
+                  : leaveActionDialog.action === 'approve'
+                  ? 'Approve'
+                  : 'Reject'}
               </Button>
             </DialogActions>
           </Dialog>
