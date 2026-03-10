@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -24,6 +24,11 @@ import {
   Paper,
   Chip,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  useTheme,
 } from '@mui/material';
 import { Download, Summarize } from '@mui/icons-material';
 import { attendanceApi } from '../api/attendance';
@@ -40,6 +45,7 @@ import {
 } from '../types';
 import ExcelJS from 'exceljs';
 import PageHeader from '../components/PageHeader';
+import { useAuth } from '../contexts/AuthContext';
 
 /** Format time to HH:MM. Backend now sends plain "HH:MM" strings for in/out times. */
 const formatTime = (val: string | Date | null | undefined): string => {
@@ -93,7 +99,11 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const Reports: React.FC = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [tabValue, setTabValue] = useState(0);
+  const queryClient = useQueryClient();
+  const { user: authUser } = useAuth();
   
   // Common filters
   const [startDate, setStartDate] = useState(
@@ -161,6 +171,51 @@ const Reports: React.FC = () => {
         userId: selectedUserId || undefined,
       }),
     enabled: false,
+  });
+
+  const [editDialog, setEditDialog] = useState<{
+    open: boolean;
+    record: AttendanceReportRow | null;
+    newStatus: AttendanceStatus | '';
+  }>({ open: false, record: null, newStatus: '' });
+
+  const [createDialog, setCreateDialog] = useState<{
+    open: boolean;
+    userId: string;
+    date: string;
+    status: AttendanceStatus | '';
+  }>({
+    open: false,
+    userId: '',
+    date: new Date().toISOString().split('T')[0],
+    status: AttendanceStatus.PRESENT,
+  });
+
+  const updateAttendanceMutation = useMutation({
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: AttendanceStatus;
+    }) => attendanceApi.update(id, { status }),
+    onSuccess: () => {
+      setEditDialog({ open: false, record: null, newStatus: '' });
+      refetchAttendance();
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+  });
+
+  const createAttendanceMutation = useMutation({
+    mutationFn: attendanceApi.createManual,
+    onSuccess: () => {
+      setCreateDialog((prev) => ({
+        ...prev,
+        open: false,
+      }));
+      refetchAttendance();
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
   });
 
   const handleGenerateReport = () => {
@@ -519,7 +574,14 @@ const Reports: React.FC = () => {
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'background.paper' : 'grey.100',
+                      }}
+                    >
                       <Typography variant="h4" color="primary">
                         {attendanceSummary.total}
                       </Typography>
@@ -527,7 +589,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.50', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'rgba(34,197,94,0.1)' : 'success.50',
+                      }}
+                    >
                       <Typography variant="h4" color="success.main">
                         {attendanceSummary.present}
                       </Typography>
@@ -535,7 +604,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'error.50', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'rgba(239,68,68,0.12)' : 'error.50',
+                      }}
+                    >
                       <Typography variant="h4" color="error.main">
                         {attendanceSummary.absent}
                       </Typography>
@@ -543,7 +619,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'warning.50', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'rgba(251,191,36,0.12)' : 'warning.50',
+                      }}
+                    >
                       <Typography variant="h4" color="warning.main">
                         {attendanceSummary.halfDay}
                       </Typography>
@@ -551,7 +634,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'info.50', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'rgba(59,130,246,0.12)' : 'info.50',
+                      }}
+                    >
                       <Typography variant="h4" color="info.main">
                         {attendanceSummary.casualLeave}
                       </Typography>
@@ -559,7 +649,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'background.paper' : 'grey.100',
+                      }}
+                    >
                       <Typography variant="h4">
                         {attendanceSummary.weekend + attendanceSummary.holiday}
                       </Typography>
@@ -574,13 +671,28 @@ const Reports: React.FC = () => {
               <Box>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                   <Typography variant="h6">Attendance Records ({attendanceData.length})</Typography>
-                  <Button
-                    variant="outlined"
-                    startIcon={<Download />}
-                    onClick={exportToExcel}
-                  >
-                    Export to Excel
-                  </Button>
+                  <Box display="flex" gap={1}>
+                    {authUser?.role === 'SUPER_ADMIN' && (
+                      <Button
+                        variant="contained"
+                        onClick={() =>
+                          setCreateDialog((prev) => ({
+                            ...prev,
+                            open: true,
+                          }))
+                        }
+                      >
+                        Add Manual Entry
+                      </Button>
+                    )}
+                    <Button
+                      variant="outlined"
+                      startIcon={<Download />}
+                      onClick={exportToExcel}
+                    >
+                      Export to Excel
+                    </Button>
+                  </Box>
                 </Box>
                 <TableContainer component={Paper} elevation={0} sx={{ maxHeight: 500 }}>
                   <Table stickyHeader>
@@ -622,6 +734,23 @@ const Reports: React.FC = () => {
                           <TableCell>{formatTime(record.firstInTime)}</TableCell>
                           <TableCell>{formatTime(record.lastOutTime)}</TableCell>
                           <TableCell>{formatDuration(record.totalDuration)}</TableCell>
+                          {authUser?.role === 'SUPER_ADMIN' && (
+                            <TableCell>
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={() =>
+                                  setEditDialog({
+                                    open: true,
+                                    record,
+                                    newStatus: record.status as AttendanceStatus,
+                                  })
+                                }
+                              >
+                                Edit
+                              </Button>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -652,7 +781,14 @@ const Reports: React.FC = () => {
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 6, md: 2.4 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'background.paper' : 'grey.100',
+                      }}
+                    >
                       <Typography variant="h4" color="primary">
                         {leaveSummary.total}
                       </Typography>
@@ -660,7 +796,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, md: 2.4 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'warning.50', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'rgba(251,191,36,0.12)' : 'warning.50',
+                      }}
+                    >
                       <Typography variant="h4" color="warning.main">
                         {leaveSummary.pending}
                       </Typography>
@@ -668,7 +811,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, md: 2.4 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.50', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'rgba(34,197,94,0.1)' : 'success.50',
+                      }}
+                    >
                       <Typography variant="h4" color="success.main">
                         {leaveSummary.approved}
                       </Typography>
@@ -676,7 +826,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, md: 2.4 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'error.50', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'rgba(239,68,68,0.12)' : 'error.50',
+                      }}
+                    >
                       <Typography variant="h4" color="error.main">
                         {leaveSummary.rejected}
                       </Typography>
@@ -684,7 +841,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, md: 2.4 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'background.paper' : 'grey.100',
+                      }}
+                    >
                       <Typography variant="h4">{leaveSummary.cancelled}</Typography>
                       <Typography variant="caption">Cancelled</Typography>
                     </Paper>
@@ -832,7 +996,14 @@ const Reports: React.FC = () => {
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 6, md: 2.4 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.100', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'background.paper' : 'grey.100',
+                      }}
+                    >
                       <Typography variant="h4" color="primary">
                         {payrollSummary.total}
                       </Typography>
@@ -840,7 +1011,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, md: 2.4 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'info.50', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'rgba(59,130,246,0.12)' : 'info.50',
+                      }}
+                    >
                       <Typography variant="h5" color="info.main">
                         ₹{payrollSummary.totalGross.toLocaleString('en-IN')}
                       </Typography>
@@ -848,7 +1026,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, md: 2.4 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.50', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'rgba(34,197,94,0.1)' : 'success.50',
+                      }}
+                    >
                       <Typography variant="h5" color="success.main">
                         ₹{payrollSummary.totalNet.toLocaleString('en-IN')}
                       </Typography>
@@ -856,7 +1041,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, md: 2.4 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.100', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'rgba(22,163,74,0.16)' : 'success.100',
+                      }}
+                    >
                       <Typography variant="h4" color="success.dark">
                         {payrollSummary.paid}
                       </Typography>
@@ -864,7 +1056,14 @@ const Reports: React.FC = () => {
                     </Paper>
                   </Grid>
                   <Grid size={{ xs: 6, md: 2.4 }}>
-                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'warning.50', textAlign: 'center' }}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: 'center',
+                        bgcolor: isDark ? 'rgba(251,191,36,0.12)' : 'warning.50',
+                      }}
+                    >
                       <Typography variant="h4" color="warning.main">
                         {payrollSummary.pending + payrollSummary.draft}
                       </Typography>
@@ -943,6 +1142,174 @@ const Reports: React.FC = () => {
           </TabPanel>
         </CardContent>
       </Card>
+      {authUser?.role === 'SUPER_ADMIN' && (
+        <>
+          <Dialog
+            open={editDialog.open}
+            onClose={() => setEditDialog({ open: false, record: null, newStatus: '' })}
+            maxWidth="xs"
+            fullWidth
+          >
+            <DialogTitle>Edit Attendance</DialogTitle>
+            <DialogContent>
+              {editDialog.record && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    {editDialog.record.user?.name} ({editDialog.record.user?.employeeId})
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    Date:{' '}
+                    {new Date(editDialog.record.date).toLocaleDateString('en-IN')}
+                  </Typography>
+                  <FormControl fullWidth margin="normal">
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      label="Status"
+                      value={editDialog.newStatus}
+                      onChange={(e) =>
+                        setEditDialog((prev) => ({
+                          ...prev,
+                          newStatus: e.target.value as AttendanceStatus,
+                        }))
+                      }
+                    >
+                      {Object.values(AttendanceStatus).map((s) => (
+                        <MenuItem key={s} value={s}>
+                          {s.replace('_', ' ')}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => setEditDialog({ open: false, record: null, newStatus: '' })}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                disabled={
+                  !editDialog.record ||
+                  !editDialog.newStatus ||
+                  updateAttendanceMutation.isPending
+                }
+                onClick={() => {
+                  if (!editDialog.record || !editDialog.newStatus) return;
+                  updateAttendanceMutation.mutate({
+                    id: editDialog.record.id,
+                    status: editDialog.newStatus,
+                  });
+                }}
+              >
+                {updateAttendanceMutation.isPending ? 'Saving...' : 'Save'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <Dialog
+            open={createDialog.open}
+            onClose={() =>
+              setCreateDialog((prev) => ({
+                ...prev,
+                open: false,
+              }))
+            }
+            maxWidth="xs"
+            fullWidth
+          >
+            <DialogTitle>Manual Attendance Entry</DialogTitle>
+            <DialogContent>
+              <Box sx={{ mt: 1 }}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>Employee</InputLabel>
+                  <Select
+                    label="Employee"
+                    value={createDialog.userId}
+                    onChange={(e) =>
+                      setCreateDialog((prev) => ({
+                        ...prev,
+                        userId: e.target.value,
+                      }))
+                    }
+                  >
+                    {users?.map((u) => (
+                      <MenuItem key={u.id} value={u.id}>
+                        {u.name} ({u.employeeId})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="Date"
+                  type="date"
+                  value={createDialog.date}
+                  onChange={(e) =>
+                    setCreateDialog((prev) => ({
+                      ...prev,
+                      date: e.target.value,
+                    }))
+                  }
+                  InputLabelProps={{ shrink: true }}
+                />
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    label="Status"
+                    value={createDialog.status}
+                    onChange={(e) =>
+                      setCreateDialog((prev) => ({
+                        ...prev,
+                        status: e.target.value as AttendanceStatus,
+                      }))
+                    }
+                  >
+                    {Object.values(AttendanceStatus).map((s) => (
+                      <MenuItem key={s} value={s}>
+                        {s.replace('_', ' ')}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() =>
+                  setCreateDialog((prev) => ({
+                    ...prev,
+                    open: false,
+                  }))
+                }
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                disabled={
+                  !createDialog.userId ||
+                  !createDialog.date ||
+                  !createDialog.status ||
+                  createAttendanceMutation.isPending
+                }
+                onClick={() => {
+                  createAttendanceMutation.mutate({
+                    userId: createDialog.userId,
+                    date: createDialog.date,
+                    status: createDialog.status,
+                  });
+                }}
+              >
+                {createAttendanceMutation.isPending ? 'Saving...' : 'Save'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </>
+      )}
     </Box>
   );
 };

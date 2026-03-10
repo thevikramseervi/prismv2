@@ -148,6 +148,28 @@ const Users: React.FC = () => {
         dateOfLeaving: user.dateOfLeaving ? user.dateOfLeaving.split('T')[0] : '',
         baseSalary: user.baseSalary.toString(),
       });
+    } else {
+      // Autofill next employee number and ID when creating a new user
+      const maxEmpNumber =
+        users && users.length > 0
+          ? users.reduce((max, u) => Math.max(max, u.employeeNumber), 0)
+          : 0;
+      const nextEmpNumber = maxEmpNumber + 1;
+      const nextEmpId = `CITSEED${nextEmpNumber}`;
+
+      setEditUser(null);
+      setFormData({
+        employeeId: nextEmpId,
+        employeeNumber: nextEmpNumber.toString(),
+        name: '',
+        email: '',
+        password: '',
+        designation: 'Annotator',
+        role: Role.EMPLOYEE,
+        dateOfJoining: '',
+        dateOfLeaving: '',
+        baseSalary: '22000',
+      });
     }
     setOpen(true);
   };
