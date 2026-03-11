@@ -230,10 +230,8 @@ export class BiometricSyncService {
   }
 
   async syncBiometricDataForRange(startDate: Date, endDate: Date): Promise<any> {
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(endDate);
-    end.setHours(0, 0, 0, 0);
+    const start = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
+    const end = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()));
 
     if (start > end) {
       throw new Error('startDate must be before or equal to endDate');
@@ -243,7 +241,7 @@ export class BiometricSyncService {
     let totalSkipped = 0;
     const errors: Array<{ date: string; error: string }> = [];
 
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
       const result = await this.syncBiometricDataForDate(new Date(d));
       totalProcessed += result?.processed ?? 0;
       totalSkipped += result?.skipped ?? 0;

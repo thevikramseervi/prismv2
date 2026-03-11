@@ -25,9 +25,11 @@ function parseDuration(durationStr: string): number {
 function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
   try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return null;
-    return date;
+    const parsed = new Date(dateStr);
+    if (isNaN(parsed.getTime())) return null;
+    // Normalise to UTC midnight using local date parts so non-ISO strings
+    // like "03/07/2026" (parsed as local midnight) map to the correct UTC date.
+    return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
   } catch {
     return null;
   }

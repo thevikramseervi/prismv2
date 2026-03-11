@@ -96,8 +96,8 @@ export class AttendanceService {
   }
 
   async findMonthlyAttendance(userId: string, year: number, month: number) {
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 0));
 
     const attendance = await this.prisma.attendance.findMany({
       where: {
@@ -112,7 +112,7 @@ export class AttendanceService {
 
     // Calculate summary
     const summary = {
-      totalDays: endDate.getDate(),
+      totalDays: endDate.getUTCDate(),
       present: 0,
       absent: 0,
       halfDay: 0,

@@ -184,11 +184,13 @@ export class PayrollService {
   async markAsPaid(id: string) {
     const payroll = await this.getPayrollById(id);
 
+    const now = new Date();
+    const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     return this.prisma.payroll.update({
       where: { id },
       data: {
         paymentStatus: 'PAID',
-        paymentDate: new Date(),
+        paymentDate: todayUTC,
       },
     });
   }

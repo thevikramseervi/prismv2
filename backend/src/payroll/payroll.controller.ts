@@ -8,7 +8,6 @@ import {
   Patch,
   Body,
   Res,
-  StreamableFile,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiQuery } from '@nestjs/swagger';

@@ -48,9 +48,9 @@ export function getPayDateFormatted(
     const nextYear = month === 12 ? year + 1 : year;
     const day = Math.min(
       defaultPayDayOfMonth,
-      new Date(nextYear, nextMonth, 0).getDate()
+      new Date(Date.UTC(nextYear, nextMonth, 0)).getUTCDate()
     );
-    date = new Date(nextYear, nextMonth - 1, day);
+    date = new Date(Date.UTC(nextYear, nextMonth - 1, day));
   }
   const d = date.getUTCDate();
   const m = date.getUTCMonth() + 1;
