@@ -16,7 +16,6 @@ import {
   Alert,
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
-import { useThemeMode } from '../contexts/ThemeModeContext';
 import { payrollApi } from '../api/payroll';
 import {
   getPayPeriod,
@@ -38,8 +37,6 @@ const formatDate = (d: string | undefined) => {
 const SalarySlipView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { mode } = useThemeMode();
-  const isDark = mode === 'dark';
   const { data: payroll, isLoading, error } = useQuery({
     queryKey: ['payroll', id],
     queryFn: () => payrollApi.getById(id!),
@@ -91,30 +88,33 @@ const SalarySlipView: React.FC = () => {
         Back to Salary Slips
       </Button>
 
+      {/*
+        The salary slip is a printable document — it always renders on a white
+        background with dark text regardless of the app's colour-scheme so that
+        it looks identical on screen and when saved as PDF / Excel.
+      */}
       <Paper
         elevation={2}
         sx={{
           maxWidth: 720,
           mx: 'auto',
           p: 3,
-          ...(isDark && {
-            bgcolor: '#ffffff',
-            color: '#1a1a1a',
-            '& .MuiTypography-root': { color: '#1a1a1a' },
-            '& .MuiTableCell-root': { color: '#1a1a1a', borderColor: '#d5d5d5' },
-          }),
+          bgcolor: '#ffffff',
+          color: '#1a1a1a',
+          '& .MuiTypography-root': { color: '#1a1a1a' },
+          '& .MuiTableCell-root': { color: '#1a1a1a', borderColor: '#d5d5d5' },
         }}
       >
         {/* Header */}
         <Typography variant="h6" align="center" fontWeight="bold" gutterBottom>
           Pay Slip for the month of {monthName} {payroll.year}
         </Typography>
-        <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 2, ...(isDark && { color: '#555' }) }}>
+        <Typography variant="body2" align="center" sx={{ mb: 2, color: '#555' }}>
           Figures are in INR
         </Typography>
 
         {/* Employee details */}
-        <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" gutterBottom sx={isDark ? { color: '#555' } : undefined}>
+        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#555' }} gutterBottom>
           EMPLOYEE DETAILS
         </Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 0.5, mb: 2, fontSize: '0.875rem' }}>
@@ -137,7 +137,7 @@ const SalarySlipView: React.FC = () => {
         </Box>
 
         {/* Attendance */}
-        <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" gutterBottom sx={isDark ? { color: '#555' } : undefined}>
+        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#555' }} gutterBottom>
           ATTENDANCE SUMMARY
         </Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 0.5, mb: 3, fontSize: '0.875rem' }}>
@@ -160,7 +160,7 @@ const SalarySlipView: React.FC = () => {
         </Box>
 
         {/* Salary breakdown — single table: Earnings | Amount | Deductions | Amount */}
-        <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" gutterBottom sx={isDark ? { color: '#555' } : undefined}>
+        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#555' }} gutterBottom>
           SALARY BREAKDOWN
         </Typography>
         <TableContainer
@@ -168,8 +168,8 @@ const SalarySlipView: React.FC = () => {
           variant="outlined"
           sx={{
             mb: 2,
+            bgcolor: '#fff',
             borderColor: '#D5D5D5',
-            ...(isDark && { bgcolor: '#fff', '& .MuiPaper-root': { bgcolor: '#fff' } }),
             '& .MuiTable-root': { borderColor: '#D5D5D5' },
             '& .MuiTableCell-root': { borderColor: '#D5D5D5', color: '#1a1a1a' },
           }}
@@ -177,24 +177,24 @@ const SalarySlipView: React.FC = () => {
           <Table size="small" sx={{ '& td, & th': { borderColor: '#D5D5D5' } }}>
             <TableHead>
               <TableRow sx={{ bgcolor: '#EBEBEB' }}>
-                <TableCell sx={{ bgcolor: '#EBEBEB', fontWeight: 700 }}>Earnings</TableCell>
-                <TableCell align="right" sx={{ bgcolor: '#EBEBEB', fontWeight: 700 }}>Amount</TableCell>
-                <TableCell sx={{ bgcolor: '#EBEBEB', fontWeight: 700 }}>Deductions</TableCell>
-                <TableCell align="right" sx={{ bgcolor: '#EBEBEB', fontWeight: 700 }}>Amount</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Earnings</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>Amount</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Deductions</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>Amount</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              <TableRow sx={{ bgcolor: '#fff' }}>
-                <TableCell sx={{ bgcolor: '#fff' }}>Salary and other Allowances</TableCell>
+              <TableRow>
+                <TableCell>Salary and other Allowances</TableCell>
                 <TableCell align="right">{formatCurrency(gross)}</TableCell>
-                <TableCell sx={{ bgcolor: '#fff' }}>Withholding Tax</TableCell>
-                <TableCell align="right" sx={{ bgcolor: '#fff' }}>—</TableCell>
+                <TableCell>Withholding Tax</TableCell>
+                <TableCell align="right">—</TableCell>
               </TableRow>
-              <TableRow sx={{ bgcolor: '#fff' }}>
-                <TableCell sx={{ bgcolor: '#fff' }}></TableCell>
-                <TableCell sx={{ bgcolor: '#fff' }}></TableCell>
-                <TableCell sx={{ bgcolor: '#fff' }}>Professional Tax</TableCell>
-                <TableCell align="right" sx={{ bgcolor: '#fff' }}>—</TableCell>
+              <TableRow>
+                <TableCell></TableCell>
+                <TableCell></TableCell>
+                <TableCell>Professional Tax</TableCell>
+                <TableCell align="right">—</TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -206,16 +206,16 @@ const SalarySlipView: React.FC = () => {
           variant="outlined"
           sx={{
             mb: 2,
+            bgcolor: '#fff',
             borderColor: '#D5D5D5',
-            ...(isDark && { bgcolor: '#fff', '& .MuiPaper-root': { bgcolor: '#fff' }, '& .MuiTableCell-root': { color: '#1a1a1a' } }),
-            '& .MuiTableCell-root': { borderColor: '#D5D5D5' },
+            '& .MuiTableCell-root': { borderColor: '#D5D5D5', color: '#1a1a1a' },
           }}
         >
           <Table size="small">
             <TableBody>
-              <TableRow sx={{ bgcolor: '#fff' }}>
-                <TableCell sx={{ bgcolor: '#fff', fontWeight: 700 }}>Reimbursements</TableCell>
-                <TableCell align="right" sx={{ bgcolor: '#fff' }}>{reimbursements > 0 ? formatCurrency(reimbursements) : '—'}</TableCell>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>Reimbursements</TableCell>
+                <TableCell align="right">{reimbursements > 0 ? formatCurrency(reimbursements) : '—'}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -227,34 +227,34 @@ const SalarySlipView: React.FC = () => {
           variant="outlined"
           sx={{
             mb: 2,
+            bgcolor: '#fff',
             borderColor: '#D5D5D5',
-            ...(isDark && { bgcolor: '#fff', '& .MuiPaper-root': { bgcolor: '#fff' }, '& .MuiTableCell-root': { color: '#1a1a1a' } }),
-            '& .MuiTableCell-root': { borderColor: '#D5D5D5' },
+            '& .MuiTableCell-root': { borderColor: '#D5D5D5', color: '#1a1a1a' },
           }}
         >
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: '#EBEBEB' }}>
-                <TableCell sx={{ bgcolor: '#EBEBEB', fontWeight: 700 }}>Summary</TableCell>
-                <TableCell align="right" sx={{ bgcolor: '#EBEBEB' }}></TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Summary</TableCell>
+                <TableCell align="right"></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              <TableRow sx={{ bgcolor: '#fff' }}>
-                <TableCell sx={{ bgcolor: '#fff' }}>Gross Earnings</TableCell>
-                <TableCell align="right" sx={{ bgcolor: '#fff' }}>{formatCurrency(gross)}</TableCell>
+              <TableRow>
+                <TableCell>Gross Earnings</TableCell>
+                <TableCell align="right">{formatCurrency(gross)}</TableCell>
               </TableRow>
-              <TableRow sx={{ bgcolor: '#fff' }}>
-                <TableCell sx={{ bgcolor: '#fff' }}>Total Deductions</TableCell>
-                <TableCell align="right" sx={{ bgcolor: '#fff' }}>{formatCurrency(deductions)}</TableCell>
+              <TableRow>
+                <TableCell>Total Deductions</TableCell>
+                <TableCell align="right">{formatCurrency(deductions)}</TableCell>
               </TableRow>
-              <TableRow sx={{ bgcolor: '#fff' }}>
-                <TableCell sx={{ bgcolor: '#fff' }}>Total Reimbursements</TableCell>
-                <TableCell align="right" sx={{ bgcolor: '#fff' }}>{formatCurrency(reimbursements)}</TableCell>
+              <TableRow>
+                <TableCell>Total Reimbursements</TableCell>
+                <TableCell align="right">{formatCurrency(reimbursements)}</TableCell>
               </TableRow>
-              <TableRow sx={{ bgcolor: '#fff' }}>
-                <TableCell sx={{ bgcolor: '#fff', fontWeight: 700 }}>Net Payable</TableCell>
-                <TableCell align="right" sx={{ bgcolor: '#fff', fontWeight: 700 }}>{formatCurrency(net)}</TableCell>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>Net Payable</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>{formatCurrency(net)}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -267,10 +267,10 @@ const SalarySlipView: React.FC = () => {
           Net Payable in words: {numberToWordsInr(net)}
         </Typography>
 
-        <Typography variant="caption" display="block" color="text.secondary" align="center" sx={isDark ? { color: '#666' } : undefined}>
+        <Typography variant="caption" display="block" align="center" sx={{ color: '#666' }}>
           This is a computer-generated document. No signature is required.
         </Typography>
-        <Typography variant="caption" display="block" color="text.secondary" align="center" sx={isDark ? { color: '#666' } : undefined}>
+        <Typography variant="caption" display="block" align="center" sx={{ color: '#666' }}>
           Generated on: {formatDate(new Date().toISOString())}
         </Typography>
       </Paper>

@@ -208,13 +208,14 @@ const Dashboard: React.FC = () => {
                         p: 2,
                         mb: 1.5,
                         borderRadius: 2,
-                        bgcolor: announcement.isRead
-                          ? 'grey.50'
-                          : 'primary.50',
+                        bgcolor: (theme) =>
+                          announcement.isRead
+                            ? theme.palette.action.selected
+                            : theme.palette.mode === 'dark'
+                            ? `${theme.palette.primary.dark}33`
+                            : theme.palette.primary[50],
                         border: 1,
-                        borderColor: announcement.isRead
-                          ? 'grey.200'
-                          : 'primary.200',
+                        borderColor: announcement.isRead ? 'divider' : 'primary.200',
                       }}
                     >
                       <Box display="flex" alignItems="center" mb={0.5}>

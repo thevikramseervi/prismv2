@@ -19,7 +19,7 @@ const RootOrApp: React.FC = () => {
           alignItems: 'center',
           justifyContent: 'center',
           minHeight: '100vh',
-          bgcolor: 'grey.50',
+          bgcolor: 'background.default',
         }}
       >
         <CircularProgress />

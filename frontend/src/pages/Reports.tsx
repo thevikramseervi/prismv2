@@ -1572,7 +1572,7 @@ const Reports: React.FC = () => {
                   <Typography variant="body2" gutterBottom>
                     Mark the following payroll as <strong>PAID</strong>?
                   </Typography>
-                  <Box mt={1.5} p={1.5} sx={{ bgcolor: 'grey.100', borderRadius: 1 }}>
+                  <Box mt={1.5} p={1.5} sx={{ bgcolor: isDark ? 'background.default' : 'grey.100', borderRadius: 1 }}>
                     <Typography variant="body2">
                       <strong>Employee:</strong> {markPaidDialog.payroll.user?.name} ({markPaidDialog.payroll.user?.employeeId})
                     </Typography>
