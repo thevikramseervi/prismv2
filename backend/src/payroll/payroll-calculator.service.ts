@@ -88,8 +88,18 @@ export class PayrollCalculatorService {
     let halfDays = 0;
     let lossOfPayDays = 0;
 
+    // If the employee joined mid-month in this payroll month, skip days before
+    // their joining date — those days must not be counted as weekends, holidays,
+    // or LOP since the employee was not yet employed.
+    const joiningDate = user.dateOfJoining ? new Date(user.dateOfJoining) : null;
+    const joiningIsThisMonth =
+      joiningDate !== null &&
+      joiningDate.getUTCFullYear() === year &&
+      joiningDate.getUTCMonth() + 1 === month;
+    const firstActiveDay = joiningIsThisMonth ? joiningDate!.getUTCDate() : 1;
+
     const daysInMonth = workingDays;
-    for (let day = 1; day <= daysInMonth; day++) {
+    for (let day = firstActiveDay; day <= daysInMonth; day++) {
       const date = new Date(Date.UTC(year, month - 1, day));
       const dateKey = toDateOnlyKey(date);
 
