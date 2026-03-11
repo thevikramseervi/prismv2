@@ -14,15 +14,30 @@ async function bootstrap() {
   app.use(helmet());
 
   // Enable CORS — allow the Netlify frontend and local dev server.
-  // FRONTEND_URL should be set to the Netlify URL in production,
-  // e.g. https://attend-ease.netlify.app
-  const allowedOrigins = ['http://localhost:5173'];
+  // FRONTEND_URL may be a comma-separated list of allowed origins, e.g.:
+  //   https://myapp.netlify.app
+  //   https://myapp.netlify.app,https://custom-domain.com
+  const allowedOrigins = new Set(['http://localhost:5173', 'http://localhost:3000']);
   if (process.env.FRONTEND_URL) {
-    allowedOrigins.push(process.env.FRONTEND_URL.replace(/\/$/, ''));
+    process.env.FRONTEND_URL
+      .split(',')
+      .map((u) => u.trim().replace(/\/$/, ''))
+      .filter(Boolean)
+      .forEach((u) => allowedOrigins.add(u));
   }
+  const logger2 = new Logger('CORS');
+  logger2.log(`Allowed origins: ${[...allowedOrigins].join(', ')}`);
   app.enableCors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, mobile apps, server-to-server)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin)) return callback(null, true);
+      logger2.warn(`Blocked CORS request from: ${origin}`);
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   // Global prefix
