@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
@@ -16,6 +16,8 @@ import {
   IconButton,
   Tooltip,
   Paper,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { PictureAsPdf, Description, Visibility } from '@mui/icons-material';
@@ -24,6 +26,7 @@ import { PaymentStatus } from '../types';
 
 const SalarySlips: React.FC = () => {
   const navigate = useNavigate();
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const { data: salarySlipsRaw, isLoading } = useQuery({
     queryKey: ['my-salary-slips'],
     queryFn: () => payrollApi.getMySalarySlips(),
@@ -55,16 +58,16 @@ const SalarySlips: React.FC = () => {
   const handleDownloadPDF = async (id: string) => {
     try {
       await payrollApi.downloadPDF(id);
-    } catch (err) {
-      console.error('Failed to download PDF:', err);
+    } catch {
+      setDownloadError('Failed to download PDF. Please try again.');
     }
   };
 
   const handleDownloadExcel = async (id: string) => {
     try {
       await payrollApi.downloadExcel(id);
-    } catch (err) {
-      console.error('Failed to download Excel:', err);
+    } catch {
+      setDownloadError('Failed to download Excel file. Please try again.');
     }
   };
 
@@ -168,6 +171,16 @@ const SalarySlips: React.FC = () => {
           </TableContainer>
         </CardContent>
       </Card>
+      <Snackbar
+        open={!!downloadError}
+        autoHideDuration={5000}
+        onClose={() => setDownloadError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setDownloadError(null)}>
+          {downloadError}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

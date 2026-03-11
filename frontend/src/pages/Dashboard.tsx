@@ -145,7 +145,7 @@ const Dashboard: React.FC = () => {
                     Total Leaves
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>
-                    {leaveBalance?.totalLeaves || 12}
+                    {leaveBalance?.totalLeaves ?? 0}
                   </Typography>
                 </Box>
                 <Box display="flex" justifyContent="space-between" mb={1.5}>
@@ -153,7 +153,7 @@ const Dashboard: React.FC = () => {
                     Used
                   </Typography>
                   <Typography variant="body2" color="error.main" fontWeight={600}>
-                    {leaveBalance?.usedLeaves || 0}
+                    {leaveBalance?.usedLeaves ?? 0}
                   </Typography>
                 </Box>
                 <Box display="flex" justifyContent="space-between" mb={1.5}>
@@ -161,7 +161,7 @@ const Dashboard: React.FC = () => {
                     Pending
                   </Typography>
                   <Typography variant="body2" color="warning.main" fontWeight={600}>
-                    {leaveBalance?.pendingLeaves || 0}
+                    {leaveBalance?.pendingLeaves ?? 0}
                   </Typography>
                 </Box>
                 <Box
@@ -177,7 +177,7 @@ const Dashboard: React.FC = () => {
                     Available
                   </Typography>
                   <Typography variant="body2" color="success.main" fontWeight={700}>
-                    {leaveBalance?.availableLeaves || 12}
+                    {leaveBalance?.availableLeaves ?? 0}
                   </Typography>
                 </Box>
               </Box>
