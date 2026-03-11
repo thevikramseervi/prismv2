@@ -28,15 +28,20 @@ The Attend Ease system is **fully operational** with all core features implement
 ```
 backend/
 ├── src/
-│   ├── auth/           ✅ JWT authentication, role guards
+│   ├── auth/           ✅ JWT, 2FA, password reset, rate limiting
 │   ├── users/          ✅ User CRUD, 251 employees
 │   ├── attendance/     ✅ 7,780 records imported
-│   ├── leave/          ✅ Application & approval workflow
-│   ├── payroll/        ✅ Calculator + PDF/Excel generation
+│   ├── leave/          ✅ Application & approval workflow (holiday exclusion, pro-rata)
+│   ├── payroll/        ✅ Calculator + PDF/Excel + mark-paid
 │   ├── holidays/       ✅ Holiday management
-│   ├── announcements/  ✅ Announcements system
-│   ├── biometric/      ✅ 4,736 logs imported
-│   └── common/         ✅ Guards, decorators, pipes
+│   ├── announcements/  ✅ Announcements with audience targeting & read tracking
+│   ├── notifications/  ✅ In-app notifications + absence-reminder cron
+│   ├── activity/       ✅ Audit activity log
+│   ├── biometric/      ✅ XLSX upload + 4,736 logs imported
+│   ├── email/          ✅ Transactional email service
+│   ├── health/         ✅ Health check endpoint
+│   ├── prisma/         ✅ Database service
+│   └── common/         ✅ Guards, decorators, date/attendance utils
 ├── prisma/
 │   ├── schema.prisma   ✅ 11 tables, proper relations
 │   ├── migrations/     ✅ Database synced
@@ -59,16 +64,20 @@ frontend/
 │   │   ├── Landing.tsx         (public landing)
 │   │   ├── Login.tsx
 │   │   ├── Dashboard.tsx
-│   │   ├── Attendance.tsx     (calendar + table views)
-│   │   ├── Leave.tsx
+│   │   ├── Attendance.tsx      (calendar + table views)
+│   │   ├── Leave.tsx           (apply with live day counter)
 │   │   ├── SalarySlips.tsx
-│   │   ├── SalarySlipView.tsx (slip detail)
+│   │   ├── SalarySlipView.tsx  (slip detail)
 │   │   ├── Announcements.tsx
+│   │   ├── Notifications.tsx
+│   │   ├── Profile.tsx         (change password, 2FA)
+│   │   ├── ActivityReport.tsx
+│   │   ├── MyHolidays.tsx
 │   │   ├── Users.tsx
 │   │   ├── Holidays.tsx
 │   │   ├── Admin.tsx
 │   │   ├── LeaveApproval.tsx
-│   │   └── Reports.tsx
+│   │   └── Reports.tsx         (+ mark-paid for Super Admin)
 │   ├── types/          ✅ All TypeScript definitions
 │   ├── utils/          ✅ slipUtils etc.
 │   └── App.tsx         ✅ Routing, theme, RootOrApp
@@ -283,7 +292,7 @@ frontend/
 
 ### Backend Server
 - **URL:** http://localhost:3000
-- **API Docs:** http://localhost:3000/api/docs
+- **API Docs:** http://localhost:3000/api/docs (development only)
 - **Status:** ✅ Running (PID: 34591)
 - **Database:** ✅ Connected
 
@@ -325,24 +334,29 @@ frontend/
 ### Employee Features
 - ✅ Login with JWT authentication (admins with 2FA get a second step for 6-digit code)
 - ✅ Public landing page; app when authenticated
-- ✅ Light/dark theme toggle (persisted)
-- ✅ View personal dashboard with stats
-- ✅ View attendance history (December 2025)
-- ✅ Download salary slips (PDF/Excel); slip detail page
-- ✅ Apply for casual leave
-- ✅ View leave balance (12 leaves/year)
-- ✅ View company announcements
+- ✅ Light/dark theme toggle (persisted in both modes)
+- ✅ View personal dashboard with stats, leave balance, announcements
+- ✅ View attendance history — calendar heatmap + table views
+- ✅ Download salary slips (PDF/Excel); salary slip detail page
+- ✅ Apply for casual leave (live working-day counter excludes weekends & holidays)
+- ✅ Cancel pending leave applications
+- ✅ View leave balance (12 leaves/year, pro-rata with 15th-day rule)
+- ✅ View company announcements (with read/unread tracking)
+- ✅ View in-app notifications
 - ✅ Change password (user menu + API)
+- ✅ Forgot password / reset via email link
 
-### Admin Features (Backend Ready)
-- ✅ User management (CRUD operations)
-- ✅ Generate payroll for any month/employee
-- ✅ Approve/reject leave applications
+### Admin Features
+- ✅ User management (CRUD, activate/deactivate)
+- ✅ Generate payroll for individual or all employees (with optional pay date)
+- ✅ Mark payroll as PAID (Super Admin) — records payment date
+- ✅ Approve/reject/cancel leave applications
 - ✅ Manage holiday calendar
-- ✅ Manual biometric sync
-- ✅ View system-wide reports
-- ✅ Post announcements
-- ✅ Export reports to Excel
+- ✅ Upload biometric XLSX + manual biometric sync
+- ✅ View system-wide reports (attendance, leave, payroll) with Excel export
+- ✅ Post announcements with audience targeting, pinning, and expiry
+- ✅ Enable/disable TOTP 2FA (Admin Security panel)
+- ✅ View audit activity log
 
 ### Data Migration
 - ✅ Import users from Excel
@@ -416,43 +430,60 @@ Full API documentation available at:
 - `GET /api/attendance/monthly/:year/:month` - Monthly view
 
 **Leave:**
-- `POST /api/leave/apply` - Apply for leave
+- `POST /api/leave/apply` - Apply for leave (weekends & holidays excluded from count)
 - `GET /api/leave/my-applications` - My applications
 - `GET /api/leave/balance` - Leave balance
 - `PATCH /api/leave/:id/approve` - Approve (admin)
 - `PATCH /api/leave/:id/reject` - Reject (admin)
+- `PATCH /api/leave/:id/cancel` - Cancel (owner or admin)
 
 **Payroll:**
-- `POST /api/payroll/generate` - Generate payroll (admin)
+- `POST /api/payroll/generate` - Generate for one employee (admin; optional `paymentDate`)
+- `POST /api/payroll/generate/all` - Bulk-generate for all active employees (admin)
 - `GET /api/payroll` - List payroll (admin, optional filters)
 - `GET /api/payroll/my-salary-slips` - My salary slips
-- `GET /api/payroll/:id` - Get payroll by ID
-- `PATCH /api/payroll/:id/mark-paid` - Mark as paid (Super Admin)
-- `GET /api/payroll/:id/download/pdf` - Download PDF
-- `GET /api/payroll/:id/download/xlsx` - Download Excel
+- `GET /api/payroll/:id` - Get payroll by ID (owner or admin)
+- `PATCH /api/payroll/:id/mark-paid` - Mark as paid, records today as payment date (Super Admin)
+- `GET /api/payroll/:id/download/pdf` - Download PDF (owner or admin)
+- `GET /api/payroll/:id/download/xlsx` - Download Excel (owner or admin)
 
 **Users (Admin):**
 - `GET /api/users` - List all users (paginated)
 - `POST /api/users` - Create user
+- `GET /api/users/:id` - Get user by ID (Admin only)
 - `PATCH /api/users/:id` - Update user
 - `PATCH /api/users/:id/activate` - Activate user
 - `PATCH /api/users/:id/deactivate` - Deactivate user
+
+**Notifications:**
+- `GET /api/notifications` - Get my notifications
+- `PATCH /api/notifications/:id/read` - Mark as read
+- `PATCH /api/notifications/read-all` - Mark all as read
+
+**Activity (Admin):**
+- `GET /api/activity` - Get audit activity log
+
+**Health:**
+- `GET /api/health` - Health check
 
 ---
 
 ## 🎨 Frontend Status
 
 ### Current Version: Full Application
-**Status:** Full dashboard + all pages are active in dev (no SimpleDashboard fallback needed)  
 **Features:**
-- ✅ Sidebar navigation and header with user menu
+- ✅ Sidebar navigation and header with user menu (role-based)
 - ✅ Employee dashboard with stats, leave balance, announcements
-- ✅ Attendance page with **calendar heatmap + table** views
-- ✅ Leave application & history
-- ✅ Salary slips listing with **authenticated PDF/Excel download**
-- ✅ Announcements feed (with admin creation UI)
-- ✅ Admin tools: users, holidays, payroll generation, biometric sync, Security / 2FA (enable/disable TOTP)
-- ✅ Reports module with Excel export
+- ✅ Attendance page — calendar heatmap + table views
+- ✅ Leave page — apply with live working-day counter (excludes weekends & holidays), history, balance
+- ✅ Salary slips — list, detail view, authenticated PDF/Excel download
+- ✅ Announcements feed (read/unread tracking)
+- ✅ Notifications page
+- ✅ Profile page — change password, enable/disable 2FA
+- ✅ My Holidays page
+- ✅ Activity report page
+- ✅ Admin tools: users, holidays, payroll generation (with pay date + bulk), biometric XLSX upload + sync
+- ✅ Reports module — attendance, leave, payroll with Excel export; mark-paid for Super Admin
 
 ---
 
@@ -469,15 +500,17 @@ Schema: public
 
 ### Tables & Record Count
 ```
-users:               252 records
-attendance:        7,780 records
-biometric_logs:    4,736 records
-leave_balance:       252 records
-payroll:             252 records
-holidays:              2 records
-leave_applications:    0 records
-announcements:         0 records
-password_reset_tokens: (transient)
+users:                 252 records
+attendance:          7,780 records
+biometric_logs:      4,736 records
+leave_balance:         252 records
+payroll:               252 records (includes weekend_days, holiday_days, payment_date)
+holidays:                2 records
+leave_applications:      0 records
+announcements:           0 records
+announcement_reads:      0 records (per-user read tracking)
+notifications:           0 records
+password_reset_tokens:   (transient)
 ```
 
 ---
@@ -570,21 +603,32 @@ Declared holidays = HOLIDAY
 
 ### Salary Calculation ✅
 ```
-Formula: (Base Salary / Working Days) × Total Pay Days
-Total Pay Days = Present + Casual Leave + (Half Days × 0.5) + Weekends + Holidays
-Working Days = Total calendar days in the month
-Deductions = (Base Salary / Working Days) × LOP Days
+Total Days     = Calendar days in month (from joining date for mid-month joiners)
+Weekend Days   = Saturdays & Sundays (holiday takes priority; not double-counted)
+Holiday Days   = Company holidays (counted first before weekends)
+Present Days   = Full days (≥8h30m) from attendance records
+Half Days      = Half-days (≥3h45m, <8h30m) from attendance records
+Casual Leave   = Approved leave days (weekends & holidays excluded from count)
+LOP Days       = Weekdays with no attendance and no approved leave
+
+Total Pay Days = Present + (Half Days × 0.5) + Casual Leave + Weekend Days + Holiday Days
+Net Salary     = (Total Pay Days / Total Days) × Base Salary
 ```
 
 **Verified:** Calculations match Excel source files
 
 ### Leave Rules ✅
 ```
-- 12 casual leaves per year
+- 12 casual leaves per year (full year entitlement)
+- Pro-rata for mid-year joiners using 15th-day rule:
+  - Joining on/before the 15th → that month counts
+  - Joining after the 15th → that month is skipped
+  (e.g. joining April 10 → 9 days; joining April 20 → 8 days)
+- Weekends and public holidays excluded from leave day count
 - No half-day casual leave
-- Requires admin approval
-- Auto-deducted from balance
-- LOP for absence without leave
+- Requires admin (LAB_ADMIN or SUPER_ADMIN) approval
+- Auto-deducted from balance on approval
+- LOP for absence without approved leave
 ```
 
 ---
@@ -598,16 +642,19 @@ Deductions = (Base Salary / Working Days) × LOP Days
 - ✅ Password reset via email (forgot password / reset link)
 - ✅ Role-based access control (RBAC)
 - ✅ Route guards (@Roles decorator)
-- ✅ Protected API endpoints
+- ✅ Ownership checks (employees can only access their own payslips, attendance, leave)
+- ✅ In-memory rate limiting on login / password-reset endpoints
+- ✅ HTTP security headers via `helmet` middleware
+- ✅ Swagger API docs disabled in production (`NODE_ENV=production`)
+- ✅ Email normalised to lowercase on creation and login lookup
 - ✅ CORS configured
 - ✅ Input validation (class-validator)
+- ✅ Audit activity log (activity module)
 
 ### Recommendations
-- 🔄 Change default passwords
+- 🔄 Change default passwords on first deployment
 - 🔄 Configure session timeout
 - 🔄 Enable HTTPS in production
-- 🔄 Add rate limiting
-- 🔄 Enable audit logging
 
 ---
 
@@ -621,7 +668,7 @@ Deductions = (Base Salary / Working Days) × LOP Days
 - ✅ This review document
 
 ### Available
-- ✅ Swagger API docs: http://localhost:3000/api/docs
+- ✅ Swagger API docs: http://localhost:3000/api/docs (development only — disabled in production)
 - ✅ Inline code comments
 - ✅ TypeScript type definitions
 
@@ -629,37 +676,44 @@ Deductions = (Base Salary / Working Days) × LOP Days
 
 ## 🎊 Project Completion Status
 
-### Completed Features (21/24 - 87.5%)
+### Completed Features
 
-**Backend (11/11 - 100%):**
+**Backend (15/15 - 100%):**
 - ✅ Project setup
-- ✅ Database schema
-- ✅ Authentication module
+- ✅ Database schema (11 tables with proper indexes)
+- ✅ Authentication module (JWT, 2FA, password reset, rate limiting)
 - ✅ Users module
 - ✅ Attendance module
-- ✅ Leave module
-- ✅ Payroll module
+- ✅ Leave module (with holiday exclusion, pro-rata, 15th-day rule)
+- ✅ Payroll module (PDF + Excel, mark-paid flow, mid-month joiner handling)
 - ✅ Holidays module
-- ✅ Announcements module
-- ✅ Biometric sync module
+- ✅ Announcements module (audience targeting, read tracking)
+- ✅ Notifications module (in-app notifications, absence-reminder cron)
+- ✅ Activity module (audit log)
+- ✅ Email module (transactional emails)
+- ✅ Health module
+- ✅ Biometric sync module (XLSX upload + sync)
 - ✅ Data migration scripts
 
-**Frontend (10/10 - 100%):**
+**Frontend (13/13 - 100%):**
 - ✅ Project setup
-- ✅ Authentication & routing
-- ✅ Dashboard layout
-- ✅ Login page
-- ✅ Dashboard page
-- ✅ Attendance page
-- ✅ Leave page
-- ✅ Salary slips page
-- ✅ Admin pages
-- ✅ Reports module
+- ✅ Authentication & routing (protected routes, role-based navigation)
+- ✅ Dashboard layout (sidebar, header, user menu)
+- ✅ Login page (with 2FA step)
+- ✅ Dashboard page (stats, leave balance, announcements)
+- ✅ Attendance page (calendar heatmap + table)
+- ✅ Leave page (apply with live working-day counter, history, balance)
+- ✅ Salary slips page (list + detail view + PDF/Excel download)
+- ✅ Announcements page
+- ✅ Notifications page
+- ✅ Admin pages (users, holidays, payroll, biometric, 2FA/security)
+- ✅ Reports module (attendance, leave, payroll with Excel export + mark-paid)
+- ✅ Profile page (change password, 2FA management)
 
-### Remaining Optional Tasks (3/24)
-- ⏳ Scheduled cron jobs
+### Remaining Optional Tasks
+- ⏳ Automated scheduled biometric sync
+- ⏳ Automated monthly payroll generation
 - ⏳ Broader integration/E2E test coverage
-- ⏳ Additional end‑user documentation
 
 ---
 
@@ -695,10 +749,9 @@ Deductions = (Base Salary / Working Days) × LOP Days
 ✅ Backend API fully functional with documentation  
 ✅ Frontend working with simple dashboard  
 
-**Total Implementation Time:** ~4 hours  
 **Lines of Code:** ~15,000+  
-**API Endpoints:** 40+  
-**Database Tables:** 9  
+**API Endpoints:** 50+  
+**Database Tables:** 11  
 
 The system successfully automates what was previously done manually in Excel! 🚀
 
