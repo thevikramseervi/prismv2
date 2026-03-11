@@ -30,7 +30,7 @@ import {
   DialogActions,
   useTheme,
 } from '@mui/material';
-import { Download, Summarize } from '@mui/icons-material';
+import { Download, Summarize, CheckCircle } from '@mui/icons-material';
 import { attendanceApi } from '../api/attendance';
 import { leaveApi } from '../api/leave';
 import { payrollApi } from '../api/payroll';
@@ -105,10 +105,14 @@ const Reports: React.FC = () => {
   const queryClient = useQueryClient();
   const { user: authUser } = useAuth();
   
-  // Common filters
-  const [startDate, setStartDate] = useState(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
-  );
+  // Common filters — use UTC methods so the date strings are always correct
+  // regardless of the browser's local timezone (avoids off-by-one at IST midnight).
+  const [startDate, setStartDate] = useState(() => {
+    const now = new Date();
+    const y = now.getUTCFullYear();
+    const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+    return `${y}-${m}-01`;
+  });
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
 
@@ -229,6 +233,19 @@ const Reports: React.FC = () => {
     action: 'approve' | 'reject' | null;
   }>({ open: false, application: null, action: null });
   const [leaveComments, setLeaveComments] = useState('');
+
+  const [markPaidDialog, setMarkPaidDialog] = useState<{
+    open: boolean;
+    payroll: Payroll | null;
+  }>({ open: false, payroll: null });
+
+  const markAsPaidMutation = useMutation({
+    mutationFn: (id: string) => payrollApi.markAsPaid(id),
+    onSuccess: () => {
+      setMarkPaidDialog({ open: false, payroll: null });
+      refetchPayroll();
+    },
+  });
 
   const approveLeaveMutation = useMutation({
     mutationFn: ({
@@ -1224,6 +1241,9 @@ const Reports: React.FC = () => {
                         <TableCell align="right"><strong>Gross</strong></TableCell>
                         <TableCell align="right"><strong>Net Salary</strong></TableCell>
                         <TableCell><strong>Status</strong></TableCell>
+                        {authUser?.role === 'SUPER_ADMIN' && (
+                          <TableCell align="center"><strong>Actions</strong></TableCell>
+                        )}
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -1257,6 +1277,21 @@ const Reports: React.FC = () => {
                               }
                             />
                           </TableCell>
+                          {authUser?.role === 'SUPER_ADMIN' && (
+                            <TableCell align="center">
+                              {payroll.paymentStatus !== PaymentStatus.PAID && (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="success"
+                                  startIcon={<CheckCircle />}
+                                  onClick={() => setMarkPaidDialog({ open: true, payroll })}
+                                >
+                                  Mark Paid
+                                </Button>
+                              )}
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1519,6 +1554,57 @@ const Reports: React.FC = () => {
                   : leaveActionDialog.action === 'approve'
                   ? 'Approve'
                   : 'Reject'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Mark as Paid confirmation dialog */}
+          <Dialog
+            open={markPaidDialog.open}
+            onClose={() => setMarkPaidDialog({ open: false, payroll: null })}
+            maxWidth="xs"
+            fullWidth
+          >
+            <DialogTitle>Confirm Payment</DialogTitle>
+            <DialogContent>
+              {markPaidDialog.payroll && (
+                <Box>
+                  <Typography variant="body2" gutterBottom>
+                    Mark the following payroll as <strong>PAID</strong>?
+                  </Typography>
+                  <Box mt={1.5} p={1.5} sx={{ bgcolor: 'grey.100', borderRadius: 1 }}>
+                    <Typography variant="body2">
+                      <strong>Employee:</strong> {markPaidDialog.payroll.user?.name} ({markPaidDialog.payroll.user?.employeeId})
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Period:</strong> {['January','February','March','April','May','June','July','August','September','October','November','December'][markPaidDialog.payroll.month - 1]} {markPaidDialog.payroll.year}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Net Salary:</strong> ₹{Number(markPaidDialog.payroll.netSalary).toLocaleString()}
+                    </Typography>
+                  </Box>
+                  <Alert severity="info" sx={{ mt: 1.5 }}>
+                    This will record today's date as the payment date and cannot be undone.
+                  </Alert>
+                </Box>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setMarkPaidDialog({ open: false, payroll: null })}>
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<CheckCircle />}
+                disabled={markAsPaidMutation.isPending}
+                onClick={() => {
+                  if (markPaidDialog.payroll) {
+                    markAsPaidMutation.mutate(markPaidDialog.payroll.id);
+                  }
+                }}
+              >
+                {markAsPaidMutation.isPending ? 'Marking...' : 'Confirm Paid'}
               </Button>
             </DialogActions>
           </Dialog>

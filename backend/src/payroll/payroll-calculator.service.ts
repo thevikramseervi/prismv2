@@ -36,6 +36,12 @@ export class PayrollCalculatorService {
     userId: string,
     year: number,
     month: number,
+    /**
+     * Optional pre-fetched holiday keys (`YYYY-MM-DD`) for the payroll month.
+     * Pass this when generating payroll for multiple employees in bulk so the
+     * same holiday list is not queried from the DB once per employee.
+     */
+    prefetchedHolidayKeys?: Set<string>,
   ): Promise<SalaryCalculation> {
     // Get user info
     const user = await this.prisma.user.findUnique({
@@ -70,16 +76,16 @@ export class PayrollCalculatorService {
       attendanceRecords.map((r) => [toDateOnlyKey(r.date), r]),
     );
 
-    // Count weekends and holidays in the month so they are treated as paid days.
-    const holidays = await this.prisma.holiday.findMany({
-      where: {
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-    });
-    const holidayDateKeys = new Set(holidays.map((h) => toDateOnlyKey(h.date)));
+    // Use pre-fetched holiday keys if provided (bulk payroll path), otherwise query.
+    let holidayDateKeys: Set<string>;
+    if (prefetchedHolidayKeys) {
+      holidayDateKeys = prefetchedHolidayKeys;
+    } else {
+      const holidays = await this.prisma.holiday.findMany({
+        where: { date: { gte: startDate, lte: endDate } },
+      });
+      holidayDateKeys = new Set(holidays.map((h) => toDateOnlyKey(h.date)));
+    }
 
     let weekendDays = 0;
     let holidayDays = 0;

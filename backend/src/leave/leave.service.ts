@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  ForbiddenException,
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
@@ -644,7 +645,7 @@ export class LeaveService {
       }
 
       if (application.userId !== userId) {
-        throw new BadRequestException('You can only cancel your own applications');
+        throw new ForbiddenException('You can only cancel your own applications');
       }
 
       if (application.status !== LeaveStatus.PENDING) {

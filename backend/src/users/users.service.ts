@@ -10,10 +10,12 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
+    const normalizedEmail = createUserDto.email.toLowerCase().trim();
+
     return this.prisma.$transaction(async (tx) => {
       // Check if email already exists
       const existingUser = await tx.user.findUnique({
-        where: { email: createUserDto.email },
+        where: { email: normalizedEmail },
       });
 
       if (existingUser) {
@@ -47,7 +49,7 @@ export class UsersService {
           employeeId: createUserDto.employeeId,
           employeeNumber: createUserDto.employeeNumber,
           name: createUserDto.name,
-          email: createUserDto.email,
+          email: normalizedEmail,
           passwordHash: hashedPassword,
           designation: createUserDto.designation || 'Annotator',
           role: createUserDto.role,

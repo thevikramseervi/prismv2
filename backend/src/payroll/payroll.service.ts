@@ -14,6 +14,7 @@ export class PayrollService {
   async generatePayroll(
     generatePayrollDto: GeneratePayrollDto,
     generatedBy: string,
+    prefetchedHolidayKeys?: Set<string>,
   ) {
     const { year, month, userId, paymentDate } = generatePayrollDto;
 
@@ -33,7 +34,7 @@ export class PayrollService {
     }
 
     // Calculate salary
-    const calculation = await this.payrollCalculator.calculateSalary(userId, year, month);
+    const calculation = await this.payrollCalculator.calculateSalary(userId, year, month, prefetchedHolidayKeys);
 
     // Use provided payment date, or fall back to the Nth of the following month
     let resolvedPaymentDate: Date;
@@ -85,28 +86,30 @@ export class PayrollService {
   }
 
   async generatePayrollForAllEmployees(year: number, month: number, generatedBy: string, paymentDate?: string) {
-    // Get all active employees
-    const users = await this.prisma.user.findMany({
-      where: { status: 'ACTIVE' },
-    });
+    // Fetch holidays and already-generated payrolls for the month once,
+    // shared across all employees to avoid N+1 DB queries.
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 0));
+
+    const [users, holidaysInMonth, existingPayrolls] = await Promise.all([
+      this.prisma.user.findMany({ where: { status: 'ACTIVE' } }),
+      this.prisma.holiday.findMany({ where: { date: { gte: startDate, lte: endDate } } }),
+      this.prisma.payroll.findMany({
+        where: { month, year },
+        select: { userId: true },
+      }),
+    ]);
+
+    const { toDateOnlyKey } = await import('../common/date.utils');
+    const holidayKeys = new Set(holidaysInMonth.map((h) => toDateOnlyKey(h.date)));
+    const alreadyGeneratedUserIds = new Set(existingPayrolls.map((p) => p.userId));
 
     const results = [];
     const errors = [];
 
     for (const user of users) {
       try {
-        // Check if already generated
-        const existing = await this.prisma.payroll.findUnique({
-          where: {
-            userId_month_year: {
-              userId: user.id,
-              month,
-              year,
-            },
-          },
-        });
-
-        if (existing) {
+        if (alreadyGeneratedUserIds.has(user.id)) {
           errors.push({
             userId: user.id,
             employeeId: user.employeeId,
@@ -118,13 +121,14 @@ export class PayrollService {
         const payroll = await this.generatePayroll(
           { year, month, userId: user.id, paymentDate },
           generatedBy,
+          holidayKeys,
         );
         results.push(payroll);
       } catch (error) {
         errors.push({
           userId: user.id,
           employeeId: user.employeeId,
-          error: error.message,
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }
