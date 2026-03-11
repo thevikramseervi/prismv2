@@ -58,6 +58,7 @@ export class PayrollController {
         generatePayrollDto.year,
         generatePayrollDto.month,
         user.id,
+        generatePayrollDto.paymentDate,
       );
     }
   }
@@ -114,6 +115,7 @@ export class PayrollController {
     const payrollData = {
       ...payroll,
       baseSalary: Number(payroll.baseSalary),
+      weekendDays: payroll.weekendDays,
       presentDays: Number(payroll.presentDays),
       halfDays: Number(payroll.halfDays),
       totalPayDays: Number(payroll.totalPayDays),
@@ -147,6 +149,7 @@ export class PayrollController {
     const payrollData = {
       ...payroll,
       baseSalary: Number(payroll.baseSalary),
+      weekendDays: payroll.weekendDays,
       presentDays: Number(payroll.presentDays),
       halfDays: Number(payroll.halfDays),
       totalPayDays: Number(payroll.totalPayDays),

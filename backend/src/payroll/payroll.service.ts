@@ -15,7 +15,7 @@ export class PayrollService {
     generatePayrollDto: GeneratePayrollDto,
     generatedBy: string,
   ) {
-    const { year, month, userId } = generatePayrollDto;
+    const { year, month, userId, paymentDate } = generatePayrollDto;
 
     // Check if payroll already exists
     const existing = await this.prisma.payroll.findUnique({
@@ -35,12 +35,17 @@ export class PayrollService {
     // Calculate salary
     const calculation = await this.payrollCalculator.calculateSalary(userId, year, month);
 
-    // Default payment date: Nth day of the month following payroll month (UTC to avoid timezone shift)
-    const nextMonth = month === 12 ? 1 : month + 1;
-    const nextYear = month === 12 ? year + 1 : year;
-    const lastDayOfNext = new Date(Date.UTC(nextYear, nextMonth, 0)).getUTCDate();
-    const payDay = Math.min(defaultPayDayOfMonth, lastDayOfNext);
-    const defaultPaymentDate = new Date(Date.UTC(nextYear, nextMonth - 1, payDay));
+    // Use provided payment date, or fall back to the Nth of the following month
+    let resolvedPaymentDate: Date;
+    if (paymentDate) {
+      resolvedPaymentDate = new Date(paymentDate);
+    } else {
+      const nextMonth = month === 12 ? 1 : month + 1;
+      const nextYear = month === 12 ? year + 1 : year;
+      const lastDayOfNext = new Date(Date.UTC(nextYear, nextMonth, 0)).getUTCDate();
+      const payDay = Math.min(defaultPayDayOfMonth, lastDayOfNext);
+      resolvedPaymentDate = new Date(Date.UTC(nextYear, nextMonth - 1, payDay));
+    }
 
     // Create payroll record
     return this.prisma.payroll.create({
@@ -63,7 +68,7 @@ export class PayrollService {
         netSalary: calculation.netSalary,
         paymentStatus: 'DRAFT',
         generatedBy,
-        paymentDate: defaultPaymentDate,
+        paymentDate: resolvedPaymentDate,
       },
       include: {
         user: {
@@ -79,7 +84,7 @@ export class PayrollService {
     });
   }
 
-  async generatePayrollForAllEmployees(year: number, month: number, generatedBy: string) {
+  async generatePayrollForAllEmployees(year: number, month: number, generatedBy: string, paymentDate?: string) {
     // Get all active employees
     const users = await this.prisma.user.findMany({
       where: { status: 'ACTIVE' },
@@ -111,7 +116,7 @@ export class PayrollService {
         }
 
         const payroll = await this.generatePayroll(
-          { year, month, userId: user.id },
+          { year, month, userId: user.id, paymentDate },
           generatedBy,
         );
         results.push(payroll);

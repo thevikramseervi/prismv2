@@ -11,6 +11,7 @@ import {
   Select,
   MenuItem,
   Paper,
+  TextField,
 } from '@mui/material';
 import { MonetizationOn } from '@mui/icons-material';
 import { useApiMutation } from '../../hooks';
@@ -32,9 +33,10 @@ const AdminPayrollCard: React.FC<AdminPayrollCardProps> = ({ users, onMessage })
   const [payrollYear, setPayrollYear] = useState(currentYear);
   const [payrollMonth, setPayrollMonth] = useState(new Date().getMonth() + 1);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [paymentDate, setPaymentDate] = useState<string>('');
 
   const generatePayrollMutation = useApiMutation({
-    mutationFn: (data: { year: number; month: number; userId?: string }) => payrollApi.generate(data),
+    mutationFn: (data: { year: number; month: number; userId?: string; paymentDate?: string }) => payrollApi.generate(data),
     successMessage: (result: { success?: number; failed?: number }) =>
       result.success !== undefined
         ? `Payroll generated! Success: ${result.success}, Failed: ${result.failed}`
@@ -48,8 +50,9 @@ const AdminPayrollCard: React.FC<AdminPayrollCardProps> = ({ users, onMessage })
   });
 
   const handleGeneratePayroll = () => {
-    const data: { year: number; month: number; userId?: string } = { year: payrollYear, month: payrollMonth };
+    const data: { year: number; month: number; userId?: string; paymentDate?: string } = { year: payrollYear, month: payrollMonth };
     if (selectedUserId) data.userId = selectedUserId;
+    if (paymentDate) data.paymentDate = paymentDate;
     generatePayrollMutation.mutate(data);
   };
 
@@ -89,6 +92,16 @@ const AdminPayrollCard: React.FC<AdminPayrollCardProps> = ({ users, onMessage })
             ))}
           </Select>
         </FormControl>
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Pay Date (Optional)"
+          type="date"
+          value={paymentDate}
+          onChange={(e) => setPaymentDate(e.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+          helperText="Leave blank to use default (10th of following month)"
+        />
         <Button
           fullWidth
           variant="contained"

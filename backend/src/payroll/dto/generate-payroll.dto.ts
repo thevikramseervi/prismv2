@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, Min, Max, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, Min, Max, IsOptional, IsString, IsDateString } from 'class-validator';
 
 export class GeneratePayrollDto {
   @ApiProperty({ example: 2026 })
@@ -20,4 +20,9 @@ export class GeneratePayrollDto {
   @IsString()
   @IsOptional()
   userId?: string;
+
+  @ApiProperty({ example: '2026-01-10', required: false, description: 'Payment date (YYYY-MM-DD). Defaults to the 10th of the following month.' })
+  @IsDateString()
+  @IsOptional()
+  paymentDate?: string;
 }
