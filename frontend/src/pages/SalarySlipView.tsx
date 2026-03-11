@@ -76,6 +76,9 @@ const SalarySlipView: React.FC = () => {
   const deductions = Number(payroll.deductions);
   const reimbursements = Number(payroll.reimbursements);
   const net = Number(payroll.netSalary);
+  const presentDays = Number(payroll.presentDays);
+  const halfDays = Number(payroll.halfDays);
+  const totalPayDays = Number(payroll.totalPayDays);
   const user = payroll.user!;
 
   return (
@@ -138,18 +141,22 @@ const SalarySlipView: React.FC = () => {
           ATTENDANCE SUMMARY
         </Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 0.5, mb: 3, fontSize: '0.875rem' }}>
-          <Typography variant="body2">Working Days:</Typography>
+          <Typography variant="body2">Total Days:</Typography>
           <Typography variant="body2">{payroll.workingDays}</Typography>
+          <Typography variant="body2">Weekend Days:</Typography>
+          <Typography variant="body2">{payroll.weekendDays}</Typography>
+          <Typography variant="body2">Holiday Days:</Typography>
+          <Typography variant="body2">{payroll.holidayDays ?? 0}</Typography>
           <Typography variant="body2">Present Days:</Typography>
-          <Typography variant="body2">{payroll.presentDays}</Typography>
+          <Typography variant="body2">{presentDays}</Typography>
           <Typography variant="body2">Casual Leave:</Typography>
           <Typography variant="body2">{payroll.casualLeaveDays}</Typography>
           <Typography variant="body2">Half Days:</Typography>
-          <Typography variant="body2">{payroll.halfDays}</Typography>
+          <Typography variant="body2">{halfDays}</Typography>
           <Typography variant="body2">Loss of Pay:</Typography>
           <Typography variant="body2">{payroll.lossOfPayDays}</Typography>
           <Typography variant="body2">Total Pay Days:</Typography>
-          <Typography variant="body2">{payroll.totalPayDays}</Typography>
+          <Typography variant="body2">{totalPayDays}</Typography>
         </Box>
 
         {/* Salary breakdown — single table: Earnings | Amount | Deductions | Amount */}

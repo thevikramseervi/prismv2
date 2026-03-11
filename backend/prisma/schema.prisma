@@ -200,6 +200,8 @@ model Payroll {
   year            Int
   baseSalary      Decimal       @map("base_salary") @db.Decimal(10, 2)
   workingDays     Int           @map("working_days")
+  weekendDays     Int           @default(0) @map("weekend_days")
+  holidayDays     Int           @default(0) @map("holiday_days")
   presentDays     Decimal       @map("present_days") @db.Decimal(5, 2)
   casualLeaveDays Int           @default(0) @map("casual_leave_days")
   halfDays        Decimal       @default(0) @map("half_days") @db.Decimal(5, 2)

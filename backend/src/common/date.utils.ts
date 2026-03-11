@@ -3,7 +3,7 @@
  * Weekend = Saturday (6) and Sunday (0).
  */
 export function isWeekend(date: Date): boolean {
-  const dayOfWeek = date.getDay();
+  const dayOfWeek = date.getUTCDay();
   return dayOfWeek === 0 || dayOfWeek === 6;
 }
 

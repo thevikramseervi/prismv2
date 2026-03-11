@@ -35,12 +35,12 @@ export class PayrollService {
     // Calculate salary
     const calculation = await this.payrollCalculator.calculateSalary(userId, year, month);
 
-    // Default payment date: Nth day of the month following payroll month
+    // Default payment date: Nth day of the month following payroll month (UTC to avoid timezone shift)
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear = month === 12 ? year + 1 : year;
-    const lastDayOfNext = new Date(nextYear, nextMonth, 0).getDate();
+    const lastDayOfNext = new Date(Date.UTC(nextYear, nextMonth, 0)).getUTCDate();
     const payDay = Math.min(defaultPayDayOfMonth, lastDayOfNext);
-    const defaultPaymentDate = new Date(nextYear, nextMonth - 1, payDay);
+    const defaultPaymentDate = new Date(Date.UTC(nextYear, nextMonth - 1, payDay));
 
     // Create payroll record
     return this.prisma.payroll.create({
@@ -50,6 +50,8 @@ export class PayrollService {
         year,
         baseSalary: calculation.baseSalary,
         workingDays: calculation.workingDays,
+        weekendDays: calculation.weekendDays,
+        holidayDays: calculation.holidayDays,
         presentDays: calculation.presentDays,
         casualLeaveDays: calculation.casualLeaveDays,
         halfDays: calculation.halfDays,

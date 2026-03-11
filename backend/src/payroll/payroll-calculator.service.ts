@@ -6,6 +6,8 @@ import { isWeekend, toDateOnlyKey } from '../common/date.utils';
 interface SalaryCalculation {
   baseSalary: number;
   workingDays: number;
+  weekendDays: number;
+  holidayDays: number;
   presentDays: number;
   casualLeaveDays: number;
   halfDays: number;
@@ -49,9 +51,9 @@ export class PayrollCalculatorService {
     // Calculate working days for the month (calendar days)
     const workingDays = await this.calculateWorkingDays(year, month);
 
-    // Get attendance records for the month
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
+    // Get attendance records for the month (UTC midnight boundaries to avoid timezone cutoff)
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 0));
 
     const attendanceRecords = await this.prisma.attendance.findMany({
       where: {
@@ -63,28 +65,10 @@ export class PayrollCalculatorService {
       },
     });
 
-    // Count different attendance statuses
-    let presentDays = 0;
-    let casualLeaveDays = 0;
-    let halfDays = 0;
-    let lossOfPayDays = 0;
-
-    attendanceRecords.forEach((record) => {
-      switch (record.status) {
-        case AttendanceStatus.PRESENT:
-          presentDays++;
-          break;
-        case AttendanceStatus.CASUAL_LEAVE:
-          casualLeaveDays++;
-          break;
-        case AttendanceStatus.HALF_DAY:
-          halfDays++;
-          break;
-        case AttendanceStatus.ABSENT:
-          lossOfPayDays++;
-          break;
-      }
-    });
+    // Index attendance records by date key for quick lookup
+    const attendanceByDate = new Map(
+      attendanceRecords.map((r) => [toDateOnlyKey(r.date), r]),
+    );
 
     // Count weekends and holidays in the month so they are treated as paid days.
     const holidays = await this.prisma.holiday.findMany({
@@ -99,14 +83,43 @@ export class PayrollCalculatorService {
 
     let weekendDays = 0;
     let holidayDays = 0;
+    let presentDays = 0;
+    let casualLeaveDays = 0;
+    let halfDays = 0;
+    let lossOfPayDays = 0;
+
     const daysInMonth = workingDays;
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month - 1, day);
+      const date = new Date(Date.UTC(year, month - 1, day));
       const dateKey = toDateOnlyKey(date);
-      if (isWeekend(date)) {
-        weekendDays++;
-      } else if (holidayDateKeys.has(dateKey)) {
+
+      if (holidayDateKeys.has(dateKey)) {
         holidayDays++;
+      } else if (isWeekend(date)) {
+        weekendDays++;
+      } else {
+        // Weekday: use attendance record, or treat as LOP if no record exists
+        const record = attendanceByDate.get(dateKey);
+        if (!record) {
+          lossOfPayDays++;
+        } else {
+          switch (record.status) {
+            case AttendanceStatus.PRESENT:
+              presentDays++;
+              break;
+            case AttendanceStatus.CASUAL_LEAVE:
+              casualLeaveDays++;
+              break;
+            case AttendanceStatus.HALF_DAY:
+              halfDays++;
+              break;
+            case AttendanceStatus.ABSENT:
+              lossOfPayDays++;
+              break;
+            // WEEKEND / HOLIDAY statuses on a record are ignored here
+            // since the calendar loop already handles them above
+          }
+        }
       }
     }
 
@@ -136,6 +149,8 @@ export class PayrollCalculatorService {
     return {
       baseSalary,
       workingDays,
+      weekendDays,
+      holidayDays,
       presentDays,
       casualLeaveDays,
       halfDays,

@@ -17,6 +17,8 @@ interface PayrollData {
   paymentDate?: Date | null;
   baseSalary: number;
   workingDays: number;
+  weekendDays: number;
+  holidayDays: number;
   presentDays: number;
   casualLeaveDays: number;
   halfDays: number;
@@ -160,7 +162,8 @@ export class ExcelGeneratorService {
 
     // Attendance Details
     const attendanceDetails = [
-      ['Working Days:', payrollData.workingDays.toString(), 'Present Days:', payrollData.presentDays.toString()],
+      ['Total Days:', payrollData.workingDays.toString(), 'Weekend Days:', payrollData.weekendDays.toString()],
+      ['Holiday Days:', payrollData.holidayDays.toString(), 'Present Days:', payrollData.presentDays.toString()],
       ['Casual Leave:', payrollData.casualLeaveDays.toString(), 'Half Days:', payrollData.halfDays.toString()],
       ['Loss of Pay:', payrollData.lossOfPayDays.toString(), 'Total Pay Days:', payrollData.totalPayDays.toString()],
     ];

@@ -102,6 +102,8 @@ export interface Payroll {
   year: number;
   baseSalary: number;
   workingDays: number;
+  weekendDays: number;
+  holidayDays: number;
   presentDays: number;
   casualLeaveDays: number;
   halfDays: number;

@@ -22,13 +22,13 @@ export function getPayDateFormatted(
   } else {
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear = month === 12 ? year + 1 : year;
-    const lastDay = new Date(nextYear, nextMonth, 0).getDate();
+    const lastDay = new Date(Date.UTC(nextYear, nextMonth, 0)).getUTCDate();
     const day = Math.min(DEFAULT_PAY_DAY, lastDay);
-    date = new Date(nextYear, nextMonth - 1, day);
+    date = new Date(Date.UTC(nextYear, nextMonth - 1, day));
   }
-  const d = date.getDate();
-  const m = date.getMonth() + 1;
-  const y = date.getFullYear();
+  const d = date.getUTCDate();
+  const m = date.getUTCMonth() + 1;
+  const y = date.getUTCFullYear();
   return `${String(d).padStart(2, '0')}-${String(m).padStart(2, '0')}-${y}`;
 }
 

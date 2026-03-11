@@ -52,8 +52,8 @@ export function getPayDateFormatted(
     );
     date = new Date(nextYear, nextMonth - 1, day);
   }
-  const d = date.getDate();
-  const m = date.getMonth() + 1;
-  const y = date.getFullYear();
+  const d = date.getUTCDate();
+  const m = date.getUTCMonth() + 1;
+  const y = date.getUTCFullYear();
   return `${String(d).padStart(2, '0')}-${String(m).padStart(2, '0')}-${y}`;
 }
