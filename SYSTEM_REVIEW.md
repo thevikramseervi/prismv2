@@ -15,7 +15,7 @@ The Attend Ease system is **fully operational** with all core features implement
 |-----------|--------|---------|
 | **Backend API** | ✅ Running | Port 3000, 9 modules, 40+ endpoints |
 | **Frontend** | ✅ Running | Port 5173, React + Material-UI |
-| **Database** | ✅ Connected | PostgreSQL 16, 9 tables, 8,784+ records |
+| **Database** | ✅ Connected | PostgreSQL 16, 11 tables, 8,784+ records |
 | **Authentication** | ✅ Working | JWT-based, optional TOTP 2FA for admins, role-based access control |
 | **Data Import** | ✅ Complete | 251 employees, December 2025 data |
 | **Payroll** | ✅ Generated | 252 salary slips, ₹4,768,248 total |
@@ -38,7 +38,7 @@ backend/
 │   ├── biometric/      ✅ 4,736 logs imported
 │   └── common/         ✅ Guards, decorators, pipes
 ├── prisma/
-│   ├── schema.prisma   ✅ 9 tables, proper relations
+│   ├── schema.prisma   ✅ 11 tables, proper relations
 │   ├── migrations/     ✅ Database synced
 │   └── seed.ts         ✅ Admin user seeded
 └── scripts/
@@ -82,9 +82,11 @@ frontend/
 ✅ biometric_logs (4,736 records - December 2025)
 ✅ leave_applications (0 records - ready for use)
 ✅ leave_balance (252 records)
-✅ payroll (252 records - December 2025)
+✅ payroll (252 records - December 2025; includes weekend_days, holiday_days, payment_date)
 ✅ holidays (2 default holidays)
-✅ announcements (0 records - ready for use)
+✅ announcements (0 records - ready for use; audience targeting, pinning, expiry)
+✅ announcement_reads (tracks per-user read state for announcements)
+✅ notifications (in-app notifications per user)
 ✅ password_reset_tokens (transient - for password reset flow)
 ```
 

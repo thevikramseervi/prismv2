@@ -66,9 +66,16 @@ A comprehensive full-stack web application for automating attendance tracking, l
 
 ### Salary Calculation
 ```
-Total Pay Days = Present Days + Casual Leave Days + (Half Days × 0.5) + Weekend Days + Holidays
-Net Salary = (Total Pay Days / Working Days) × Base Salary
-Working Days = Total Days in the month
+Total Days     = Days in the month (from joining date if mid-month joiner)
+Weekend Days   = Saturday & Sunday within Total Days (holiday takes priority over weekend)
+Holiday Days   = Company holidays within Total Days (counted first; not double-counted as weekend)
+Present Days   = Full days (≥8h30m) from biometric/manual attendance
+Half Days      = Half days (≥3h45m, <8h30m) from attendance
+Casual Leave   = Approved leave days (excl. weekends & holidays)
+LOP Days       = Unrecorded weekdays (no attendance and no leave)
+
+Total Pay Days = Present Days + (Half Days × 0.5) + Casual Leave + Weekend Days + Holiday Days
+Net Salary     = (Total Pay Days / Total Days) × Base Salary
 ```
 
 ### Leave Management
@@ -87,14 +94,19 @@ attend-ease/
 │   │   ├── schema.prisma          # Database schema
 │   │   └── seed.ts                # Initial data seeding
 │   ├── src/
-│   │   ├── auth/                  # Authentication module
+│   │   ├── auth/                  # Authentication module (JWT, 2FA, password reset)
 │   │   ├── users/                 # User management
 │   │   ├── attendance/            # Attendance tracking
 │   │   ├── leave/                 # Leave management
-│   │   ├── payroll/               # Payroll & salary slips
+│   │   ├── payroll/               # Payroll & salary slips (PDF + Excel)
 │   │   ├── holidays/              # Holiday management
-│   │   ├── announcements/         # Announcements system
-│   │   ├── biometric/             # Biometric sync service
+│   │   ├── announcements/         # Announcements with audience targeting & read tracking
+│   │   ├── notifications/         # In-app notifications + absence-reminder cron
+│   │   ├── activity/              # Audit activity log
+│   │   ├── biometric/             # Biometric XLSX import & sync service
+│   │   ├── email/                 # Email service (password reset, transactional)
+│   │   ├── health/                # Health check endpoint
+│   │   ├── common/                # Shared utils (date, attendance, number-to-words, filters)
 │   │   ├── prisma/                # Prisma service
 │   │   └── main.ts               # Application entry point
 │   ├── .env                       # Environment variables
@@ -162,7 +174,7 @@ attend-ease/
    npm run start:dev
    ```
    Server runs at: http://localhost:3000
-   API Docs: http://localhost:3000/api/docs
+   API Docs (development only): http://localhost:3000/api/docs
 
 ### Frontend Setup
 
@@ -215,9 +227,11 @@ Role: Super Admin
 - **biometric_logs** - Raw biometric data
 - **leave_applications** - Leave requests
 - **leave_balance** - Annual leave balance per user
-- **payroll** - Monthly salary records
+- **payroll** - Monthly salary records (includes `weekend_days`, `holiday_days`, `payment_date`)
 - **holidays** - Company holidays
-- **announcements** - System announcements
+- **announcements** - System announcements (target audience filtering, pinning, expiry)
+- **announcement_reads** - Tracks which users have read each announcement
+- **notifications** - In-app notifications per user
 - **password_reset_tokens** - Password reset links (time-limited)
 
 ### User Roles
@@ -248,21 +262,23 @@ Role: Super Admin
 - `POST /api/attendance/manual` - Manual attendance entry (Admin)
 
 ### Leave
-- `POST /api/leave/apply` - Apply for leave
+- `POST /api/leave/apply` - Apply for leave (excludes weekends & holidays from day count)
 - `GET /api/leave/my-applications` - My leave applications
 - `GET /api/leave/balance` - My leave balance
 - `GET /api/leave/pending` - Pending applications (Admin)
 - `PATCH /api/leave/:id/approve` - Approve leave (Admin)
 - `PATCH /api/leave/:id/reject` - Reject leave (Admin)
+- `PATCH /api/leave/:id/cancel` - Cancel application (owner or Admin)
 
 ### Payroll
-- `POST /api/payroll/generate` - Generate payroll (Admin)
-- `GET /api/payroll` - Get all payroll (Admin, optional year/month/userId)
+- `POST /api/payroll/generate` - Generate payroll for one employee (Admin; optional `paymentDate`)
+- `POST /api/payroll/generate/all` - Bulk-generate payroll for all active employees (Admin; optional `paymentDate`)
+- `GET /api/payroll` - Get all payroll (Admin, optional year/month/userId filters)
 - `GET /api/payroll/my-salary-slips` - My salary slips
-- `GET /api/payroll/:id` - Get payroll by ID
-- `PATCH /api/payroll/:id/mark-paid` - Mark as paid (Super Admin)
-- `GET /api/payroll/:id/download/pdf` - Download PDF
-- `GET /api/payroll/:id/download/xlsx` - Download Excel
+- `GET /api/payroll/:id` - Get payroll by ID (owner or Admin)
+- `PATCH /api/payroll/:id/mark-paid` - Mark as paid, records today as payment date (Super Admin only)
+- `GET /api/payroll/:id/download/pdf` - Download PDF (owner or Admin)
+- `GET /api/payroll/:id/download/xlsx` - Download Excel (owner or Admin)
 
 ### Users (Admin only)
 - `GET /api/users` - Get all users (paginated)
@@ -278,14 +294,28 @@ Role: Super Admin
 - `DELETE /api/holidays/:id` - Delete holiday
 
 ### Announcements
-- `GET /api/announcements` - Get my announcements (filtered by target audience)
+- `GET /api/announcements` - Get my announcements (filtered by target audience, includes `isRead` / `readAt`)
 - `POST /api/announcements` - Create announcement (Admin)
-- `POST /api/announcements/:id/mark-read` - Mark as read (no-op; kept for API compatibility)
-- `GET /api/announcements/unread-count` - Unread count (based on list; read state not persisted)
+- `PATCH /api/announcements/:id` - Update announcement (Admin)
+- `DELETE /api/announcements/:id` - Delete announcement (Admin)
+- `POST /api/announcements/:id/mark-read` - Mark announcement as read (persisted in DB)
+- `GET /api/announcements/unread-count` - Unread count (based on persisted read records)
+
+### Notifications
+- `GET /api/notifications` - Get my notifications
+- `PATCH /api/notifications/:id/read` - Mark notification as read
+- `PATCH /api/notifications/read-all` - Mark all notifications as read
+
+### Activity
+- `GET /api/activity` - Get activity log (Admin)
 
 ### Biometric (Admin only)
-- `POST /api/biometric/sync?date=YYYY-MM-DD` - Manual sync
+- `POST /api/biometric/upload` - Upload biometric XLSX file
+- `POST /api/biometric/sync?date=YYYY-MM-DD` - Manual sync for a specific date
 - `GET /api/biometric/unprocessed` - Unprocessed logs
+
+### Health
+- `GET /api/health` - Health check
 
 ## 📈 Reports Module
 
@@ -331,13 +361,18 @@ The Reports page provides comprehensive analytics with Excel export:
 ### Steps
 1. Navigate to **Admin Panel**
 2. Select Month/Year
-3. Choose employee (or select "All Employees")
-4. Click "Generate Payroll"
-5. System calculates:
-   - Working days (excludes weekends & holidays)
-   - Attendance days from records
-   - Salary based on formula
-6. Generates salary slips for download
+3. Choose employee (or select "All Employees" for bulk generation)
+4. Optionally set a **Pay Date** (defaults to last day of the month)
+5. Click "Generate Payroll"
+6. System calculates per employee:
+   - Total days (respects mid-month joining date)
+   - Weekend days and holiday days
+   - Attendance from biometric/manual records
+   - Casual leave from approved applications
+   - Loss of Pay for unrecorded weekdays
+   - Net salary using the formula above
+7. Generates salary slips — downloadable as PDF or Excel from "Salary Slips" page
+8. Slips start as **DRAFT**; Super Admin can mark them **PAID** via the Reports page
 
 ### Salary Slip Features
 - Professional PDF format
@@ -367,10 +402,13 @@ The Reports page provides comprehensive analytics with Excel export:
 - Optional TOTP two-factor authentication for admins (LAB_ADMIN, SUPER_ADMIN)
 - Password hashing with bcrypt
 - Password reset via time-limited email links
-- Role-based access control
-- Protected API routes with guards
+- Role-based access control on all sensitive endpoints
+- Ownership checks: employees can only access their own payslips, attendance, and leave records
+- In-memory rate limiting on login / password-reset to prevent brute force
+- Email normalised to lowercase on creation and lookup (case-insensitive auth)
+- HTTP security headers via `helmet` middleware
+- Swagger API docs disabled in production (`NODE_ENV=production`)
 - SQL injection prevention (Prisma ORM)
-- XSS protection
 - CORS configuration
 
 ## 📥 Data Migration
@@ -425,7 +463,8 @@ See [DATA_MIGRATION_GUIDE.md](backend/DATA_MIGRATION_GUIDE.md) for detailed inst
 ## 📝 Notes
 
 - Base salary for all employees: ₹22,000
-- Casual leave quota: 12 days per year; pro-rata by remaining months if the employee joins mid-year (e.g. April → 9 days)
+- Casual leave quota: 12 days per year; pro-rata for mid-year joiners using the **15th-day rule**: joining on or before the 15th counts that month; joining after the 15th skips it (e.g. joining April 10 → 9 days; joining April 20 → 8 days)
+- Payroll for mid-month joiners: days before the joining date are excluded from all calculations (not counted as weekend, holiday, or LOP)
 - No half-day casual leave
 - Weekends: Saturday & Sunday
 - Working hours: 8 hours 30 minutes = full day
