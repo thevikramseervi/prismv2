@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Grid, Card, CardContent, Typography, Box, CircularProgress, Alert, Paper, Chip } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import {
   CheckCircle,
   Cancel,
@@ -211,9 +212,7 @@ const Dashboard: React.FC = () => {
                         bgcolor: (theme) =>
                           announcement.isRead
                             ? theme.palette.action.selected
-                            : theme.palette.mode === 'dark'
-                            ? `${theme.palette.primary.dark}33`
-                            : theme.palette.primary[50],
+                            : alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.15 : 0.08),
                         border: 1,
                         borderColor: announcement.isRead ? 'divider' : 'primary.200',
                       }}
