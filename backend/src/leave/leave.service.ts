@@ -9,22 +9,26 @@ import { ApplyLeaveDto } from './dto/apply-leave.dto';
 import { ReviewLeaveDto } from './dto/review-leave.dto';
 import { LeaveStatus, AttendanceStatus, LeaveType, Role } from '@prisma/client';
 import { getProRataCasualLeaveForYear } from './leave.utils';
+import { toDateOnlyKey } from '../common/date.utils';
 
 @Injectable()
 export class LeaveService {
   constructor(private prisma: PrismaService) {}
 
-  private calculateLeaveDays(fromDate: Date, toDate: Date): number {
+  private calculateLeaveDays(
+    fromDate: Date,
+    toDate: Date,
+    holidayKeys: Set<string> = new Set(),
+  ): number {
     let days = 0;
     const current = new Date(fromDate);
 
     while (current <= toDate) {
-      // Skip weekends (Saturday = 6, Sunday = 0)
-      const dayOfWeek = current.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      const dayOfWeek = current.getUTCDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidayKeys.has(toDateOnlyKey(current))) {
         days++;
       }
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
     }
 
     return days;
@@ -39,15 +43,22 @@ export class LeaveService {
       throw new BadRequestException('From date must be before or equal to to date');
     }
 
-    // Calculate leave days (excluding weekends)
-    const totalDays = this.calculateLeaveDays(fromDate, toDate);
+    // Fetch holidays in range so they are excluded from the leave day count
+    const holidaysInRange = await this.prisma.holiday.findMany({
+      where: { date: { gte: fromDate, lte: toDate } },
+      select: { date: true },
+    });
+    const holidayKeys = new Set(holidaysInRange.map((h) => toDateOnlyKey(h.date)));
+
+    // Calculate leave days (excluding weekends and public holidays)
+    const totalDays = this.calculateLeaveDays(fromDate, toDate, holidayKeys);
 
     if (totalDays === 0) {
       throw new BadRequestException('No working days in the selected date range');
     }
 
     // Get leave balance for current year and apply changes transactionally
-    const year = fromDate.getFullYear();
+    const year = fromDate.getUTCFullYear();
 
     return this.prisma.$transaction(async (tx) => {
       // For CASUAL_LEAVE, we track against leave balance.
@@ -300,7 +311,7 @@ export class LeaveService {
 
       // For CASUAL_LEAVE, update leave balance; for UNPAID_LEAVE, don't touch balance.
       if (application.leaveType === LeaveType.CASUAL_LEAVE) {
-        const year = application.fromDate.getFullYear();
+        const year = application.fromDate.getUTCFullYear();
         await tx.leaveBalance.update({
           where: {
             userId_year: {
@@ -319,23 +330,30 @@ export class LeaveService {
         });
       }
 
-      // Create attendance records for leave dates (excluding weekends)
+      // Create attendance records for leave dates (excluding weekends and public holidays)
+      const leaveHolidays = await tx.holiday.findMany({
+        where: { date: { gte: application.fromDate, lte: application.toDate } },
+        select: { date: true },
+      });
+      const leaveHolidayKeys = new Set(leaveHolidays.map((h) => toDateOnlyKey(h.date)));
+
       const current = new Date(application.fromDate);
       const endDate = new Date(application.toDate);
 
       while (current <= endDate) {
-        const dayOfWeek = current.getDay();
-        // Skip weekends
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        const dayOfWeek = current.getUTCDay();
+        const dateKey = toDateOnlyKey(current);
+        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !leaveHolidayKeys.has(dateKey)) {
           const statusForDay =
             application.leaveType === LeaveType.CASUAL_LEAVE
               ? AttendanceStatus.CASUAL_LEAVE
               : AttendanceStatus.ABSENT;
+          const attendanceDate = new Date(current);
           await tx.attendance.upsert({
             where: {
               userId_date: {
                 userId: application.userId,
-                date: new Date(current),
+                date: attendanceDate,
               },
             },
             update: {
@@ -344,14 +362,14 @@ export class LeaveService {
             },
             create: {
               userId: application.userId,
-              date: new Date(current),
+              date: attendanceDate,
               status: statusForDay,
               manualOverride: true,
               biometricSynced: false,
             },
           });
         }
-        current.setDate(current.getDate() + 1);
+        current.setUTCDate(current.getUTCDate() + 1);
       }
 
       const updated = await tx.leaveApplication.findUnique({
@@ -418,7 +436,7 @@ export class LeaveService {
 
       // Restore leave balance only for CASUAL_LEAVE applications
       if (application.leaveType === LeaveType.CASUAL_LEAVE) {
-        const year = application.fromDate.getFullYear();
+        const year = application.fromDate.getUTCFullYear();
         await tx.leaveBalance.update({
           where: {
             userId_year: {
@@ -642,7 +660,7 @@ export class LeaveService {
       });
       // Restore leave balance only for CASUAL_LEAVE
       if (application.leaveType === LeaveType.CASUAL_LEAVE) {
-        const year = application.fromDate.getFullYear();
+        const year = application.fromDate.getUTCFullYear();
         await tx.leaveBalance.update({
           where: {
             userId_year: {

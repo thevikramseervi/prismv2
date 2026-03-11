@@ -33,7 +33,13 @@ export class BiometricController {
   @ApiQuery({ name: 'date', required: false, type: String, description: 'Date to sync (YYYY-MM-DD). Defaults to yesterday.' })
   @ApiResponse({ status: 200, description: 'Biometric sync triggered successfully' })
   async syncBiometric(@Query('date') dateStr?: string) {
-    const date = dateStr ? new Date(dateStr) : new Date(Date.now() - 86400000); // Yesterday
+    let date: Date;
+    if (dateStr) {
+      date = new Date(dateStr);
+    } else {
+      const now = new Date();
+      date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+    }
     return this.biometricSyncService.syncBiometricDataForDate(date);
   }
 
@@ -74,7 +80,7 @@ export class BiometricController {
       throw new BadRequestException('No file uploaded. Use form field name "file".');
     }
     const ext = file.originalname?.toLowerCase().slice(-5);
-    if (!ext.includes('.xlsx')) {
+    if (!ext?.includes('.xlsx')) {
       throw new BadRequestException(
         'Only .xlsx files are supported. Please convert .xls to .xlsx (e.g. open in Excel and Save As).',
       );

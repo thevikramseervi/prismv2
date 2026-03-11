@@ -297,8 +297,8 @@ export class AttendanceService {
     // Reuse the monthly attendance summary for the current month
     const monthlyAttendance = await this.findMonthlyAttendance(
       userId,
-      today.getFullYear(),
-      today.getMonth() + 1,
+      today.getUTCFullYear(),
+      today.getUTCMonth() + 1,
     );
 
     const summary = monthlyAttendance.summary;

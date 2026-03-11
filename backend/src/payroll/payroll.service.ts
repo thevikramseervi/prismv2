@@ -184,6 +184,10 @@ export class PayrollService {
   async markAsPaid(id: string) {
     const payroll = await this.getPayrollById(id);
 
+    if (payroll.paymentStatus === 'PAID') {
+      throw new ConflictException('Payroll has already been marked as paid');
+    }
+
     const now = new Date();
     const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     return this.prisma.payroll.update({

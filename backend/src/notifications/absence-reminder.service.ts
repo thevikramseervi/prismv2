@@ -10,27 +10,28 @@ export class AbsenceReminderService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Every weekday morning, look at yesterday's attendance.
-   * For any user marked ABSENT without an approved/pending UNPAID_LEAVE
-   * covering that date, send a notification suggesting they apply for
-   * unpaid leave.
+   * Runs every day at 2 PM. Looks at yesterday's attendance.
+   * For any user marked ABSENT without an approved/pending UNPAID_LEAVE or
+   * CASUAL_LEAVE covering that date, sends a notification suggesting they
+   * apply for unpaid leave.
    */
   @Cron(CronExpression.EVERY_DAY_AT_2PM)
   async remindForUnpaidLeave() {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
+    const now = new Date();
+    // Build yesterday as a UTC midnight Date so the range aligns with @db.Date storage.
+    const yesterdayUTC = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1),
+    );
 
-    // Skip checks for weekends entirely
-    const dow = yesterday.getDay(); // 0 = Sun, 6 = Sat
+    // Skip checks when yesterday was a weekend
+    const dow = yesterdayUTC.getUTCDay(); // 0 = Sun, 6 = Sat
     if (dow === 0 || dow === 6) {
       return;
     }
 
-    const yStart = new Date(yesterday);
-    yStart.setHours(0, 0, 0, 0);
-    const yEnd = new Date(yesterday);
-    yEnd.setHours(23, 59, 59, 999);
+    // For a @db.Date field Prisma uses UTC midnight; give a full-day window.
+    const yStart = yesterdayUTC;
+    const yEnd = new Date(yesterdayUTC.getTime() + 24 * 60 * 60 * 1000 - 1);
 
     // Find ABSENT attendance for yesterday
     const absentRecords = await this.prisma.attendance.findMany({
@@ -79,7 +80,7 @@ export class AbsenceReminderService {
       return;
     }
 
-    const dateLabel = yesterday.toISOString().slice(0, 10);
+    const dateLabel = yesterdayUTC.toISOString().slice(0, 10);
 
     await this.prisma.notification.createMany({
       data: usersNeedingReminder.map((userId) => ({

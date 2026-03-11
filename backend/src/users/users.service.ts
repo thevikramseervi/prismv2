@@ -223,11 +223,14 @@ export class UsersService {
       throw new BadRequestException('User is already inactive');
     }
 
+    const now = new Date();
+    const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
     return this.prisma.user.update({
       where: { id },
       data: {
         status: 'INACTIVE',
-        dateOfLeaving: new Date(),
+        dateOfLeaving: todayUTC,
       },
       select: {
         id: true,

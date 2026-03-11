@@ -134,12 +134,12 @@ export class BiometricImportService {
         if (inTimeStr) {
           const [h, m] = inTimeStr.split(':').map(Number);
           inTime = new Date(date);
-          inTime.setHours(h ?? 0, m ?? 0, 0, 0);
+          inTime.setUTCHours(h ?? 0, m ?? 0, 0, 0);
         }
         if (outTimeStrVal) {
           const [h, m] = outTimeStrVal.split(':').map(Number);
           outTime = new Date(date);
-          outTime.setHours(h ?? 0, m ?? 0, 0, 0);
+          outTime.setUTCHours(h ?? 0, m ?? 0, 0, 0);
         }
 
         try {

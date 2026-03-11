@@ -65,10 +65,9 @@ export class AnnouncementsService {
     const announcements = await this.prisma.announcement.findMany({
       where: {
         isActive: true,
-        ...targetFilter,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
+        AND: [
+          { OR: targetFilter.OR },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
         ],
       },
       include: {
@@ -78,6 +77,10 @@ export class AnnouncementsService {
             role: true,
           },
         },
+        reads: {
+          where: { userId },
+          select: { readAt: true },
+        },
       },
       orderBy: [
         { isPinned: 'desc' },
@@ -85,10 +88,10 @@ export class AnnouncementsService {
       ],
     });
 
-    return announcements.map((announcement) => ({
+    return announcements.map(({ reads, ...announcement }) => ({
       ...announcement,
-      isRead: false,
-      readAt: null,
+      isRead: reads.length > 0,
+      readAt: reads[0]?.readAt ?? null,
     }));
   }
 
@@ -143,15 +146,19 @@ export class AnnouncementsService {
     });
   }
 
-  async markAsRead(announcementId: string, _userId: string) {
+  async markAsRead(announcementId: string, userId: string) {
     await this.findOne(announcementId);
+    await this.prisma.announcementRead.upsert({
+      where: { announcementId_userId: { announcementId, userId } },
+      create: { announcementId, userId },
+      update: {},
+    });
     return { announcementId, readAt: new Date() };
   }
 
   async getUnreadCount(userId: string) {
     const announcements = await this.findAllForUser(userId);
     const unreadCount = announcements.filter((a) => !a.isRead).length;
-
     return { unreadCount };
   }
 

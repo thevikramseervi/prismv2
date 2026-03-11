@@ -38,7 +38,7 @@ export class BiometricSyncService {
     const allDates: Date[] = [];
 
     for (const entry of entries) {
-      const key = `${entry.employeeId}_${entry.date.toDateString()}`;
+      const key = `${entry.employeeId}_${entry.date.toISOString().slice(0, 10)}`;
       if (!grouped.has(key)) {
         grouped.set(key, []);
         allDates.push(entry.date);
@@ -78,7 +78,7 @@ export class BiometricSyncService {
     for (const leave of leaves) {
       const from = new Date(leave.fromDate);
       const to = new Date(leave.toDate);
-      for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+      for (let d = new Date(from); d <= to; d.setUTCDate(d.getUTCDate() + 1)) {
         leaveKeySet.add(`${leave.userId}_${d.toISOString().slice(0, 10)}`);
       }
     }

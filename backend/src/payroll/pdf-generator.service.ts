@@ -54,11 +54,12 @@ export class PdfGeneratorService {
   }
 
   private formatDate(date: Date): string {
-    return new Date(date).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
+    const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const d = new Date(date);
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const month = MONTH_SHORT[d.getUTCMonth()];
+    const year = d.getUTCFullYear();
+    return `${day} ${month} ${year}`;
   }
 
   async generateSalarySlipPDF(payrollData: PayrollData): Promise<Readable> {

@@ -4,6 +4,7 @@ import { generateSecret, generateURI, verify } from 'otplib';
 
 const ADMIN_ROLES = ['LAB_ADMIN', 'SUPER_ADMIN'];
 const PENDING_SECRET_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;   // purge expired entries every 15 minutes
 
 @Injectable()
 export class TwoFactorService {
@@ -11,8 +12,24 @@ export class TwoFactorService {
     string,
     { secret: string; createdAt: number }
   >();
+  private cleanupTimer: ReturnType<typeof setInterval>;
 
-  constructor(private configService: ConfigService) {}
+  constructor(private configService: ConfigService) {
+    this.cleanupTimer = setInterval(() => this.purgeExpired(), CLEANUP_INTERVAL_MS);
+  }
+
+  onModuleDestroy() {
+    clearInterval(this.cleanupTimer);
+  }
+
+  private purgeExpired() {
+    const now = Date.now();
+    for (const [key, entry] of this.pendingSecrets) {
+      if (now - entry.createdAt > PENDING_SECRET_TTL_MS) {
+        this.pendingSecrets.delete(key);
+      }
+    }
+  }
 
   isAdminRole(role: string): boolean {
     return ADMIN_ROLES.includes(role);

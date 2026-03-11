@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -22,9 +22,11 @@ import {
   Paper,
   IconButton,
   Tooltip,
+  Alert,
 } from '@mui/material';
 import { Add, Cancel as CancelIcon } from '@mui/icons-material';
 import { leaveApi } from '../api/leave';
+import { holidaysApi } from '../api/holidays';
 import { LeaveStatus, LeaveType } from '../types';
 import PageHeader from '../components/PageHeader';
 
@@ -49,6 +51,51 @@ const Leave: React.FC = () => {
     queryKey: ['leave-balance'],
     queryFn: () => leaveApi.getBalance(),
   });
+
+  // Derive the year(s) touched by the selected range for holiday lookup
+  const fromYear = fromDate ? new Date(fromDate).getUTCFullYear() : new Date().getUTCFullYear();
+  const toYear   = toDate   ? new Date(toDate).getUTCFullYear()   : fromYear;
+
+  const { data: holidays } = useQuery({
+    queryKey: ['holidays-all'],
+    queryFn: () => holidaysApi.getAll(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Build a Set of holiday date strings (YYYY-MM-DD) covering the selected years
+  const holidaySet = useMemo(() => {
+    const set = new Set<string>();
+    (holidays ?? []).forEach((h) => {
+      const y = new Date(h.date).getUTCFullYear();
+      if (y >= fromYear && y <= toYear) {
+        set.add(h.date.slice(0, 10));
+      }
+    });
+    return set;
+  }, [holidays, fromYear, toYear]);
+
+  // Count working days in the selected range (excluding weekends and public holidays)
+  const leaveSummary = useMemo(() => {
+    if (!fromDate || !toDate) return null;
+    const from = new Date(fromDate);
+    const to   = new Date(toDate);
+    if (from > to) return null;
+    let working = 0, weekendCount = 0, holidayCount = 0;
+    const cur = new Date(from);
+    while (cur <= to) {
+      const dow = cur.getUTCDay();
+      const key = cur.toISOString().slice(0, 10);
+      if (dow === 0 || dow === 6) {
+        weekendCount++;
+      } else if (holidaySet.has(key)) {
+        holidayCount++;
+      } else {
+        working++;
+      }
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+    return { working, weekendCount, holidayCount };
+  }, [fromDate, toDate, holidaySet]);
 
   const applyMutation = useMutation({
     mutationFn: leaveApi.apply,
@@ -230,24 +277,57 @@ const Leave: React.FC = () => {
               <option value={LeaveType.UNPAID_LEAVE}>Unpaid Leave (LOP)</option>
             </TextField>
           </Box>
-          <TextField
-            label="From Date"
-            type="date"
-            fullWidth
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            margin="normal"
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label="To Date"
-            type="date"
-            fullWidth
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            margin="normal"
-            InputLabelProps={{ shrink: true }}
-          />
+          <Box display="flex" gap={2} alignItems="flex-start">
+            <TextField
+              label="From Date"
+              type="date"
+              fullWidth
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              margin="normal"
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="To Date"
+              type="date"
+              fullWidth
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              margin="normal"
+              InputLabelProps={{ shrink: true }}
+            />
+          </Box>
+
+          {/* Live working-days feedback */}
+          {fromDate && toDate && (
+            fromDate > toDate ? (
+              <Alert severity="error" sx={{ mt: 1 }}>
+                "To Date" must be on or after "From Date".
+              </Alert>
+            ) : leaveSummary?.working === 0 ? (
+              <Alert severity="warning" sx={{ mt: 1 }}>
+                The selected range falls entirely on weekends or public holidays — no working days to deduct.
+              </Alert>
+            ) : leaveSummary ? (
+              <Alert severity="info" sx={{ mt: 1 }}>
+                <strong>{leaveSummary.working} working day{leaveSummary.working !== 1 ? 's' : ''}</strong> will be deducted
+                {(leaveSummary.weekendCount > 0 || leaveSummary.holidayCount > 0) && (
+                  <>
+                    {' '}(excluding{' '}
+                    {leaveSummary.weekendCount > 0 && (
+                      <>{leaveSummary.weekendCount} weekend day{leaveSummary.weekendCount !== 1 ? 's' : ''}</>
+                    )}
+                    {leaveSummary.weekendCount > 0 && leaveSummary.holidayCount > 0 && ' + '}
+                    {leaveSummary.holidayCount > 0 && (
+                      <>{leaveSummary.holidayCount} public holiday{leaveSummary.holidayCount !== 1 ? 's' : ''}</>
+                    )}
+                    )
+                  </>
+                )}.
+              </Alert>
+            ) : null
+          )}
+
           <TextField
             label="Reason"
             multiline
@@ -263,7 +343,13 @@ const Leave: React.FC = () => {
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={applyMutation.isPending}
+            disabled={
+              applyMutation.isPending ||
+              !fromDate ||
+              !toDate ||
+              fromDate > toDate ||
+              leaveSummary?.working === 0
+            }
           >
             {applyMutation.isPending ? 'Submitting...' : 'Submit'}
           </Button>
