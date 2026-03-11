@@ -17,30 +17,32 @@ import PageHeader from '../components/PageHeader';
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
 
-  const { data: dashboardStats, isLoading: statsLoading, isError: statsError } = useQuery({
+  const { data: dashboardStats, isLoading: statsLoading, isError: statsError, failureCount: statsFailures } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: () => attendanceApi.getDashboard(),
   });
 
-  const { data: leaveBalance, isLoading: leaveLoading, isError: leaveError } = useQuery({
+  const { data: leaveBalance, isLoading: leaveLoading, isError: leaveError, failureCount: leaveFailures } = useQuery({
     queryKey: ['leave-balance'],
     queryFn: () => leaveApi.getBalance(),
   });
 
-  const { data: announcements, isLoading: announcementsLoading, isError: announcementsError } = useQuery({
+  const { data: announcements, isLoading: announcementsLoading, isError: announcementsError, failureCount: announcementsFailures } = useQuery({
     queryKey: ['announcements'],
     queryFn: () => announcementsApi.getAll(),
   });
 
+  const isRetrying = (statsLoading && statsFailures > 0) || (leaveLoading && leaveFailures > 0) || (announcementsLoading && announcementsFailures > 0);
+
   if (statsLoading || leaveLoading || announcementsLoading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="60vh"
-      >
+      <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="60vh" gap={2}>
         <CircularProgress sx={{ color: 'primary.main' }} />
+        {isRetrying && (
+          <Alert severity="info" sx={{ maxWidth: 420 }}>
+            Server is warming up — this can take up to 60 seconds on first load. Please wait…
+          </Alert>
+        )}
       </Box>
     );
   }
@@ -48,7 +50,7 @@ const Dashboard: React.FC = () => {
   if (statsError || leaveError || announcementsError) {
     return (
       <Alert severity="error" sx={{ mt: 2 }}>
-        Failed to load dashboard data. Please refresh the page.
+        Failed to load dashboard data. The server may be unavailable — please refresh the page or try again in a moment.
       </Alert>
     );
   }

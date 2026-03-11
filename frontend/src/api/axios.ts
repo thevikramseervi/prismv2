@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { queryClient } from '../queryClient';
 
+// Use VITE_API_URL when set (production: direct Render URL, bypasses Netlify's 26s proxy timeout).
+// Falls back to '/api' for local development where the Vite proxy handles it.
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL ?? '/api',
   headers: {
     'Content-Type': 'application/json',
   },
