@@ -67,11 +67,17 @@ export class AttendanceService {
   ) {
     const where: any = { userId };
 
-    if (startDate && endDate) {
-      where.date = {
-        gte: new Date(startDate),
-        lte: new Date(endDate),
-      };
+    if (startDate) {
+      const start = new Date(startDate);
+      if (!isNaN(start.getTime())) {
+        where.date = { ...where.date, gte: start };
+      }
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      if (!isNaN(end.getTime())) {
+        where.date = { ...where.date, lte: end };
+      }
     }
 
     const records = await this.prisma.attendance.findMany({

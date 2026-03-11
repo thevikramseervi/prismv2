@@ -178,12 +178,16 @@ export class AuthService {
         email: true,
         role: true,
         designation: true,
+        status: true,
         twoFactorEnabled: true,
         twoFactorSecret: true,
       },
     });
     if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
       throw new UnauthorizedException('2FA not enabled for this account');
+    }
+    if (user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Account is inactive');
     }
     const valid = await this.twoFactorService.verifyCode(user.twoFactorSecret, dto.code);
     if (!valid) {
@@ -288,15 +292,18 @@ export class AuthService {
     await this.prisma.passwordResetToken.deleteMany({
       where: { userId: user.id },
     });
-    const token = crypto.randomBytes(32).toString('hex');
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    // Store a SHA-256 hash of the token so a DB read alone cannot be used to
+    // reset accounts — only the bearer of the raw token can authenticate.
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
     const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
     await this.prisma.passwordResetToken.create({
-      data: { userId: user.id, token, expiresAt },
+      data: { userId: user.id, token: tokenHash, expiresAt },
     });
 
     const baseUrl =
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
-    const resetLink = `${baseUrl.replace(/\/$/, '')}/reset-password?token=${token}`;
+    const resetLink = `${baseUrl.replace(/\/$/, '')}/reset-password?token=${rawToken}`;
     await this.emailService.sendPasswordReset(key, resetLink);
 
     return {
@@ -306,8 +313,9 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
+    const tokenHash = crypto.createHash('sha256').update(dto.token).digest('hex');
     const record = await this.prisma.passwordResetToken.findUnique({
-      where: { token: dto.token },
+      where: { token: tokenHash },
       include: { user: { select: { id: true } } },
     });
     if (!record || record.expiresAt < new Date()) {

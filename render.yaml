@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: attend-ease-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci && npm run build && npx prisma generate && npx prisma migrate deploy
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false          # Set in Render dashboard — your Neon connection string
+      - key: JWT_SECRET
+        sync: false          # Set in Render dashboard — generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+      - key: JWT_EXPIRATION
+        value: 7d
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        sync: false          # Set in Render dashboard — your Netlify URL e.g. https://attend-ease.netlify.app
+      - key: SMTP_HOST
+        sync: false          # Optional — set if you want password reset emails
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false

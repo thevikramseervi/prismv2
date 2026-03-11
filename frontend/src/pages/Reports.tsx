@@ -57,11 +57,11 @@ const formatTime = (val: string | Date | null | undefined): string => {
       }
       const d = new Date(val);
       if (isNaN(d.getTime())) return '-';
-      return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+      return d.getUTCHours().toString().padStart(2, '0') + ':' + d.getUTCMinutes().toString().padStart(2, '0');
     }
     const d = val instanceof Date ? val : new Date(val);
     if (isNaN(d.getTime())) return '-';
-    return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+    return d.getUTCHours().toString().padStart(2, '0') + ':' + d.getUTCMinutes().toString().padStart(2, '0');
   } catch {
     return '-';
   }

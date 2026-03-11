@@ -61,7 +61,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     const authResponse = response as { access_token: string; user: AuthUser };
     localStorage.setItem('token', authResponse.access_token);
-    localStorage.setItem('user', JSON.stringify(authResponse.user));
     setUser(authResponse.user);
     return response;
   };
@@ -69,7 +68,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const complete2fa = async (token: string, code: string) => {
     const response = await authApi.verify2fa({ token, code });
     localStorage.setItem('token', response.access_token);
-    localStorage.setItem('user', JSON.stringify(response.user));
     setUser(response.user);
   };
 
@@ -79,7 +77,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const userData = await authApi.me();
       setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
     } catch {
       logout();
     }

@@ -39,9 +39,17 @@ export class LeaveService {
     const fromDate = new Date(applyLeaveDto.fromDate);
     const toDate = new Date(applyLeaveDto.toDate);
 
-    // Validate dates
+    if (isNaN(fromDate.getTime())) {
+      throw new BadRequestException('Invalid fromDate');
+    }
+    if (isNaN(toDate.getTime())) {
+      throw new BadRequestException('Invalid toDate');
+    }
     if (fromDate > toDate) {
       throw new BadRequestException('From date must be before or equal to to date');
+    }
+    if (fromDate.getUTCFullYear() !== toDate.getUTCFullYear()) {
+      throw new BadRequestException('Leave applications cannot span across two calendar years');
     }
 
     // Fetch holidays in range so they are excluded from the leave day count
@@ -592,35 +600,30 @@ export class LeaveService {
   }
 
   async getMyLeaveBalance(userId: string, year: number) {
-    let leaveBalance = await this.prisma.leaveBalance.findUnique({
-      where: {
-        userId_year: {
-          userId,
-          year,
-        },
-      },
+    // Fetch the user's joining date to compute pro-rata entitlement if needed.
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { dateOfJoining: true },
     });
+    const proRataTotal = user
+      ? getProRataCasualLeaveForYear(user.dateOfJoining, year)
+      : 12;
 
-    // Create if doesn't exist (pro-rata if joined mid-year)
-    if (!leaveBalance) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { dateOfJoining: true },
-      });
-      const proRataTotal = user
-        ? getProRataCasualLeaveForYear(user.dateOfJoining, year)
-        : 12;
-      leaveBalance = await this.prisma.leaveBalance.create({
-        data: {
-          userId,
-          year,
-          casualLeaveTotal: proRataTotal,
-          casualLeaveUsed: 0,
-          casualLeavePending: 0,
-          casualLeaveAvailable: proRataTotal,
-        },
-      });
-    }
+    // Use upsert so concurrent first-logins for the same user never race
+    // into a duplicate-key violation (the old findUnique + create pair had
+    // a TOCTOU window between the two separate DB round-trips).
+    const leaveBalance = await this.prisma.leaveBalance.upsert({
+      where: { userId_year: { userId, year } },
+      create: {
+        userId,
+        year,
+        casualLeaveTotal: proRataTotal,
+        casualLeaveUsed: 0,
+        casualLeavePending: 0,
+        casualLeaveAvailable: proRataTotal,
+      },
+      update: {},
+    });
 
     // Map Prisma model fields to API shape expected by frontend
     return {

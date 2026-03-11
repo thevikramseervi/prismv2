@@ -39,7 +39,5 @@ lerna-debug.log*
 .env.local
 .env.*.local
 
-# Prisma
-/prisma/migrations
-
+# Prisma — migrations must be tracked so `prisma migrate deploy` works on Render
 /generated/prisma

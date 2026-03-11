@@ -27,7 +27,7 @@ import { PaymentStatus } from '../types';
 const SalarySlips: React.FC = () => {
   const navigate = useNavigate();
   const [downloadError, setDownloadError] = useState<string | null>(null);
-  const { data: salarySlipsRaw, isLoading } = useQuery({
+  const { data: salarySlipsRaw, isLoading, isError } = useQuery({
     queryKey: ['my-salary-slips'],
     queryFn: () => payrollApi.getMySalarySlips(),
   });
@@ -76,7 +76,7 @@ const SalarySlips: React.FC = () => {
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
-    return months[month - 1];
+    return months[month - 1] ?? 'Unknown';
   };
 
   if (isLoading) {
@@ -85,6 +85,10 @@ const SalarySlips: React.FC = () => {
         <CircularProgress />
       </Box>
     );
+  }
+
+  if (isError) {
+    return <Alert severity="error" sx={{ mt: 2 }}>Failed to load salary slips. Please refresh the page.</Alert>;
   }
 
   return (
@@ -117,10 +121,10 @@ const SalarySlips: React.FC = () => {
                       <TableCell>{getMonthName(slip.month)}</TableCell>
                       <TableCell>{slip.year}</TableCell>
                       <TableCell align="right">
-                        ₹{Number(slip.grossEarnings).toFixed(2)}
+                        {slip.grossEarnings != null ? `₹${Number(slip.grossEarnings).toFixed(2)}` : '—'}
                       </TableCell>
                       <TableCell align="right">
-                        <strong>₹{Number(slip.netSalary).toFixed(2)}</strong>
+                        <strong>{slip.netSalary != null ? `₹${Number(slip.netSalary).toFixed(2)}` : '—'}</strong>
                       </TableCell>
                       <TableCell>
                         <Chip

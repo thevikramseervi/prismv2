@@ -13,7 +13,7 @@ export const payrollApi = {
     userId?: string;
   }): Promise<Payroll[]> => {
     const { data } = await api.get<Payroll[]>('/payroll', { params });
-    return data;
+    return Array.isArray(data) ? data : [];
   },
 
   getById: async (id: string): Promise<Payroll> => {
@@ -48,7 +48,10 @@ export const payrollApi = {
     const link = document.createElement('a');
     link.href = url;
     link.download = `salary-slip-${id}.pdf`;
+    // Attach to DOM so Firefox triggers the download correctly
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
   },
 
@@ -63,7 +66,10 @@ export const payrollApi = {
     const link = document.createElement('a');
     link.href = url;
     link.download = `salary-slip-${id}.xlsx`;
+    // Attach to DOM so Firefox triggers the download correctly
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
   },
 };

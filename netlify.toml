@@ -1,0 +1,24 @@
+[build]
+  base    = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Proxy /api/* to the Render backend.
+# This keeps the browser making same-origin requests (no CORS issues) and
+# hides the Render URL from the public.
+# ⚠️  Replace the `to` URL below with your actual Render service URL once deployed.
+[[redirects]]
+  from   = "/api/*"
+  to     = "https://attend-ease-backend.onrender.com/api/:splat"
+  status = 200
+  force  = true
+
+# SPA fallback — serve index.html for every route so React Router works.
+# Must come AFTER the /api/* rule.
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

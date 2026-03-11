@@ -114,9 +114,10 @@ const Attendance: React.FC = () => {
   const statusByDate = useMemo(() => {
     const map = new Map<string, AttendanceStatus>();
     (attendance || []).forEach((record) => {
-      // API returns ISO date string; normalise using local Y-M-D
-      const date = new Date(record.date);
-      const key = formatKey(date);
+      // Slice the YYYY-MM-DD prefix directly — avoids the UTC→local conversion
+      // that `new Date(dateOnlyString)` performs, which shifts the date by one
+      // day for any browser running in a timezone west of UTC.
+      const key = (record.date as string).split('T')[0];
       map.set(key, record.status as AttendanceStatus);
     });
     return map;
@@ -125,8 +126,8 @@ const Attendance: React.FC = () => {
   const holidayDateKeys = useMemo(() => {
     const set = new Set<string>();
     (holidays || []).forEach((holiday) => {
-      const date = new Date(holiday.date);
-      set.add(formatKey(date));
+      const key = (holiday.date as string).split('T')[0];
+      set.add(key);
     });
     return set;
   }, [holidays]);

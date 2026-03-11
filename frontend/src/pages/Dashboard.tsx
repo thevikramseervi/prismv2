@@ -17,17 +17,17 @@ import PageHeader from '../components/PageHeader';
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
 
-  const { data: dashboardStats, isLoading: statsLoading } = useQuery({
+  const { data: dashboardStats, isLoading: statsLoading, isError: statsError } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: () => attendanceApi.getDashboard(),
   });
 
-  const { data: leaveBalance, isLoading: leaveLoading } = useQuery({
+  const { data: leaveBalance, isLoading: leaveLoading, isError: leaveError } = useQuery({
     queryKey: ['leave-balance'],
     queryFn: () => leaveApi.getBalance(),
   });
 
-  const { data: announcements, isLoading: announcementsLoading } = useQuery({
+  const { data: announcements, isLoading: announcementsLoading, isError: announcementsError } = useQuery({
     queryKey: ['announcements'],
     queryFn: () => announcementsApi.getAll(),
   });
@@ -42,6 +42,14 @@ const Dashboard: React.FC = () => {
       >
         <CircularProgress sx={{ color: 'primary.main' }} />
       </Box>
+    );
+  }
+
+  if (statsError || leaveError || announcementsError) {
+    return (
+      <Alert severity="error" sx={{ mt: 2 }}>
+        Failed to load dashboard data. Please refresh the page.
+      </Alert>
     );
   }
 
@@ -229,7 +237,7 @@ const Dashboard: React.FC = () => {
                           label={announcement.priority}
                           size="small"
                           color={
-                            announcement.priority === 'HIGH'
+                            announcement.priority === 'URGENT' || announcement.priority === 'HIGH'
                               ? 'error'
                               : announcement.priority === 'MEDIUM'
                                 ? 'warning'
@@ -246,7 +254,7 @@ const Dashboard: React.FC = () => {
                         display="block"
                         mt={1}
                       >
-                        By {announcement.creator.name} •{' '}
+                        By {announcement.creator?.name ?? 'Unknown'} •{' '}
                         {new Date(announcement.createdAt).toLocaleDateString()}
                       </Typography>
                     </Paper>

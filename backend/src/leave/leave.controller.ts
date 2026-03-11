@@ -53,7 +53,8 @@ export class LeaveController {
     @CurrentUser() user: any,
     @Query('year') year?: string,
   ) {
-    const currentYear = year ? parseInt(year) : new Date().getUTCFullYear();
+    const parsed = year ? parseInt(year, 10) : NaN;
+    const currentYear = Number.isFinite(parsed) ? parsed : new Date().getUTCFullYear();
     return this.leaveService.getMyLeaveBalance(user.id, currentYear);
   }
 

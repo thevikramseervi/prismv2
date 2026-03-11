@@ -100,19 +100,18 @@ const Users: React.FC = () => {
     },
   });
 
-  const deactivateMutation = useMutation({
-    mutationFn: usersApi.deactivate,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      setSnackbar({ open: true, message: 'User deactivated successfully!', severity: 'success' });
-    },
-  });
-
   const activateMutation = useMutation({
     mutationFn: usersApi.activate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setSnackbar({ open: true, message: 'User activated successfully!', severity: 'success' });
+    },
+    onError: (err: any) => {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to activate user',
+        severity: 'error',
+      });
     },
   });
 
@@ -175,6 +174,15 @@ const Users: React.FC = () => {
   };
 
   const handleSubmit = () => {
+    const salary = parseFloat(formData.baseSalary);
+    if (!formData.name.trim()) {
+      setSnackbar({ open: true, message: 'Name is required', severity: 'error' });
+      return;
+    }
+    if (isNaN(salary) || salary <= 0) {
+      setSnackbar({ open: true, message: 'Please enter a valid base salary', severity: 'error' });
+      return;
+    }
     if (editUser) {
       updateMutation.mutate({
         id: editUser.id,
@@ -182,21 +190,38 @@ const Users: React.FC = () => {
           name: formData.name,
           designation: formData.designation,
           role: formData.role,
-          baseSalary: parseFloat(formData.baseSalary),
+          baseSalary: salary,
           dateOfLeaving: formData.dateOfLeaving || undefined,
         },
       });
     } else {
+      if (!formData.email.trim()) {
+        setSnackbar({ open: true, message: 'Email is required', severity: 'error' });
+        return;
+      }
+      if (!formData.password.trim()) {
+        setSnackbar({ open: true, message: 'Password is required', severity: 'error' });
+        return;
+      }
+      if (!formData.dateOfJoining) {
+        setSnackbar({ open: true, message: 'Date of joining is required', severity: 'error' });
+        return;
+      }
+      const empNum = parseInt(formData.employeeNumber, 10);
+      if (!Number.isFinite(empNum) || empNum <= 0) {
+        setSnackbar({ open: true, message: 'Please enter a valid employee number', severity: 'error' });
+        return;
+      }
       createMutation.mutate({
         employeeId: formData.employeeId,
-        employeeNumber: parseInt(formData.employeeNumber),
+        employeeNumber: empNum,
         name: formData.name,
         email: formData.email,
         password: formData.password,
         designation: formData.designation,
         role: formData.role,
         dateOfJoining: formData.dateOfJoining,
-        baseSalary: parseFloat(formData.baseSalary),
+        baseSalary: salary,
       });
     }
   };
@@ -242,7 +267,7 @@ const Users: React.FC = () => {
       headerName: 'Role',
       width: 130,
       renderCell: (params) => (
-        <Chip label={params.value.replace('_', ' ')} color="primary" size="small" />
+        <Chip label={(params.value as string | undefined)?.replace('_', ' ') ?? ''} color="primary" size="small" />
       ),
     },
     {
@@ -565,7 +590,7 @@ const Users: React.FC = () => {
             onClick={handleConfirmAction}
             variant="contained"
             color={confirmDialog.mode === 'deactivate' ? 'error' : 'success'}
-            disabled={deactivateMutation.isPending || activateMutation.isPending}
+            disabled={updateMutation.isPending || activateMutation.isPending}
           >
             {confirmDialog.mode === 'deactivate' ? 'Deactivate' : 'Activate'}
           </Button>

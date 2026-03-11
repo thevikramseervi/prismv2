@@ -47,9 +47,11 @@ export class UsersController {
     @Query('search') search?: string,
     @Query('status') status?: string,
   ) {
+    const parsedPage = parseInt(page ?? '', 10);
+    const parsedLimit = parseInt(limit ?? '', 10);
     return this.usersService.findAll(
-      page ? parseInt(page) : 1,
-      limit ? parseInt(limit) : 50,
+      Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+      Math.min(Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 50, 200),
       search,
       status,
     );
