@@ -12,7 +12,7 @@
 # ⚠️  Replace the `to` URL below with your actual Render service URL once deployed.
 [[redirects]]
   from   = "/api/*"
-  to     = "https://attend-ease-backend.onrender.com/api/:splat"
+  to     = "https://prismv2.onrender.com/api/:splat"
   status = 200
   force  = true
 
