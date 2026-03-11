@@ -56,7 +56,8 @@ export class UsersController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get user by ID' })
+  @Roles(Role.LAB_ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get user by ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'User retrieved successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
   findOne(@Param('id') id: string) {

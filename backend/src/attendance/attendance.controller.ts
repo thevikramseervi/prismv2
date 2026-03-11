@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { AttendanceService } from './attendance.service';
@@ -103,8 +104,13 @@ export class AttendanceController {
   @ApiOperation({ summary: 'Get attendance by ID' })
   @ApiResponse({ status: 200, description: 'Attendance retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Attendance not found' })
-  findOne(@Param('id') id: string) {
-    return this.attendanceService.findOne(id);
+  async findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    const attendance = await this.attendanceService.findOne(id);
+    const isAdmin = user.role === Role.LAB_ADMIN || user.role === Role.SUPER_ADMIN;
+    if (!isAdmin && attendance.userId !== user.id) {
+      throw new ForbiddenException('You do not have access to this attendance record');
+    }
+    return attendance;
   }
 
   @Patch(':id')

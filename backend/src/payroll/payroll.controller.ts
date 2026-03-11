@@ -8,6 +8,7 @@ import {
   Patch,
   Body,
   Res,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiQuery } from '@nestjs/swagger';
@@ -31,6 +32,11 @@ export class PayrollController {
     private readonly pdfGenerator: PdfGeneratorService,
     private readonly excelGenerator: ExcelGeneratorService,
   ) {}
+
+  private static readonly MONTH_LONG = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
+  ];
 
   private safeFilenamePart(value: string): string {
     return value
@@ -92,8 +98,13 @@ export class PayrollController {
   @ApiOperation({ summary: 'Get payroll details by ID' })
   @ApiResponse({ status: 200, description: 'Payroll details retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Payroll record not found' })
-  getPayrollById(@Param('id') id: string) {
-    return this.payrollService.getPayrollById(id);
+  async getPayrollById(@Param('id') id: string, @CurrentUser() user: any) {
+    const payroll = await this.payrollService.getPayrollById(id);
+    const isAdmin = user.role === Role.LAB_ADMIN || user.role === Role.SUPER_ADMIN;
+    if (!isAdmin && payroll.userId !== user.id) {
+      throw new ForbiddenException('You do not have access to this payroll record');
+    }
+    return payroll;
   }
 
   @Patch(':id/mark-paid')
@@ -107,8 +118,12 @@ export class PayrollController {
   @Get(':id/download/pdf')
   @ApiOperation({ summary: 'Download salary slip as PDF' })
   @ApiResponse({ status: 200, description: 'PDF generated successfully' })
-  async downloadPDF(@Param('id') id: string, @Res() res: Response) {
+  async downloadPDF(@Param('id') id: string, @CurrentUser() user: any, @Res() res: Response) {
     const payroll = await this.payrollService.getPayrollById(id);
+    const isAdmin = user.role === Role.LAB_ADMIN || user.role === Role.SUPER_ADMIN;
+    if (!isAdmin && payroll.userId !== user.id) {
+      throw new ForbiddenException('You do not have access to this payroll record');
+    }
     
     // Convert Decimal types to numbers; pass full payroll including paymentDate for slip generators
     const payrollData = {
@@ -127,7 +142,7 @@ export class PayrollController {
 
     const pdfStream = await this.pdfGenerator.generateSalarySlipPDF(payrollData);
 
-    const monthName = new Date(payroll.year, payroll.month - 1).toLocaleString('default', { month: 'long' });
+    const monthName = PayrollController.MONTH_LONG[payroll.month - 1];
     const filename = `Salary_Slip_${this.safeFilenamePart(payroll.user.name)}_${this.safeFilenamePart(monthName)}_${payroll.year}.pdf`;
 
     res.set({
@@ -141,8 +156,12 @@ export class PayrollController {
   @Get(':id/download/xlsx')
   @ApiOperation({ summary: 'Download salary slip as Excel' })
   @ApiResponse({ status: 200, description: 'Excel generated successfully' })
-  async downloadExcel(@Param('id') id: string, @Res() res: Response) {
+  async downloadExcel(@Param('id') id: string, @CurrentUser() user: any, @Res() res: Response) {
     const payroll = await this.payrollService.getPayrollById(id);
+    const isAdmin = user.role === Role.LAB_ADMIN || user.role === Role.SUPER_ADMIN;
+    if (!isAdmin && payroll.userId !== user.id) {
+      throw new ForbiddenException('You do not have access to this payroll record');
+    }
     
     // Convert Decimal types to numbers; pass full payroll including paymentDate for slip generators
     const payrollData = {
@@ -161,7 +180,7 @@ export class PayrollController {
 
     const buffer = await this.excelGenerator.generateSalarySlipExcel(payrollData);
 
-    const monthName = new Date(payroll.year, payroll.month - 1).toLocaleString('default', { month: 'long' });
+    const monthName = PayrollController.MONTH_LONG[payroll.month - 1];
     const filename = `Salary_Slip_${this.safeFilenamePart(payroll.user.name)}_${this.safeFilenamePart(monthName)}_${payroll.year}.xlsx`;
 
     res.set({
