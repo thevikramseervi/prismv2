@@ -8,17 +8,17 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        sync: false          # Set in Render dashboard — your Neon connection string
+        sync: false
       - key: JWT_SECRET
-        sync: false          # Set in Render dashboard — generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+        sync: false
       - key: JWT_EXPIRATION
         value: 7d
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
-        sync: false          # Set in Render dashboard — your Netlify URL e.g. https://attend-ease.netlify.app
+        sync: false
       - key: SMTP_HOST
-        sync: false          # Optional — set if you want password reset emails
+        sync: false
       - key: SMTP_PORT
         sync: false
       - key: SMTP_USER
