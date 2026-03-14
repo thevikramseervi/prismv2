@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -32,23 +32,34 @@ interface CalendarDay {
   isCurrentMonth: boolean;
 }
 
-/** Format time to HH:MM. Backend now sends plain "HH:MM" strings for in/out times. */
+/** Format time to HH:MM. Backend sends plain "HH:MM" or ISO time-of-day; show as stored (no TZ shift). */
 const formatTime = (val: string | Date | null | undefined): string => {
   if (!val) return '-';
   try {
     if (typeof val === 'string') {
-      // If it's already in HH:MM or HH:MM:SS format, just normalise the first 5 chars.
+      // Already HH:MM or HH:MM:SS → use as-is (first 5 chars).
       if (/^\d{2}:\d{2}(:\d{2})?$/.test(val)) {
         return val.slice(0, 5);
       }
-      // Fallback: try parsing as Date, though we don't expect this anymore.
+      // ISO date string (e.g. 1970-01-01T08:55:00.000Z): use UTC so we show stored time, not local.
+      if (val.includes('T')) {
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return '-';
+        const h = d.getUTCHours().toString().padStart(2, '0');
+        const m = d.getUTCMinutes().toString().padStart(2, '0');
+        return `${h}:${m}`;
+      }
       const d = new Date(val);
       if (isNaN(d.getTime())) return '-';
-      return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+      const h = d.getUTCHours().toString().padStart(2, '0');
+      const m = d.getUTCMinutes().toString().padStart(2, '0');
+      return `${h}:${m}`;
     }
     const d = val instanceof Date ? val : new Date(val);
     if (isNaN(d.getTime())) return '-';
-    return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+    const h = d.getUTCHours().toString().padStart(2, '0');
+    const m = d.getUTCMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
   } catch {
     return '-';
   }
@@ -94,13 +105,20 @@ const formatKey = (date: Date) => {
 const Attendance: React.FC = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+  const [viewMode, setViewMode] = useState<ViewMode>('calendar');
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth() + 1; // 1–12 for backend
+
   const {
-    data: attendance,
+    data: monthlyData,
     isLoading,
     isError,
-  } = useQuery<Attendance[]>({
-    queryKey: ['my-attendance'],
-    queryFn: () => attendanceApi.getMyAttendance(),
+  } = useQuery({
+    queryKey: ['my-attendance-monthly', year, month],
+    queryFn: () => attendanceApi.getMonthlyAttendance(year, month),
+    placeholderData: keepPreviousData,
   });
 
   const { data: holidays } = useQuery<Holiday[]>({
@@ -108,15 +126,12 @@ const Attendance: React.FC = () => {
     queryFn: () => holidaysApi.getAll(),
   });
 
-  const [viewMode, setViewMode] = useState<ViewMode>('calendar');
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const attendance = monthlyData?.attendance ?? [];
+  const summary = monthlyData?.summary;
 
   const statusByDate = useMemo(() => {
     const map = new Map<string, AttendanceStatus>();
     (attendance || []).forEach((record) => {
-      // Slice the YYYY-MM-DD prefix directly — avoids the UTC→local conversion
-      // that `new Date(dateOnlyString)` performs, which shifts the date by one
-      // day for any browser running in a timezone west of UTC.
       const key = (record.date as string).split('T')[0];
       map.set(key, record.status as AttendanceStatus);
     });
@@ -166,7 +181,7 @@ const Attendance: React.FC = () => {
     });
   };
 
-  if (isLoading) {
+  if (isLoading && !monthlyData) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
         <CircularProgress />
@@ -209,22 +224,20 @@ const Attendance: React.FC = () => {
           </ToggleButton>
         </ToggleButtonGroup>
 
-        {viewMode === 'calendar' && (
-          <Box display="flex" alignItems="center" gap={1}>
-            <IconButton size="small" onClick={() => handleMonthChange('prev')}>
-              <ChevronLeft />
-            </IconButton>
-            <Typography variant="subtitle1" fontWeight="bold">
-              {currentMonth.toLocaleDateString('en-IN', {
-                month: 'long',
-                year: 'numeric',
-              })}
-            </Typography>
-            <IconButton size="small" onClick={() => handleMonthChange('next')}>
-              <ChevronRight />
-            </IconButton>
-          </Box>
-        )}
+        <Box display="flex" alignItems="center" gap={1}>
+          <IconButton size="small" onClick={() => handleMonthChange('prev')}>
+            <ChevronLeft />
+          </IconButton>
+          <Typography variant="subtitle1" fontWeight="bold">
+            {currentMonth.toLocaleDateString('en-IN', {
+              month: 'long',
+              year: 'numeric',
+            })}
+          </Typography>
+          <IconButton size="small" onClick={() => handleMonthChange('next')}>
+            <ChevronRight />
+          </IconButton>
+        </Box>
       </Box>
 
       {viewMode === 'calendar' ? (
@@ -322,67 +335,95 @@ const Attendance: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card elevation={1}>
+          {summary && (
+            <Card elevation={1} sx={{ mb: 2 }}>
+              <CardContent>
+                <Typography variant="subtitle2" gutterBottom fontWeight="bold">
+                  Month summary
+                </Typography>
+                <Box display="flex" flexWrap="wrap" gap={1.5}>
+                  <Chip label={`Present: ${summary.present}`} size="small" color="success" />
+                  <Chip label={`Absent: ${summary.absent}`} size="small" color="error" />
+                  <Chip label={`Half day: ${summary.halfDay}`} size="small" color="warning" />
+                  <Chip label={`Casual leave: ${summary.casualLeave}`} size="small" color="info" />
+                  <Chip label={`Weekend: ${summary.weekend}`} size="small" variant="outlined" />
+                  <Chip label={`Holiday: ${summary.holiday}`} size="small" color="primary" />
+                  <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center', ml: 0.5 }}>
+                    ({summary.totalDays} days in month)
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      ) : (
+        <>
+          {summary && (
+            <Card elevation={1} sx={{ mb: 2 }}>
+              <CardContent>
+                <Typography variant="subtitle2" gutterBottom fontWeight="bold">
+                  Month summary
+                </Typography>
+                <Box display="flex" flexWrap="wrap" gap={1.5}>
+                  <Chip label={`Present: ${summary.present}`} size="small" color="success" />
+                  <Chip label={`Absent: ${summary.absent}`} size="small" color="error" />
+                  <Chip label={`Half day: ${summary.halfDay}`} size="small" color="warning" />
+                  <Chip label={`Casual leave: ${summary.casualLeave}`} size="small" color="info" />
+                  <Chip label={`Weekend: ${summary.weekend}`} size="small" variant="outlined" />
+                  <Chip label={`Holiday: ${summary.holiday}`} size="small" color="primary" />
+                  <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center', ml: 0.5 }}>
+                    ({summary.totalDays} days in month)
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card elevation={2}>
             <CardContent>
-              <Typography variant="subtitle2" gutterBottom>
-                Legend
-              </Typography>
-              <Box display="flex" flexWrap="wrap" gap={1.5}>
-                <Chip label="Present" size="small" color="success" />
-                <Chip label="Absent" size="small" color="error" />
-                <Chip label="Half Day" size="small" color="warning" />
-                <Chip label="Casual Leave" size="small" color="info" />
-                <Chip label="Holiday" size="small" color="primary" />
-                <Chip label="No record" size="small" variant="outlined" />
-              </Box>
+              <TableContainer component={Paper} elevation={0}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><strong>Date</strong></TableCell>
+                      <TableCell><strong>Status</strong></TableCell>
+                      <TableCell><strong>First In</strong></TableCell>
+                      <TableCell><strong>Last Out</strong></TableCell>
+                      <TableCell><strong>Duration (H:MM)</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {attendance.length > 0 ? (
+                      attendance.map((record) => (
+                        <TableRow key={record.id} hover>
+                          <TableCell>
+                            {new Date(record.date).toLocaleDateString('en-IN')}
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={record.status.replace('_', ' ')}
+                              color={getStatusColor(record.status)}
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>{formatTime(record.firstInTime)}</TableCell>
+                          <TableCell>{formatTime(record.lastOutTime)}</TableCell>
+                          <TableCell>{formatDuration(record.totalDuration)}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center">
+                          No attendance records for this month
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </CardContent>
           </Card>
         </>
-      ) : (
-        <Card elevation={2}>
-          <CardContent>
-            <TableContainer component={Paper} elevation={0}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell><strong>Date</strong></TableCell>
-                    <TableCell><strong>Status</strong></TableCell>
-                    <TableCell><strong>First In</strong></TableCell>
-                    <TableCell><strong>Last Out</strong></TableCell>
-                    <TableCell><strong>Duration (H:MM)</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {attendance && attendance.length > 0 ? (
-                    attendance.map((record) => (
-                      <TableRow key={record.id} hover>
-                        <TableCell>
-                          {new Date(record.date).toLocaleDateString('en-IN')}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={record.status.replace('_', ' ')}
-                            color={getStatusColor(record.status)}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>{formatTime(record.firstInTime)}</TableCell>
-                        <TableCell>{formatTime(record.lastOutTime)}</TableCell>
-                        <TableCell>{formatDuration(record.totalDuration)}</TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center">
-                        No attendance records found
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
       )}
     </Box>
   );

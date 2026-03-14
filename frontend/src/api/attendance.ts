@@ -1,6 +1,20 @@
 import api from './axios';
 import { Attendance, DashboardStats } from '../types';
 
+/** Response shape from GET /attendance/monthly/:year/:month */
+export interface MonthlyAttendanceResponse {
+  attendance: Attendance[];
+  summary: {
+    totalDays: number;
+    present: number;
+    absent: number;
+    halfDay: number;
+    casualLeave: number;
+    weekend: number;
+    holiday: number;
+  };
+}
+
 export const attendanceApi = {
   getMyAttendance: async (params?: {
     startDate?: string;
@@ -13,8 +27,8 @@ export const attendanceApi = {
   getMonthlyAttendance: async (
     year: number,
     month: number,
-  ): Promise<Record<string, Attendance[]>> => {
-    const { data } = await api.get<Record<string, Attendance[]>>(
+  ): Promise<MonthlyAttendanceResponse> => {
+    const { data } = await api.get<MonthlyAttendanceResponse>(
       `/attendance/monthly/${year}/${month}`,
     );
     return data;
