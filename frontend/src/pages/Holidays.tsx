@@ -30,6 +30,10 @@ import { Holiday } from '../types';
 const Holidays: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editHoliday, setEditHoliday] = useState<Holiday | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; holiday: Holiday | null }>({
+    open: false,
+    holiday: null,
+  });
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -88,6 +92,7 @@ const Holidays: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['holidays'] });
       setSnackbar({ open: true, message: 'Holiday deleted successfully!', severity: 'success' });
+      setDeleteConfirm({ open: false, holiday: null });
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { message?: string } } };
@@ -128,10 +133,19 @@ const Holidays: React.FC = () => {
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this holiday?')) {
-      deleteMutation.mutate(id);
+  const handleDeleteClick = (holiday: Holiday) => {
+    setDeleteConfirm({ open: true, holiday });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteConfirm.holiday) {
+      deleteMutation.mutate(deleteConfirm.holiday.id);
+      setDeleteConfirm({ open: false, holiday: null });
     }
+  };
+
+  const handleDeleteConfirmClose = () => {
+    setDeleteConfirm({ open: false, holiday: null });
   };
 
   if (isLoading) {
@@ -231,7 +245,7 @@ const Holidays: React.FC = () => {
                               <IconButton
                                 size="small"
                                 color="error"
-                                onClick={() => handleDelete(holiday.id)}
+                                onClick={() => handleDeleteClick(holiday)}
                               >
                                 <Delete fontSize="small" />
                               </IconButton>
@@ -246,6 +260,38 @@ const Holidays: React.FC = () => {
             </Card>
           ))
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog
+        open={deleteConfirm.open}
+        onClose={handleDeleteConfirmClose}
+        maxWidth="xs"
+        fullWidth
+        aria-labelledby="delete-holiday-dialog-title"
+      >
+        <DialogTitle id="delete-holiday-dialog-title">Delete holiday?</DialogTitle>
+        <DialogContent>
+          {deleteConfirm.holiday && (
+            <Typography>
+              Are you sure you want to delete{' '}
+              <strong>{deleteConfirm.holiday.name}</strong> (
+              {new Date(deleteConfirm.holiday.date).toLocaleDateString('en-IN')})? This cannot be
+              undone.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteConfirmClose}>Cancel</Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            disabled={deleteMutation.isPending}
+          >
+            {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Add/Edit Holiday Dialog */}
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
