@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { AttendanceStatus } from '@prisma/client';
+import { isWeekend, toDateOnlyKey } from '../common/date.utils';
 
 @Injectable()
 export class AttendanceService {
@@ -105,26 +106,39 @@ export class AttendanceService {
     const startDate = new Date(Date.UTC(year, month - 1, 1));
     const endDate = new Date(Date.UTC(year, month, 0));
 
-    const attendance = await this.prisma.attendance.findMany({
-      where: {
-        userId,
-        date: {
-          gte: startDate,
-          lte: endDate,
+    const [attendance, holidays] = await Promise.all([
+      this.prisma.attendance.findMany({
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate },
         },
-      },
-      orderBy: { date: 'asc' },
-    });
+        orderBy: { date: 'asc' },
+      }),
+      this.prisma.holiday.findMany({
+        where: { date: { gte: startDate, lte: endDate } },
+      }),
+    ]);
 
-    // Calculate summary
+    const holidayDateKeys = new Set(holidays.map((h) => toDateOnlyKey(h.date)));
+
+    // Weekend count = Sat/Sun in month that are not also a holiday (no double-count)
+    let weekendCount = 0;
+    const cursor = new Date(startDate);
+    while (cursor <= endDate) {
+      if (isWeekend(cursor) && !holidayDateKeys.has(toDateOnlyKey(cursor))) {
+        weekendCount++;
+      }
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+
     const summary = {
       totalDays: endDate.getUTCDate(),
       present: 0,
       absent: 0,
       halfDay: 0,
       casualLeave: 0,
-      weekend: 0,
-      holiday: 0,
+      weekend: weekendCount,
+      holiday: holidays.length,
     };
 
     attendance.forEach((record) => {
@@ -142,10 +156,8 @@ export class AttendanceService {
           summary.casualLeave++;
           break;
         case AttendanceStatus.WEEKEND:
-          summary.weekend++;
-          break;
         case AttendanceStatus.HOLIDAY:
-          summary.holiday++;
+          // weekend/holiday counts come from calendar + Holiday table above
           break;
       }
     });
