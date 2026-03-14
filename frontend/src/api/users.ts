@@ -1,13 +1,53 @@
 import api from './axios';
 import { User } from '../types';
 
+type PaginatedResponse<T> = {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
+async function getUsersPage(params?: {
+  limit?: number;
+  page?: number;
+}): Promise<PaginatedResponse<User>> {
+  const limit = params?.limit ?? 50;
+  const page = params?.page ?? 1;
+  const { data } = await api.get('/users', { params: { limit, page } });
+
+  if (Array.isArray(data)) {
+    return {
+      data,
+      meta: {
+        total: data.length,
+        page,
+        limit,
+        totalPages: 1,
+      },
+    };
+  }
+
+  return {
+    data: data.data || [],
+    meta: data.meta || {
+      total: (data.data || []).length,
+      page,
+      limit,
+      totalPages: 1,
+    },
+  };
+}
+
 export const usersApi = {
+  getPage: getUsersPage,
+
   getAll: async (params?: { limit?: number; page?: number }): Promise<User[]> => {
-    const limit = params?.limit ?? 5000;
-    const page = params?.page ?? 1;
-    const { data } = await api.get('/users', { params: { limit, page } });
-    // API returns paginated { data: [...], meta: {...} } or plain array
-    return Array.isArray(data) ? data : data.data || [];
+    const result = await getUsersPage(params);
+    return result.data;
   },
 
   getById: async (id: string): Promise<User> => {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -56,14 +56,27 @@ const Users: React.FC = () => {
     baseSalary: '22000',
   });
 
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: 10,
+  });
+
   const {
-    data: users,
+    data,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => usersApi.getAll(),
+    queryKey: ['users', paginationModel.page, paginationModel.pageSize],
+    queryFn: () =>
+      usersApi.getPage({
+        page: paginationModel.page + 1,
+        limit: paginationModel.pageSize,
+      }),
+    placeholderData: keepPreviousData,
   });
+
+  const users = data?.data ?? [];
+  const totalUsers = data?.meta?.total ?? 0;
 
   const createMutation = useMutation({
     mutationFn: usersApi.create,
@@ -151,7 +164,7 @@ const Users: React.FC = () => {
       // Autofill next employee number and ID when creating a new user
       const maxEmpNumber =
         users && users.length > 0
-          ? users.reduce((max, u) => Math.max(max, u.employeeNumber), 0)
+          ? users.reduce((max: number, u: User) => Math.max(max, u.employeeNumber), 0)
           : 0;
       const nextEmpNumber = maxEmpNumber + 1;
       const nextEmpId = `CITSEED${nextEmpNumber}`;
@@ -397,9 +410,10 @@ const Users: React.FC = () => {
               rows={users || []}
               columns={columns}
               pageSizeOptions={[10, 25, 50]}
-              initialState={{
-                pagination: { paginationModel: { pageSize: 10 } },
-              }}
+              paginationMode="server"
+              rowCount={totalUsers}
+              paginationModel={paginationModel}
+              onPaginationModelChange={setPaginationModel}
               disableRowSelectionOnClick
             />
           </Box>
