@@ -193,6 +193,26 @@ const Attendance: React.FC = () => {
     }
   };
 
+  /** Short labels for calendar cells on mobile */
+  const getStatusShortLabel = (status: AttendanceStatus): string => {
+    switch (status) {
+      case AttendanceStatus.PRESENT:
+        return 'P';
+      case AttendanceStatus.ABSENT:
+        return 'A';
+      case AttendanceStatus.HALF_DAY:
+        return 'H';
+      case AttendanceStatus.CASUAL_LEAVE:
+        return 'CL';
+      case AttendanceStatus.WEEKEND:
+        return 'W';
+      case AttendanceStatus.HOLIDAY:
+        return 'Hol';
+      default:
+        return '';
+    }
+  };
+
   const handleMonthChange = (direction: 'prev' | 'next') => {
     setCurrentMonth((prev) => {
       const next = new Date(prev);
@@ -211,8 +231,10 @@ const Attendance: React.FC = () => {
     );
   }
 
-  // Week header starting Monday
-  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  // Week header: 2-letter on mobile so Tue/Thu and Sat/Sun are distinct (no duplicate T or S)
+  const dayNames = isMobile
+    ? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
+    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   return (
     <Box>
@@ -221,12 +243,20 @@ const Attendance: React.FC = () => {
         subtitle="View your daily attendance as a calendar or detailed table."
       />
 
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+      <Box
+        display="flex"
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+        gap={2}
+        mb={2}
+      >
         <ToggleButtonGroup
           value={viewMode}
           exclusive
           onChange={(_, value) => value && setViewMode(value)}
           size="small"
+          fullWidth={isMobile}
         >
           <ToggleButton value="calendar">
             <CalendarMonth sx={{ mr: 1 }} fontSize="small" />
@@ -238,15 +268,23 @@ const Attendance: React.FC = () => {
           </ToggleButton>
         </ToggleButtonGroup>
 
-        <Box display="flex" alignItems="center" gap={1}>
+        <Box display="flex" alignItems="center" justifyContent="center" gap={1}>
           <Tooltip title="Previous month">
             <IconButton size="small" onClick={() => handleMonthChange('prev')} aria-label="Previous month">
               <ChevronLeft />
             </IconButton>
           </Tooltip>
-          <Typography variant="subtitle1" fontWeight="bold">
+          <Typography
+            variant="subtitle1"
+            fontWeight="bold"
+            sx={{
+              fontSize: { xs: '0.9rem', sm: '1rem' },
+              textAlign: 'center',
+              minWidth: { xs: 140, sm: 'auto' },
+            }}
+          >
             {currentMonth.toLocaleDateString('en-IN', {
-              month: 'long',
+              month: isMobile ? 'short' : 'long',
               year: 'numeric',
             })}
           </Typography>
@@ -261,16 +299,24 @@ const Attendance: React.FC = () => {
       {viewMode === 'calendar' ? (
         <>
           <Card elevation={2} sx={{ mb: 3 }}>
-            <CardContent>
+            <CardContent sx={{ px: { xs: 1, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box
                 sx={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(7, 1fr)',
-                  gap: 1,
+                  gap: isMobile ? 0.5 : 1,
                 }}
               >
                 {dayNames.map((day) => (
-                  <Box key={day} textAlign="center" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                  <Box
+                    key={day}
+                    textAlign="center"
+                    sx={{
+                      fontWeight: 'bold',
+                      color: 'text.secondary',
+                      fontSize: isMobile ? '0.65rem' : 'inherit',
+                    }}
+                  >
                     {day}
                   </Box>
                 ))}
@@ -336,26 +382,31 @@ const Attendance: React.FC = () => {
                       <Paper
                         elevation={0}
                         sx={{
-                          p: 1,
-                          minHeight: 64,
+                          p: isMobile ? 0.5 : 1,
+                          minHeight: isMobile ? 40 : 64,
                           bgcolor: bg,
                           opacity: day.isCurrentMonth ? 1 : 0.6,
-                          borderRadius: 1.5,
+                          borderRadius: isMobile ? 1 : 1.5,
                           border: isToday ? 2 : 1,
                           borderColor: isToday ? 'primary.main' : 'divider',
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'flex-start',
+                          justifyContent: 'center',
                         }}
                       >
                         <Typography
-                          variant="subtitle2"
+                          variant={isMobile ? 'caption' : 'subtitle2'}
                           fontWeight="bold"
-                          sx={{ color: 'text.primary' }}
+                          sx={{
+                            color: 'text.primary',
+                            fontSize: isMobile ? '0.75rem' : undefined,
+                            lineHeight: 1.2,
+                          }}
                         >
                           {day.date.getDate()}
                         </Typography>
-                        {status && (
+                        {status && !isMobile && (
                           <Typography
                             variant="caption"
                             sx={{
@@ -367,11 +418,34 @@ const Attendance: React.FC = () => {
                             {status.replace('_', ' ').toLowerCase()}
                           </Typography>
                         )}
+                        {status && isMobile && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              lineHeight: 1.2,
+                              color: 'text.primary',
+                              mt: 0.25,
+                            }}
+                          >
+                            {getStatusShortLabel(status)}
+                          </Typography>
+                        )}
                       </Paper>
                     </Tooltip>
                   );
                 })}
               </Box>
+              {isMobile && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', mt: 1.5, textAlign: 'center' }}
+                >
+                  P Present · A Absent · H Half · CL Leave · W Weekend · Hol Holiday
+                </Typography>
+              )}
             </CardContent>
           </Card>
 
