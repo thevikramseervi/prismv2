@@ -12,23 +12,24 @@ import { attendanceApi } from '../api/attendance';
 import { leaveApi } from '../api/leave';
 import { announcementsApi } from '../api/announcements';
 import { useAuth } from '../contexts/AuthContext';
+import { QUERY_KEYS } from '../queryKeys';
 import PageHeader from '../components/PageHeader';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
 
   const { data: dashboardStats, isLoading: statsLoading, isError: statsError, failureCount: statsFailures } = useQuery({
-    queryKey: ['dashboard-stats'],
+    queryKey: QUERY_KEYS.attendanceDashboard,
     queryFn: () => attendanceApi.getDashboard(),
   });
 
   const { data: leaveBalance, isLoading: leaveLoading, isError: leaveError, failureCount: leaveFailures } = useQuery({
-    queryKey: ['leave-balance'],
+    queryKey: QUERY_KEYS.leaveBalance,
     queryFn: () => leaveApi.getBalance(),
   });
 
   const { data: announcements, isLoading: announcementsLoading, isError: announcementsError, failureCount: announcementsFailures } = useQuery({
-    queryKey: ['announcements'],
+    queryKey: QUERY_KEYS.announcements,
     queryFn: () => announcementsApi.getAll(),
   });
 

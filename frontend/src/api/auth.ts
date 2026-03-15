@@ -1,5 +1,5 @@
 import api from './axios';
-import type { UserStatus } from '../types';
+import type { Role, UserStatus } from '../types';
 
 export type LoginResponse =
   | { access_token: string; user: AuthUser }
@@ -12,7 +12,7 @@ export interface AuthUser {
   employeeNumber?: number;
   name: string;
   email: string;
-  role: string;
+  role: Role;
   designation: string;
   // Optional flags that may be returned by /auth/me
   twoFactorEnabled?: boolean;

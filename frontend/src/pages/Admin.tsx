@@ -2,11 +2,13 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Box, Typography, Grid, Alert, Button } from '@mui/material';
 import { usersApi } from '../api/users';
+import { QUERY_KEYS } from '../queryKeys';
 import AdminBiometricCard from '../components/admin/AdminBiometricCard';
 import AdminPayrollCard from '../components/admin/AdminPayrollCard';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import { getApiErrorMessage } from '../hooks/apiMessages';
 import PageLoading from '../components/PageLoading';
+import PageHeader from '../components/PageHeader';
 
 const Admin: React.FC = () => {
   const { showSuccess, showError } = useSnackbar();
@@ -22,20 +24,18 @@ const Admin: React.FC = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => usersApi.getAll(),
+    queryKey: QUERY_KEYS.usersAll,
+    queryFn: () => usersApi.getAllPages(),
   });
 
   if (isLoading) return <PageLoading />;
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Admin Panel
-      </Typography>
-      <Typography variant="body1" color="text.secondary" mb={4}>
-        Administrative tools and settings
-      </Typography>
+      <PageHeader
+        title="Admin Panel"
+        subtitle="Administrative tools and settings"
+      />
 
       {isError && (
         <Alert
@@ -51,19 +51,17 @@ const Admin: React.FC = () => {
         </Alert>
       )}
 
-      {!isError && (
       <Grid container spacing={3}>
         <Grid size={{ xs: 12 }}>
           <AdminBiometricCard onMessage={showSnackbar} section="upload" />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
-          <AdminPayrollCard users={users} onMessage={showSnackbar} />
+          {!isError && <AdminPayrollCard users={users} onMessage={showSnackbar} />}
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <AdminBiometricCard onMessage={showSnackbar} section="sync" />
         </Grid>
       </Grid>
-      )}
     </Box>
   );
 };

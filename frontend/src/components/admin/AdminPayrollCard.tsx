@@ -18,13 +18,12 @@ import { useApiMutation } from '../../hooks';
 import { payrollApi } from '../../api/payroll';
 import type { User } from '../../types';
 import { QUERY_KEYS } from '../../queryKeys';
+import { MONTHS } from '../../utils/slipUtils';
 
 export interface AdminPayrollCardProps {
   users: User[] | undefined;
   onMessage: (message: string, severity: 'success' | 'error') => void;
 }
-
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 const AdminPayrollCard: React.FC<AdminPayrollCardProps> = ({ users, onMessage }) => {
   const currentYear = new Date().getFullYear();

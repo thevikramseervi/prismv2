@@ -10,7 +10,9 @@ import {
   Chip,
   Alert,
 } from '@mui/material';
+import SectionCard from '../components/SectionCard';
 import { notificationsApi } from '../api/notifications';
+import { QUERY_KEYS } from '../queryKeys';
 import PageLoading from '../components/PageLoading';
 import PageHeader from '../components/PageHeader';
 import { useSnackbar } from '../contexts/SnackbarContext';
@@ -28,7 +30,7 @@ const Notifications: React.FC = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['notifications'],
+    queryKey: QUERY_KEYS.notifications,
     queryFn: notificationsApi.getAll,
     staleTime: 60_000,
   });
@@ -36,8 +38,8 @@ const Notifications: React.FC = () => {
   const markAllMutation = useMutation({
     mutationFn: notificationsApi.markAllAsRead,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notifications });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notificationsUnreadCount });
     },
     onError: (err: unknown) => {
       showError(getApiErrorMessage(err, 'Failed to mark all as read'));
@@ -47,8 +49,8 @@ const Notifications: React.FC = () => {
   const markOneMutation = useMutation({
     mutationFn: (id: string) => notificationsApi.markAsRead(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notifications });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notificationsUnreadCount });
     },
     onError: (err: unknown) => {
       showError(getApiErrorMessage(err, 'Failed to mark notification as read'));
@@ -136,11 +138,9 @@ const Notifications: React.FC = () => {
           );
         })
       ) : !isError ? (
-        <Card elevation={2}>
-          <CardContent>
-            <Alert severity="info">You have no notifications yet.</Alert>
-          </CardContent>
-        </Card>
+        <SectionCard>
+          <Alert severity="info">You have no notifications yet.</Alert>
+        </SectionCard>
       ) : null}
     </Box>
   );

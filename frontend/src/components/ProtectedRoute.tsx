@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { CircularProgress, Box } from '@mui/material';
 import { Role } from '../types';
 
-const ADMIN_PATHS = ['/users', '/admin', '/holidays', '/leave-approval', '/reports'] as const;
+const ADMIN_PATHS = ['/users', '/admin', '/leave-approval', '/reports'] as const;
 const ADMIN_ROLES: Role[] = [Role.LAB_ADMIN, Role.SUPER_ADMIN];
 
 interface ProtectedRouteProps {

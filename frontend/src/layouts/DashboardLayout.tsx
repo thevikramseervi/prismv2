@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -44,10 +44,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { useThemeMode } from '../contexts/ThemeModeContext';
 import { useQuery } from '@tanstack/react-query';
 import { notificationsApi } from '../api/notifications';
+import { QUERY_KEYS } from '../queryKeys';
 import ChangePasswordDialog from '../components/ChangePasswordDialog';
 import { Role } from '../types';
 
-const drawerWidth = 260;
+const drawerWidthExpanded = 260;
+const drawerWidthCollapsed = 88;
 
 interface NavItem {
   title: string;
@@ -63,7 +65,7 @@ const navItems: NavItem[] = [
   { title: 'Leave', path: '/leave', icon: <BeachAccess /> },
   { title: 'Salary Slips', path: '/salary-slips', icon: <Receipt /> },
   { title: 'Announcements', path: '/announcements', icon: <Campaign /> },
-  { title: 'Holidays', path: '/my-holidays', icon: <EventNote /> },
+  { title: 'Holidays', path: '/holidays', icon: <EventNote /> },
   {
     title: 'Leave Approval',
     path: '/leave-approval',
@@ -83,12 +85,6 @@ const navItems: NavItem[] = [
     roles: [Role.LAB_ADMIN, Role.SUPER_ADMIN],
   },
   {
-    title: 'Manage Holidays',
-    path: '/holidays',
-    icon: <EventNote />,
-    roles: [Role.LAB_ADMIN, Role.SUPER_ADMIN],
-  },
-  {
     title: 'Admin',
     path: '/admin',
     icon: <Settings />,
@@ -98,6 +94,7 @@ const navItems: NavItem[] = [
 
 const DashboardLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const { user, logout } = useAuth();
@@ -106,13 +103,17 @@ const DashboardLayout: React.FC = () => {
   const location = useLocation();
 
   const { data: unreadData } = useQuery({
-    queryKey: ['notifications-unread-count'],
+    queryKey: QUERY_KEYS.notificationsUnreadCount,
     queryFn: notificationsApi.getUnreadCount,
     staleTime: 60_000,
   });
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleDesktopSidebarToggle = () => {
+    setSidebarCollapsed((prev) => !prev);
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -134,6 +135,21 @@ const DashboardLayout: React.FC = () => {
     return item.roles.includes(user.role as Role);
   });
 
+  const isPathActive = (itemPath: string) => {
+    if (itemPath === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname === itemPath || location.pathname.startsWith(`${itemPath}/`);
+  };
+
+  useEffect(() => {
+    const activeTitle =
+      navItems.find((item) => isPathActive(item.path))?.title ?? 'Dashboard';
+    document.title = `Attend Ease – ${activeTitle}`;
+  }, [location.pathname]);
+
+  const effectiveDrawerWidth = sidebarCollapsed ? drawerWidthCollapsed : drawerWidthExpanded;
+
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Toolbar
@@ -144,22 +160,24 @@ const DashboardLayout: React.FC = () => {
           px: 2,
         }}
       >
-        <Typography variant="h6" noWrap component="div" fontWeight={800}>
+        <Typography variant="h6" noWrap component="div" fontWeight={800} sx={{ flexGrow: 1 }}>
           Attend Ease
         </Typography>
       </Toolbar>
       <Divider />
       <List sx={{ px: 1.5, py: 2, flex: 1 }}>
         {filteredNavItems.map((item) => {
-          const isActive = location.pathname === item.path;
+          const isActive = isPathActive(item.path);
           return (
             <ListItem key={item.title} disablePadding sx={{ mb: 0.5 }}>
               <ListItemButton
-                onClick={() => navigate(item.path)}
+                onClick={() => { navigate(item.path); setMobileOpen(false); }}
                 selected={isActive}
                 sx={{
                   borderRadius: 2,
                   py: 1.25,
+                  px: { xs: 2, sm: sidebarCollapsed ? 1.25 : 2 },
+                  justifyContent: { xs: 'flex-start', sm: sidebarCollapsed ? 'center' : 'flex-start' },
                   '&.Mui-selected': {
                     bgcolor: 'primary.main',
                     color: 'white',
@@ -175,7 +193,9 @@ const DashboardLayout: React.FC = () => {
                 <ListItemIcon
                   sx={{
                     color: isActive ? 'white' : 'text.secondary',
-                    minWidth: 40,
+                    minWidth: { xs: 40, sm: sidebarCollapsed ? 0 : 40 },
+                    mr: { xs: 1.5, sm: sidebarCollapsed ? 0 : 1.5 },
+                    justifyContent: 'center',
                   }}
                 >
                   {item.icon}
@@ -183,6 +203,10 @@ const DashboardLayout: React.FC = () => {
                 <ListItemText
                   primary={item.title}
                   primaryTypographyProps={{ fontWeight: isActive ? 600 : 500 }}
+                  sx={{
+                    display: { xs: 'block', sm: sidebarCollapsed ? 'none' : 'block' },
+                    transition: 'opacity 0.2s',
+                  }}
                 />
               </ListItemButton>
             </ListItem>
@@ -198,8 +222,9 @@ const DashboardLayout: React.FC = () => {
         position="fixed"
         elevation={0}
         sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+          width: { sm: `calc(100% - ${effectiveDrawerWidth}px)` },
+          ml: { sm: `${effectiveDrawerWidth}px` },
+          transition: (theme) => theme.transitions.create(['margin', 'width']),
           bgcolor: 'background.paper',
           color: 'text.primary',
           borderBottom: 1,
@@ -207,20 +232,30 @@ const DashboardLayout: React.FC = () => {
         }}
       >
         <Toolbar>
+          <Tooltip title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+            <IconButton
+              color="inherit"
+              edge="start"
+              onClick={handleDesktopSidebarToggle}
+              sx={{ mr: 2, display: { xs: 'none', sm: 'inline-flex' } }}
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              <MenuIcon />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Open menu">
             <IconButton
               color="inherit"
               edge="start"
               onClick={handleDrawerToggle}
-              sx={{ mr: 2, display: { sm: 'none' } }}
+              sx={{ mr: 2, display: { xs: 'inline-flex', sm: 'none' } }}
               aria-label="Open menu"
             >
               <MenuIcon />
             </IconButton>
           </Tooltip>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {navItems.find((item) => item.path === location.pathname)?.title ||
-              'Dashboard'}
+            {navItems.find((item) => isPathActive(item.path))?.title || 'Dashboard'}
           </Typography>
 
           <Tooltip title="Notifications">
@@ -321,7 +356,12 @@ const DashboardLayout: React.FC = () => {
 
       <Box
         component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        sx={{
+          width: { sm: effectiveDrawerWidth },
+          flexShrink: { sm: 0 },
+          overflow: 'hidden',
+          transition: (theme) => theme.transitions.create('width'),
+        }}
       >
         <Drawer
           variant="temporary"
@@ -330,7 +370,7 @@ const DashboardLayout: React.FC = () => {
           ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 260 },
           }}
         >
           {drawer}
@@ -339,7 +379,11 @@ const DashboardLayout: React.FC = () => {
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: effectiveDrawerWidth,
+              transition: (theme) => theme.transitions.create('width'),
+            },
           }}
           open
         >
@@ -351,9 +395,12 @@ const DashboardLayout: React.FC = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          width: { sm: `calc(100% - ${effectiveDrawerWidth}px)` },
           minHeight: '100vh',
           bgcolor: 'background.default',
+          minWidth: 0,
+          overflowX: 'hidden',
+          transition: (theme) => theme.transitions.create('width'),
         }}
       >
         <Toolbar />

@@ -38,7 +38,7 @@ const AdminBiometricCard: React.FC<AdminBiometricCardProps> = ({ onMessage, sect
       `Biometric sync completed! Processed: ${res.data?.processed ?? 0}`,
     errorMessage: 'Failed to sync biometric data',
     invalidateKeys: [
-      [ ...QUERY_KEYS.myAttendance ],
+      ['my-attendance-monthly'],
       [ ...QUERY_KEYS.attendanceDashboard ],
     ],
     onMessage,
@@ -57,7 +57,7 @@ const AdminBiometricCard: React.FC<AdminBiometricCardProps> = ({ onMessage, sect
       `Import complete: ${data.logsCreated ?? 0} logs created, ${data.datesProcessed?.length ?? 0} dates synced`,
     errorMessage: 'Failed to upload biometric file',
     invalidateKeys: [
-      [ ...QUERY_KEYS.myAttendance ],
+      ['my-attendance-monthly'],
       [ ...QUERY_KEYS.attendanceDashboard ],
     ],
     onMessage,

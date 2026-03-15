@@ -75,6 +75,7 @@ export interface LeaveApplication {
     name: string;
     employeeId: string;
     designation: string;
+    role?: Role;
   };
 }
 

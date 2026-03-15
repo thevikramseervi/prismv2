@@ -18,7 +18,10 @@ import {
   InputLabel,
   Alert,
   Tooltip,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
+import PageHeader from '../components/PageHeader';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Add, Edit, Block, CheckCircle } from '@mui/icons-material';
 import { usersApi } from '../api/users';
@@ -26,9 +29,13 @@ import { User, Role, UserStatus } from '../types';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import { getApiErrorMessage } from '../hooks/apiMessages';
 import PageLoading from '../components/PageLoading';
+import MobileTableCard from '../components/MobileTableCard';
 import ResponsiveDialog from '../components/ResponsiveDialog';
+import { QUERY_KEYS } from '../queryKeys';
 
 const Users: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showSuccess, showError } = useSnackbar();
   const [open, setOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -64,7 +71,7 @@ const Users: React.FC = () => {
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['users', paginationModel.page, paginationModel.pageSize],
+    queryKey: QUERY_KEYS.users(paginationModel.page, paginationModel.pageSize),
     queryFn: () =>
       usersApi.getPage({
         page: paginationModel.page + 1,
@@ -79,7 +86,7 @@ const Users: React.FC = () => {
   const createMutation = useMutation({
     mutationFn: usersApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users() });
       handleClose();
       showSuccess('User created successfully!');
     },
@@ -92,7 +99,7 @@ const Users: React.FC = () => {
     mutationFn: ({ id, data }: { id: string; data: Partial<User> }) =>
       usersApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users() });
       handleClose();
       showSuccess('User updated successfully!');
     },
@@ -104,7 +111,7 @@ const Users: React.FC = () => {
   const activateMutation = useMutation({
     mutationFn: usersApi.activate,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users() });
       showSuccess('User activated successfully!');
     },
     onError: (error: unknown) => {
@@ -363,55 +370,180 @@ const Users: React.FC = () => {
 
   if (isError) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <Typography color="error">Failed to load users. Please try again.</Typography>
+      <Box sx={{ mt: 2 }}>
+        <Alert severity="error">Failed to load users. Please try again.</Alert>
       </Box>
     );
   }
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold">
-            User Management
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Manage employees and their details
-          </Typography>
-        </Box>
-        <Button variant="contained" startIcon={<Add />} onClick={() => handleOpen()}>
-          Add User
-        </Button>
-      </Box>
+      <PageHeader
+        title="User Management"
+        subtitle="Manage employees and their details"
+        actions={
+          <Button variant="contained" startIcon={<Add />} onClick={() => handleOpen()}>
+            Add User
+          </Button>
+        }
+      />
 
       <Card elevation={2}>
         <CardContent sx={{ overflow: 'hidden' }}>
-          <Box
-            sx={{
-              height: { xs: 400, sm: 500, md: 600 },
-              width: '100%',
-              minHeight: 300,
-              overflow: 'auto',
-              '& .MuiDataGrid-root': { border: 'none' },
-              '& .MuiDataGrid-cell': { minHeight: 44 },
-              '& .MuiDataGrid-columnHeaders': { minHeight: 44 },
-            }}
-          >
-            <DataGrid
-              rows={users || []}
-              columns={columns}
-              pageSizeOptions={[10, 25, 50]}
-              paginationMode="server"
-              rowCount={totalUsers}
-              paginationModel={paginationModel}
-              onPaginationModelChange={setPaginationModel}
-              disableRowSelectionOnClick
-              columnHeaderHeight={44}
-              rowHeight={44}
-              sx={{ minWidth: 520 }}
-            />
-          </Box>
+          {isMobile ? (
+            <>
+              {users.length === 0 ? (
+                <Alert severity="info">No users found.</Alert>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {users.map((user) => {
+                    const isActive = user.status === UserStatus.ACTIVE;
+                    const hasLeft = !!user.dateOfLeaving;
+                    const statusLabel = isActive ? 'Active' : hasLeft ? 'Left Organization' : 'Inactive';
+                    const statusColor = isActive ? 'success' : hasLeft ? 'error' : 'default';
+                    return (
+                      <MobileTableCard
+                        key={user.id}
+                        items={[
+                          { label: 'Employee ID', value: user.employeeId },
+                          { label: 'Name', value: user.name },
+                          { label: 'Designation', value: user.designation },
+                          {
+                            label: 'Role',
+                            value: (
+                              <Chip
+                                label={user.role.replace('_', ' ')}
+                                color="primary"
+                                size="small"
+                              />
+                            ),
+                          },
+                          {
+                            label: 'Status',
+                            value: (
+                              <Chip label={statusLabel} color={statusColor} size="small" />
+                            ),
+                          },
+                          {
+                            label: 'Base Salary',
+                            value: `₹${Number(user.baseSalary).toLocaleString()}`,
+                          },
+                        ]}
+                        actions={
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <Tooltip title="Edit user">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleOpen(user)}
+                                aria-label="Edit user"
+                              >
+                                <Edit fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            {isActive ? (
+                              <Tooltip title="Deactivate user">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  aria-label="Deactivate user"
+                                  onClick={() =>
+                                    setConfirmDialog({
+                                      open: true,
+                                      mode: 'deactivate',
+                                      user,
+                                      hasLeft: true,
+                                      leavingDate: user.dateOfLeaving
+                                        ? user.dateOfLeaving.split('T')[0]
+                                        : '',
+                                    })
+                                  }
+                                >
+                                  <Block fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            ) : (
+                              <Tooltip title="Activate user">
+                                <IconButton
+                                  size="small"
+                                  color="success"
+                                  aria-label="Activate user"
+                                  onClick={() =>
+                                    setConfirmDialog({
+                                      open: true,
+                                      mode: 'activate',
+                                      user,
+                                      hasLeft: false,
+                                      leavingDate: user.dateOfLeaving
+                                        ? user.dateOfLeaving.split('T')[0]
+                                        : '',
+                                    })
+                                  }
+                                >
+                                  <CheckCircle fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Box>
+                        }
+                      />
+                    );
+                  })}
+                </Box>
+              )}
+              {/* Mobile pagination */}
+              <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
+                <Typography variant="caption" color="text.secondary">
+                  Page {paginationModel.page + 1} of {Math.ceil(totalUsers / paginationModel.pageSize) || 1}
+                  {' '}({totalUsers} total)
+                </Typography>
+                <Box display="flex" gap={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={paginationModel.page === 0}
+                    onClick={() => setPaginationModel((p) => ({ ...p, page: p.page - 1 }))}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={(paginationModel.page + 1) * paginationModel.pageSize >= totalUsers}
+                    onClick={() => setPaginationModel((p) => ({ ...p, page: p.page + 1 }))}
+                  >
+                    Next
+                  </Button>
+                </Box>
+              </Box>
+            </>
+          ) : (
+            <Box
+              sx={{
+                height: { sm: 500, md: 600 },
+                width: '100%',
+                minHeight: 300,
+                overflow: 'auto',
+                '& .MuiDataGrid-root': { border: 'none' },
+                '& .MuiDataGrid-cell': { minHeight: 44 },
+                '& .MuiDataGrid-columnHeaders': { minHeight: 44 },
+              }}
+            >
+              <DataGrid
+                rows={users || []}
+                columns={columns}
+                pageSizeOptions={[10, 25, 50]}
+                paginationMode="server"
+                rowCount={totalUsers}
+                paginationModel={paginationModel}
+                onPaginationModelChange={setPaginationModel}
+                disableRowSelectionOnClick
+                columnHeaderHeight={44}
+                rowHeight={44}
+                sx={{ minWidth: 520 }}
+              />
+            </Box>
+          )}
         </CardContent>
       </Card>
 

@@ -19,7 +19,10 @@ import {
 } from '@mui/material';
 import { Add, Campaign } from '@mui/icons-material';
 import { announcementsApi } from '../api/announcements';
+import { Role } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { QUERY_KEYS } from '../queryKeys';
+import SectionCard from '../components/SectionCard';
 import PageHeader from '../components/PageHeader';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import ResponsiveDialog from '../components/ResponsiveDialog';
@@ -29,7 +32,7 @@ import PageLoading from '../components/PageLoading';
 const Announcements: React.FC = () => {
   const { user } = useAuth();
   const { showSuccess, showError } = useSnackbar();
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'LAB_ADMIN';
+  const isAdmin = user?.role === Role.SUPER_ADMIN || user?.role === Role.LAB_ADMIN;
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -47,14 +50,14 @@ const Announcements: React.FC = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['announcements'],
+    queryKey: QUERY_KEYS.announcements,
     queryFn: () => announcementsApi.getAll(),
   });
 
   const createMutation = useMutation({
     mutationFn: announcementsApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.announcements });
       setOpen(false);
       setFormData({ title: '', content: '', priority: 'MEDIUM', targetAudience: 'ALL' });
       showSuccess('Announcement created!');
@@ -73,7 +76,7 @@ const Announcements: React.FC = () => {
       data: Partial<{ isPinned: boolean }>;
     }) => announcementsApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.announcements });
     },
   });
 
@@ -126,14 +129,21 @@ const Announcements: React.FC = () => {
         announcements.map((announcement) => (
           <Card key={announcement.id} elevation={2} sx={{ mb: 2 }}>
             <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Campaign color="primary" />
-                  <Typography variant="h6" fontWeight="bold">
+              <Box
+                display="flex"
+                alignItems="flex-start"
+                justifyContent="space-between"
+                flexWrap="wrap"
+                gap={1}
+                mb={1}
+              >
+                <Box display="flex" alignItems="center" gap={1} minWidth={0} flex="1 1 auto">
+                  <Campaign color="primary" sx={{ flexShrink: 0 }} />
+                  <Typography variant="h6" fontWeight="bold" sx={{ wordBreak: 'break-word' }}>
                     {announcement.title}
                   </Typography>
                 </Box>
-                <Box display="flex" gap={1} alignItems="center">
+                <Box display="flex" gap={1} alignItems="center" flexWrap="wrap" flexShrink={0}>
                   <Chip
                     label={announcement.priority}
                     color={getPriorityColor(announcement.priority)}
@@ -161,7 +171,13 @@ const Announcements: React.FC = () => {
               <Typography variant="body1" sx={{ mb: 2, whiteSpace: 'pre-wrap' }}>
                 {announcement.content}
               </Typography>
-              <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                flexWrap="wrap"
+                gap={1}
+              >
                 <Typography variant="caption" color="text.secondary">
                   By {announcement.creator?.name} &bull;{' '}
                   {new Date(announcement.createdAt).toLocaleDateString('en-IN', {
@@ -176,11 +192,9 @@ const Announcements: React.FC = () => {
           </Card>
         ))
       ) : !isError ? (
-        <Card elevation={2}>
-          <CardContent>
-            <Alert severity="info">No announcements available</Alert>
-          </CardContent>
-        </Card>
+        <SectionCard>
+          <Alert severity="info">No announcements available</Alert>
+        </SectionCard>
       ) : null}
 
       {/* Create Announcement Dialog */}

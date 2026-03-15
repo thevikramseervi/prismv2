@@ -2,71 +2,56 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
-  Card,
-  CardContent,
-  Typography,
+  Alert,
   Button,
+  TextField,
+  IconButton,
+  Tooltip,
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Alert,
-  Tooltip,
-  useTheme,
-  useMediaQuery,
 } from '@mui/material';
-import { Add, Edit, Delete } from '@mui/icons-material';
+import SectionCard from '../components/SectionCard';
 import { holidaysApi } from '../api/holidays';
-import { Holiday } from '../types';
+import { type Holiday, Role } from '../types';
+import { QUERY_KEYS } from '../queryKeys';
+import PageLoading from '../components/PageLoading';
+import ResponsiveTable from '../components/ResponsiveTable';
+import { useAuth } from '../contexts/AuthContext';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import { getApiErrorMessage } from '../hooks/apiMessages';
-import PageLoading from '../components/PageLoading';
+import { Add, Edit, Delete } from '@mui/icons-material';
 import ConfirmDialog from '../components/ConfirmDialog';
-import PageHeader from '../components/PageHeader';
 import ResponsiveDialog from '../components/ResponsiveDialog';
-import MobileTableCard from '../components/MobileTableCard';
+import PageHeader from '../components/PageHeader';
 
 const Holidays: React.FC = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { user } = useAuth();
+  const isAdmin = !!user && (user.role === Role.LAB_ADMIN || user.role === Role.SUPER_ADMIN);
   const { showSuccess, showError } = useSnackbar();
+  const queryClient = useQueryClient();
+
   const [open, setOpen] = useState(false);
   const [editHoliday, setEditHoliday] = useState<Holiday | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; holiday: Holiday | null }>({
     open: false,
     holiday: null,
   });
-  const queryClient = useQueryClient();
-
   const [formData, setFormData] = useState({
     date: '',
     name: '',
     description: '',
   });
 
-  const {
-    data: holidays,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ['holidays'],
+  const { data: holidays, isLoading, isError } = useQuery({
+    queryKey: QUERY_KEYS.holidays,
     queryFn: () => holidaysApi.getAll(),
   });
 
   const createMutation = useMutation({
     mutationFn: holidaysApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['holidays'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.holidays });
       handleClose();
       showSuccess('Holiday added successfully!');
     },
@@ -79,7 +64,7 @@ const Holidays: React.FC = () => {
     mutationFn: ({ id, data }: { id: string; data: Partial<Holiday> }) =>
       holidaysApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['holidays'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.holidays });
       handleClose();
       showSuccess('Holiday updated successfully!');
     },
@@ -91,7 +76,7 @@ const Holidays: React.FC = () => {
   const deleteMutation = useMutation({
     mutationFn: holidaysApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['holidays'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.holidays });
       showSuccess('Holiday deleted successfully!');
       setDeleteConfirm({ open: false, holiday: null });
     },
@@ -118,6 +103,8 @@ const Holidays: React.FC = () => {
     setOpen(true);
   };
 
+  const isFormValid = !!formData.date?.trim() && !!formData.name?.trim();
+
   const handleSubmit = () => {
     if (!formData.date?.trim()) {
       showError('Please select a date.');
@@ -137,8 +124,6 @@ const Holidays: React.FC = () => {
     }
   };
 
-  const isFormValid = !!formData.date?.trim() && !!formData.name?.trim();
-
   const handleDeleteClick = (holiday: Holiday) => {
     setDeleteConfirm({ open: true, holiday });
   };
@@ -156,8 +141,15 @@ const Holidays: React.FC = () => {
 
   if (isLoading) return <PageLoading />;
 
-  // Sort holidays by date
-  const sortedHolidays = holidays
+  if (isError) {
+    return (
+      <SectionCard>
+        <Alert severity="error">Failed to load holidays. Please try again later.</Alert>
+      </SectionCard>
+    );
+  }
+
+  const sortedHolidays: Holiday[] = holidays
     ? [...holidays].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     : [];
 
@@ -173,144 +165,83 @@ const Holidays: React.FC = () => {
     <Box>
       <PageHeader
         title="Holiday Calendar"
-        subtitle="Manage company holidays"
+        subtitle="View all configured holidays for the lab."
         actions={
-          <Button variant="contained" startIcon={<Add />} onClick={() => handleOpen()}>
-            Add Holiday
-          </Button>
+          isAdmin && (
+            <Button variant="contained" startIcon={<Add />} onClick={() => handleOpen()}>
+              Add Holiday
+            </Button>
+          )
         }
       />
 
-      {isError && (
-        <Alert
-          severity="error"
-          sx={{ mb: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={() => refetch()}>
-              Retry
-            </Button>
-          }
-        >
-          {getApiErrorMessage(error, 'Failed to load holidays. Please try again.')}
-        </Alert>
-      )}
-
-      {!isError && (Object.keys(holidaysByYear).length === 0 ? (
-        <Card elevation={2}>
-          <CardContent>
-            <Alert severity="info">No holidays configured yet</Alert>
-          </CardContent>
-        </Card>
+      {Object.keys(holidaysByYear).length === 0 ? (
+        <SectionCard>
+          <Alert severity="info">No holidays have been configured yet.</Alert>
+        </SectionCard>
       ) : (
         Object.entries(holidaysByYear)
-          .sort(([a], [b]) => parseInt(b) - parseInt(a))
+          .sort(([a], [b]) => parseInt(b, 10) - parseInt(a, 10))
           .map(([year, yearHolidays]) => (
-            <Card key={year} elevation={2} sx={{ mb: 3 }}>
-              <CardContent>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  {year} ({yearHolidays.length} holidays)
-                </Typography>
-                {isMobile ? (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                    {yearHolidays.map((holiday) => {
-                      const date = new Date(holiday.date);
-                      return (
-                        <MobileTableCard
-                          key={holiday.id}
-                          items={[
-                            { label: 'Date', value: date.toLocaleDateString('en-IN') },
-                            {
-                              label: 'Day',
-                              value: date.toLocaleDateString('en-IN', { weekday: 'long' }),
-                            },
-                            { label: 'Holiday', value: holiday.name },
-                            { label: 'Description', value: holiday.description || '–' },
-                          ]}
-                          actions={
-                            <Box sx={{ display: 'flex', gap: 0.5 }}>
-                              <Tooltip title={`Edit ${holiday.name}`}>
-                                <IconButton
-                                  size="small"
-                                  color="primary"
-                                  onClick={() => handleOpen(holiday)}
-                                  aria-label={`Edit ${holiday.name}`}
-                                >
-                                  <Edit fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title={`Delete ${holiday.name}`}>
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleDeleteClick(holiday)}
-                                  aria-label={`Delete ${holiday.name}`}
-                                >
-                                  <Delete fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </Box>
-                          }
-                        />
-                      );
-                    })}
-                  </Box>
-                ) : (
-                  <TableContainer component={Paper} elevation={0}>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell><strong>Date</strong></TableCell>
-                          <TableCell><strong>Day</strong></TableCell>
-                          <TableCell><strong>Holiday Name</strong></TableCell>
-                          <TableCell><strong>Description</strong></TableCell>
-                          <TableCell align="center"><strong>Actions</strong></TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {yearHolidays.map((holiday) => {
-                          const date = new Date(holiday.date);
-                          return (
-                            <TableRow key={holiday.id} hover>
-                              <TableCell>{date.toLocaleDateString('en-IN')}</TableCell>
-                              <TableCell>
-                                {date.toLocaleDateString('en-IN', { weekday: 'long' })}
-                              </TableCell>
-                              <TableCell><strong>{holiday.name}</strong></TableCell>
-                              <TableCell>{holiday.description || '-'}</TableCell>
-                              <TableCell align="center">
-                                <Tooltip title={`Edit ${holiday.name}`}>
-                                  <IconButton
-                                    size="small"
-                                    color="primary"
-                                    onClick={() => handleOpen(holiday)}
-                                    aria-label={`Edit ${holiday.name}`}
-                                  >
-                                    <Edit fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title={`Delete ${holiday.name}`}>
-                                  <IconButton
-                                    size="small"
-                                    color="error"
-                                    onClick={() => handleDeleteClick(holiday)}
-                                    aria-label={`Delete ${holiday.name}`}
-                                  >
-                                    <Delete fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-              </CardContent>
-            </Card>
+            <SectionCard
+              key={year}
+              title={`${year} (${yearHolidays.length} holidays)`}
+              sx={{ mb: 3 }}
+            >
+                <ResponsiveTable
+                  rows={yearHolidays}
+                  rowKey={(h) => h.id}
+                  columns={[
+                    {
+                      header: 'Date',
+                      render: (h) => new Date(h.date).toLocaleDateString('en-IN'),
+                    },
+                    {
+                      header: 'Day',
+                      render: (h) =>
+                        new Date(h.date).toLocaleDateString('en-IN', { weekday: 'long' }),
+                    },
+                    {
+                      header: 'Holiday',
+                      render: (h) => <strong>{h.name}</strong>,
+                    },
+                    {
+                      header: 'Description',
+                      render: (h) => h.description || '–',
+                    },
+                  ]}
+                  actions={
+                    isAdmin
+                      ? (h) => (
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <Tooltip title={`Edit ${h.name}`}>
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleOpen(h)}
+                                aria-label={`Edit ${h.name}`}
+                              >
+                                <Edit fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title={`Delete ${h.name}`}>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeleteClick(h)}
+                                aria-label={`Delete ${h.name}`}
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        )
+                      : undefined
+                  }
+                />
+            </SectionCard>
           ))
-      ))}
-
+      )}
       <ConfirmDialog
         open={deleteConfirm.open}
         onClose={handleDeleteConfirmClose}
@@ -333,7 +264,6 @@ const Holidays: React.FC = () => {
         loading={deleteMutation.isPending}
       />
 
-      {/* Add/Edit Holiday Dialog */}
       <ResponsiveDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>{editHoliday ? 'Edit Holiday' : 'Add New Holiday'}</DialogTitle>
         <DialogContent>
@@ -382,7 +312,6 @@ const Holidays: React.FC = () => {
           </Button>
         </DialogActions>
       </ResponsiveDialog>
-
     </Box>
   );
 };

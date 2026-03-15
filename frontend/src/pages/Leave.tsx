@@ -2,42 +2,31 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
-  Card,
-  CardContent,
-  Typography,
   Button,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Chip,
-  Paper,
   IconButton,
   Tooltip,
   Alert,
-  useTheme,
-  useMediaQuery,
+  Typography,
 } from '@mui/material';
+import SectionCard from '../components/SectionCard';
 import { Add, Cancel as CancelIcon } from '@mui/icons-material';
 import { leaveApi } from '../api/leave';
 import { holidaysApi } from '../api/holidays';
 import { LeaveStatus, LeaveType } from '../types';
+import { QUERY_KEYS } from '../queryKeys';
 import PageHeader from '../components/PageHeader';
 import ResponsiveDialog from '../components/ResponsiveDialog';
+import ResponsiveTable from '../components/ResponsiveTable';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import { getApiErrorMessage } from '../hooks/apiMessages';
 import PageLoading from '../components/PageLoading';
-import MobileTableCard from '../components/MobileTableCard';
 
 const Leave: React.FC = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showSuccess, showError } = useSnackbar();
   const [open, setOpen] = useState(false);
   const [fromDate, setFromDate] = useState('');
@@ -51,12 +40,12 @@ const Leave: React.FC = () => {
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['my-leave-applications'],
+    queryKey: QUERY_KEYS.myLeaveApplications,
     queryFn: () => leaveApi.getMyApplications(),
   });
 
   const { data: balance } = useQuery({
-    queryKey: ['leave-balance'],
+    queryKey: QUERY_KEYS.leaveBalance,
     queryFn: () => leaveApi.getBalance(),
   });
 
@@ -65,7 +54,7 @@ const Leave: React.FC = () => {
   const toYear   = toDate   ? new Date(toDate).getUTCFullYear()   : fromYear;
 
   const { data: holidays } = useQuery({
-    queryKey: ['holidays-all'],
+    queryKey: QUERY_KEYS.holidays,
     queryFn: () => holidaysApi.getAll(),
     staleTime: 5 * 60 * 1000,
   });
@@ -108,8 +97,8 @@ const Leave: React.FC = () => {
   const applyMutation = useMutation({
     mutationFn: leaveApi.apply,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-leave-applications'] });
-      queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.myLeaveApplications });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.leaveBalance });
       setOpen(false);
       setFromDate('');
       setToDate('');
@@ -125,8 +114,8 @@ const Leave: React.FC = () => {
   const cancelMutation = useMutation({
     mutationFn: (id: string) => leaveApi.cancel(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-leave-applications'] });
-      queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.myLeaveApplications });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.leaveBalance });
       showSuccess('Leave application cancelled.');
     },
     onError: (error: unknown) => {
@@ -163,8 +152,10 @@ const Leave: React.FC = () => {
 
   if (isError) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <Typography color="error">Failed to load leave applications. Please try again.</Typography>
+      <Box sx={{ mt: 2 }}>
+        <Alert severity="error">
+          Failed to load leave applications. Please try again.
+        </Alert>
       </Box>
     );
   }
@@ -185,165 +176,75 @@ const Leave: React.FC = () => {
         }
       />
 
-      <Card elevation={2}>
-        <CardContent>
-          <Typography variant="h6" fontWeight="bold" gutterBottom>
-            My Leave Applications
-          </Typography>
+      <SectionCard title="My Leave Applications">
           {applications && applications.length > 0 ? (
-            isMobile ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {applications.map((app) => (
-                  <MobileTableCard
-                    key={app.id}
-                    items={[
-                      {
-                        label: 'Type',
-                        value: app.leaveType === LeaveType.UNPAID_LEAVE ? 'Unpaid' : 'Casual',
-                      },
-                      {
-                        label: 'From – To',
-                        value: `${new Date(app.fromDate).toLocaleDateString('en-IN')} – ${new Date(app.toDate).toLocaleDateString('en-IN')}`,
-                      },
-                      { label: 'Days', value: app.totalDays },
-                      { label: 'Reason', value: app.reason },
-                      {
-                        label: 'Status',
-                        value: (
-                          <Chip
-                            label={app.status}
-                            color={getStatusColor(app.status)}
-                            size="small"
-                          />
-                        ),
-                      },
-                      {
-                        label: 'Applied On',
-                        value: new Date(app.appliedAt).toLocaleString('en-IN'),
-                      },
-                      {
-                        label: 'Reviewed On',
-                        value: app.reviewedAt
-                          ? new Date(app.reviewedAt).toLocaleString('en-IN')
-                          : app.status === LeaveStatus.PENDING
-                            ? 'Pending'
-                            : '—',
-                      },
-                      {
-                        label: 'Admin Comments',
-                        value: app.reviewNotes
-                          ? app.reviewNotes
-                          : app.status === LeaveStatus.PENDING
-                            ? '—'
-                            : 'No comments',
-                      },
-                    ]}
-                    actions={
-                      app.status === LeaveStatus.PENDING ? (
-                        <Tooltip title="Cancel application">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => cancelMutation.mutate(app.id)}
-                            disabled={cancelMutation.isPending}
-                          >
-                            <CancelIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      ) : undefined
-                    }
-                  />
-                ))}
-              </Box>
-            ) : (
-              <TableContainer
-                component={Paper}
-                elevation={0}
-                sx={{
-                  overflowX: 'auto',
-                  WebkitOverflowScrolling: 'touch',
-                }}
-              >
-                <Table sx={{ minWidth: 640 }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><strong>Type</strong></TableCell>
-                      <TableCell><strong>From Date</strong></TableCell>
-                      <TableCell><strong>To Date</strong></TableCell>
-                      <TableCell><strong>Days</strong></TableCell>
-                      <TableCell><strong>Reason</strong></TableCell>
-                      <TableCell><strong>Status</strong></TableCell>
-                      <TableCell><strong>Applied On</strong></TableCell>
-                      <TableCell><strong>Reviewed On</strong></TableCell>
-                      <TableCell><strong>Admin Comments</strong></TableCell>
-                      <TableCell><strong>Actions</strong></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {applications.map((app) => (
-                      <TableRow key={app.id} hover>
-                        <TableCell>
-                          {app.leaveType === LeaveType.UNPAID_LEAVE ? 'Unpaid' : 'Casual'}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(app.fromDate).toLocaleDateString('en-IN')}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(app.toDate).toLocaleDateString('en-IN')}
-                        </TableCell>
-                        <TableCell>{app.totalDays}</TableCell>
-                        <TableCell>{app.reason}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={app.status}
-                            color={getStatusColor(app.status)}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {new Date(app.appliedAt).toLocaleString('en-IN')}
-                        </TableCell>
-                        <TableCell>
-                          {app.reviewedAt
-                            ? new Date(app.reviewedAt).toLocaleString('en-IN')
-                            : app.status === LeaveStatus.PENDING
-                            ? 'Pending'
-                            : '—'}
-                        </TableCell>
-                        <TableCell>
-                          {app.reviewNotes
-                            ? app.reviewNotes
-                            : app.status === LeaveStatus.PENDING
-                            ? '—'
-                            : 'No comments'}
-                        </TableCell>
-                        <TableCell>
-                          {app.status === LeaveStatus.PENDING && (
-                            <Tooltip title="Cancel application">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => cancelMutation.mutate(app.id)}
-                                disabled={cancelMutation.isPending}
-                              >
-                                <CancelIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )
+            <ResponsiveTable
+              rows={applications}
+              rowKey={(app) => app.id}
+              columns={[
+                {
+                  header: 'Type',
+                  render: (app) => app.leaveType === LeaveType.UNPAID_LEAVE ? 'Unpaid' : 'Casual',
+                },
+                {
+                  header: 'From Date',
+                  render: (app) => new Date(app.fromDate).toLocaleDateString('en-IN'),
+                  mobileLabel: 'From – To',
+                },
+                {
+                  header: 'To Date',
+                  render: (app) => new Date(app.toDate).toLocaleDateString('en-IN'),
+                  desktopOnly: true,
+                },
+                { header: 'Days', render: (app) => app.totalDays },
+                { header: 'Reason', render: (app) => app.reason },
+                {
+                  header: 'Status',
+                  render: (app) => (
+                    <Chip label={app.status} color={getStatusColor(app.status)} size="small" />
+                  ),
+                },
+                {
+                  header: 'Applied On',
+                  render: (app) => new Date(app.appliedAt).toLocaleString('en-IN'),
+                },
+                {
+                  header: 'Reviewed On',
+                  render: (app) =>
+                    app.reviewedAt
+                      ? new Date(app.reviewedAt).toLocaleString('en-IN')
+                      : app.status === LeaveStatus.PENDING ? 'Pending' : '—',
+                },
+                {
+                  header: 'Admin Comments',
+                  render: (app) =>
+                    app.reviewNotes
+                      ? app.reviewNotes
+                      : app.status === LeaveStatus.PENDING ? '—' : 'No comments',
+                  desktopOnly: true,
+                },
+              ]}
+              actions={(app) =>
+                app.status === LeaveStatus.PENDING ? (
+                  <Tooltip title="Cancel application">
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => cancelMutation.mutate(app.id)}
+                      disabled={cancelMutation.isPending}
+                    >
+                      <CancelIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                ) : null
+              }
+            />
           ) : (
             <Typography variant="body2" color="text.secondary">
               No leave applications found
             </Typography>
           )}
-        </CardContent>
-      </Card>
+      </SectionCard>
 
       {/* Apply Leave Dialog */}
       <ResponsiveDialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>

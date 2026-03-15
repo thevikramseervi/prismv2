@@ -1,40 +1,24 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  IconButton,
-  Tooltip,
-  Paper,
-  Alert,
-  useTheme,
-  useMediaQuery,
-} from '@mui/material';
+import { Box, Typography, Chip, IconButton, Tooltip, Alert } from '@mui/material';
+import SectionCard from '../components/SectionCard';
 import { useNavigate } from 'react-router-dom';
 import { PictureAsPdf, Description, Visibility } from '@mui/icons-material';
 import { payrollApi } from '../api/payroll';
 import { PaymentStatus } from '../types';
+import { QUERY_KEYS } from '../queryKeys';
+import { MONTHS } from '../utils/slipUtils';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import PageLoading from '../components/PageLoading';
-import MobileTableCard from '../components/MobileTableCard';
+import PageHeader from '../components/PageHeader';
+import ResponsiveTable from '../components/ResponsiveTable';
+import { formatCurrency } from '../utils/format';
 
 const SalarySlips: React.FC = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const { showError } = useSnackbar();
   const { data: salarySlipsRaw, isLoading, isError } = useQuery({
-    queryKey: ['my-salary-slips'],
+    queryKey: QUERY_KEYS.mySalarySlips,
     queryFn: () => payrollApi.getMySalarySlips(),
   });
   // Ensure we always have an array, sorted by year desc then month desc (most recent first)
@@ -77,13 +61,7 @@ const SalarySlips: React.FC = () => {
     }
   };
 
-  const getMonthName = (month: number): string => {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return months[month - 1] ?? 'Unknown';
-  };
+  const getMonthName = (month: number): string => MONTHS[month - 1] ?? 'Unknown';
 
   if (isLoading) return <PageLoading />;
 
@@ -93,157 +71,94 @@ const SalarySlips: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Salary Slips
-      </Typography>
-      <Typography variant="body1" color="text.secondary" mb={3}>
-        View and download your salary slips
-      </Typography>
+      <PageHeader
+        title="Salary Slips"
+        subtitle="View and download your salary slips"
+      />
 
-      <Card elevation={2}>
-        <CardContent sx={{ overflow: 'hidden' }}>
-          {salarySlips && salarySlips.length > 0 ? (
-            isMobile ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {salarySlips.map((slip) => (
-                  <MobileTableCard
-                    key={slip.id}
-                    items={[
-                      {
-                        label: 'Month / Year',
-                        value: `${getMonthName(slip.month)} ${slip.year}`,
-                      },
-                      {
-                        label: 'Gross Earnings',
-                        value: slip.grossEarnings != null ? `₹${Number(slip.grossEarnings).toFixed(2)}` : '—',
-                      },
-                      {
-                        label: 'Net Salary',
-                        value: slip.netSalary != null ? `₹${Number(slip.netSalary).toFixed(2)}` : '—',
-                      },
-                      {
-                        label: 'Status',
-                        value: (
-                          <Chip
-                            label={slip.paymentStatus}
-                            color={getStatusColor(slip.paymentStatus)}
-                            size="small"
-                          />
-                        ),
-                      },
-                    ]}
-                    actions={
-                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                        <Tooltip title="View slip">
-                          <IconButton
-                            size="small"
-                            onClick={() => navigate(`/salary-slips/view/${slip.id}`)}
-                          >
-                            <Visibility />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Download PDF">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleDownloadPDF(slip.id)}
-                          >
-                            <PictureAsPdf />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Download Excel">
-                          <IconButton
-                            size="small"
-                            color="success"
-                            onClick={() => handleDownloadExcel(slip.id)}
-                          >
-                            <Description />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    }
+      <SectionCard sx={{ overflow: 'hidden' }}>
+        {salarySlips.length > 0 ? (
+          <ResponsiveTable
+            rows={salarySlips}
+            rowKey={(slip) => slip.id}
+            columns={[
+              {
+                header: 'Month',
+                render: (slip) => getMonthName(slip.month),
+              },
+              {
+                header: 'Year',
+                render: (slip) => slip.year,
+                mobileLabel: 'Month / Year',
+              },
+              {
+                header: 'Gross Earnings',
+                align: 'right',
+                render: (slip) => <span>{formatCurrency(slip.grossEarnings)}</span>,
+              },
+              {
+                header: 'Net Salary',
+                align: 'right',
+                render: (slip) => <strong>{formatCurrency(slip.netSalary)}</strong>,
+              },
+              {
+                header: 'Status',
+                render: (slip) => (
+                  <Chip
+                    label={slip.paymentStatus}
+                    color={getStatusColor(slip.paymentStatus)}
+                    size="small"
                   />
-                ))}
-              </Box>
-            ) : (
-              <TableContainer
-                component={Paper}
-                elevation={0}
+                ),
+              },
+            ]}
+            actions={(slip) => (
+              <Box
                 sx={{
-                  overflowX: 'auto',
-                  WebkitOverflowScrolling: 'touch',
+                  display: 'flex',
+                  gap: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                <Table sx={{ minWidth: 400 }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><strong>Month</strong></TableCell>
-                      <TableCell><strong>Year</strong></TableCell>
-                      <TableCell align="right"><strong>Gross Earnings</strong></TableCell>
-                      <TableCell align="right"><strong>Net Salary</strong></TableCell>
-                      <TableCell><strong>Status</strong></TableCell>
-                      <TableCell align="center"><strong>Actions</strong></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {salarySlips.map((slip) => (
-                      <TableRow key={slip.id} hover>
-                        <TableCell>{getMonthName(slip.month)}</TableCell>
-                        <TableCell>{slip.year}</TableCell>
-                        <TableCell align="right">
-                          {slip.grossEarnings != null ? `₹${Number(slip.grossEarnings).toFixed(2)}` : '—'}
-                        </TableCell>
-                        <TableCell align="right">
-                          <strong>{slip.netSalary != null ? `₹${Number(slip.netSalary).toFixed(2)}` : '—'}</strong>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={slip.paymentStatus}
-                            color={getStatusColor(slip.paymentStatus)}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell align="center">
-                          <Tooltip title="View slip">
-                            <IconButton
-                              size="small"
-                              onClick={() => navigate(`/salary-slips/view/${slip.id}`)}
-                            >
-                              <Visibility />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Download PDF">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleDownloadPDF(slip.id)}
-                            >
-                              <PictureAsPdf />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Download Excel">
-                            <IconButton
-                              size="small"
-                              color="success"
-                              onClick={() => handleDownloadExcel(slip.id)}
-                            >
-                              <Description />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              No salary slips available
-            </Typography>
-          )}
-        </CardContent>
-      </Card>
+                <Tooltip title="View slip">
+                  <IconButton
+                    size="small"
+                    aria-label="View salary slip"
+                    onClick={() => navigate(`/salary-slips/view/${slip.id}`)}
+                  >
+                    <Visibility />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Download PDF">
+                  <IconButton
+                    size="small"
+                    color="error"
+                    aria-label="Download salary slip PDF"
+                    onClick={() => handleDownloadPDF(slip.id)}
+                  >
+                    <PictureAsPdf />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Download Excel">
+                  <IconButton
+                    size="small"
+                    color="success"
+                    aria-label="Download salary slip Excel"
+                    onClick={() => handleDownloadExcel(slip.id)}
+                  >
+                    <Description />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            )}
+          />
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            No salary slips available
+          </Typography>
+        )}
+      </SectionCard>
     </Box>
   );
 };

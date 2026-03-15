@@ -21,11 +21,11 @@ import Notifications from './pages/Notifications';
 import Profile from './pages/Profile';
 import Users from './pages/Users';
 import Holidays from './pages/Holidays';
-import MyHolidays from './pages/MyHolidays';
 import Admin from './pages/Admin';
 import LeaveApproval from './pages/LeaveApproval';
 import Reports from './pages/Reports';
 import ActivityReport from './pages/ActivityReport';
+import NotFound from './pages/NotFound';
 import { queryClient } from './queryClient';
 
 function getTheme(mode: 'light' | 'dark') {
@@ -180,15 +180,14 @@ function AppWithTheme() {
                 <Route path="announcements" element={<Announcements />} />
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="profile" element={<Profile />} />
-                <Route path="my-holidays" element={<MyHolidays />} />
-                <Route path="users" element={<Users />} />
                 <Route path="holidays" element={<Holidays />} />
-                <Route path="admin" element={<Admin />} />
+                <Route path="users" element={<Users />} />
                 <Route path="leave-approval" element={<LeaveApproval />} />
                 <Route path="reports" element={<Reports />} />
+                <Route path="admin" element={<Admin />} />
               </Route>
             </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
           </SnackbarProvider>
         </AuthProvider>

@@ -14,9 +14,9 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, actions, align
   return (
     <Box mb={3}>
       <Stack
-        direction={isCenter ? 'column' : 'row'}
-        spacing={isCenter ? 1 : 2}
-        alignItems={isCenter ? 'center' : 'flex-start'}
+        direction={isCenter ? 'column' : { xs: 'column', sm: 'row' }}
+        spacing={isCenter ? 1 : { xs: 1, sm: 2 }}
+        alignItems={isCenter ? 'center' : { xs: 'flex-start', sm: 'flex-start' }}
         justifyContent="space-between"
       >
         <Box textAlign={isCenter ? 'center' : 'left'}>
@@ -30,7 +30,13 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, actions, align
           )}
         </Box>
         {actions && (
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box
+            display="flex"
+            alignItems="center"
+            gap={1}
+            flexWrap="wrap"
+            sx={{ flexShrink: 0 }}
+          >
             {actions}
           </Box>
         )}

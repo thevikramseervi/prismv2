@@ -294,6 +294,11 @@ export class LeaveService {
 
   async approveLeave(applicationId: string, reviewedBy: string, reviewLeaveDto?: ReviewLeaveDto) {
     return this.prisma.$transaction(async (tx) => {
+      const reviewer = await tx.user.findUnique({
+        where: { id: reviewedBy },
+        select: { role: true },
+      });
+
       const application = await tx.leaveApplication.findUnique({
         where: { id: applicationId },
         include: { user: true },
@@ -305,6 +310,16 @@ export class LeaveService {
 
       if (application.status !== LeaveStatus.PENDING) {
         throw new BadRequestException('Only pending leave applications can be approved');
+      }
+
+      if (
+        application.user.role &&
+        (application.user.role === Role.LAB_ADMIN || application.user.role === Role.SUPER_ADMIN) &&
+        reviewer?.role !== Role.SUPER_ADMIN
+      ) {
+        throw new ForbiddenException(
+          'Only SUPER_ADMIN can approve leave for LAB_ADMIN or SUPER_ADMIN users',
+        );
       }
 
       // Update application status
@@ -420,8 +435,14 @@ export class LeaveService {
 
   async rejectLeave(applicationId: string, reviewedBy: string, reviewLeaveDto?: ReviewLeaveDto) {
     return this.prisma.$transaction(async (tx) => {
+      const reviewer = await tx.user.findUnique({
+        where: { id: reviewedBy },
+        select: { role: true },
+      });
+
       const application = await tx.leaveApplication.findUnique({
         where: { id: applicationId },
+        include: { user: true },
       });
 
       if (!application) {
@@ -430,6 +451,16 @@ export class LeaveService {
 
       if (application.status !== LeaveStatus.PENDING) {
         throw new BadRequestException('Only pending leave applications can be rejected');
+      }
+
+      if (
+        application.user.role &&
+        (application.user.role === Role.LAB_ADMIN || application.user.role === Role.SUPER_ADMIN) &&
+        reviewer?.role !== Role.SUPER_ADMIN
+      ) {
+        throw new ForbiddenException(
+          'Only SUPER_ADMIN can reject leave for LAB_ADMIN or SUPER_ADMIN users',
+        );
       }
 
       // Update application status
@@ -534,6 +565,7 @@ export class LeaveService {
             employeeNumber: true,
             name: true,
             designation: true,
+            role: true,
           },
         },
       },
@@ -588,6 +620,7 @@ export class LeaveService {
             employeeNumber: true,
             name: true,
             designation: true,
+            role: true,
           },
         },
         reviewer: {

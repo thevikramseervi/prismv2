@@ -17,12 +17,15 @@ import {
   CircularProgress,
   Chip,
   Tooltip,
+  Alert,
 } from '@mui/material';
 import { Add, Delete, Save, Download } from '@mui/icons-material';
+import ConfirmDialog from '../components/ConfirmDialog';
 import ExcelJS from 'exceljs';
 import { activityApi, type CreateActivityPayload } from '../api/activity';
 import { usersApi } from '../api/users';
 import { ActivityEntry, Role } from '../types';
+import { QUERY_KEYS } from '../queryKeys';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
 import { useSnackbar } from '../contexts/SnackbarContext';
@@ -80,15 +83,16 @@ const ActivityReport: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [selectedUserId, setSelectedUserId] = useState<string>(user?.id ?? '');
   const [rows, setRows] = useState<EditableRow[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<EditableRow | null>(null);
 
   const { data: users } = useQuery({
-    queryKey: ['users-for-activity'],
+    queryKey: QUERY_KEYS.usersForActivity,
     queryFn: () => usersApi.getAllPages(),
     enabled: isAdmin,
   });
 
   const activitiesQuery = useQuery({
-    queryKey: ['activities', isAdmin ? 'admin' : 'me', selectedUserId, selectedDate],
+    queryKey: QUERY_KEYS.activities(isAdmin ? 'admin' : 'me', selectedUserId, selectedDate),
     queryFn: async () => {
       if (isAdmin) {
         if (!selectedUserId) return [];
@@ -106,7 +110,7 @@ const ActivityReport: React.FC = () => {
   const createMutation = useMutation({
     mutationFn: (payload: CreateActivityPayload) => activityApi.create(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ['activities'] }); // broad invalidation
       showSuccess('Activity saved successfully');
     },
     onError: (error: unknown) => {
@@ -255,12 +259,22 @@ const ActivityReport: React.FC = () => {
 
   const rowKey = (r: EditableRow) => r.id ?? r.clientId;
 
-  const handleDeleteRow = async (row: EditableRow) => {
+  const handleDeleteRow = (row: EditableRow) => {
     if (row.id) {
-      await deleteMutation.mutateAsync(row.id);
-      await activitiesQuery.refetch();
+      // Saved entry — ask for confirmation first
+      setDeleteTarget(row);
+    } else {
+      // Unsaved new row — remove immediately, no server call needed
+      setRows((prev) => prev.filter((r) => rowKey(r) !== rowKey(row)));
     }
-    setRows((prev) => prev.filter((r) => rowKey(r) !== rowKey(row)));
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteMutation.mutateAsync(deleteTarget.id!);
+    setRows((prev) => prev.filter((r) => rowKey(r) !== rowKey(deleteTarget)));
+    await activitiesQuery.refetch();
+    setDeleteTarget(null);
   };
 
   const currentUserLabel = useMemo(() => {
@@ -413,6 +427,12 @@ const ActivityReport: React.FC = () => {
             </Box>
           </Box>
 
+          {activitiesQuery.isError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {getApiErrorMessage(activitiesQuery.error, 'Failed to load activities. Please try again.')}
+            </Alert>
+          )}
+
           <Box
             mb={2}
             display="flex"
@@ -440,7 +460,7 @@ const ActivityReport: React.FC = () => {
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {rows.map((row, index) => (
                 <Paper
-                  key={row.id ?? index}
+                  key={row.id ?? row.clientId ?? index}
                   elevation={0}
                   sx={{ p: 2, borderRadius: 2, border: 1, borderColor: 'divider' }}
                 >
@@ -460,6 +480,7 @@ const ActivityReport: React.FC = () => {
                       value={row.date}
                       onChange={(e) => updateRowField(index, 'date', e.target.value)}
                       size="small"
+                      aria-label="Activity date"
                     />
 
                     <Typography variant="body2" color="text.secondary">
@@ -471,6 +492,7 @@ const ActivityReport: React.FC = () => {
                         size="small"
                         InputProps={{ readOnly: !isAdmin }}
                         onChange={(e) => updateRowField(index, 'userName', e.target.value)}
+                        aria-label="Student name"
                       />
                       <Typography variant="caption" color="text.secondary" display="block">
                         {row.employeeId}
@@ -484,6 +506,7 @@ const ActivityReport: React.FC = () => {
                       value={row.userType}
                       onChange={(e) => updateRowField(index, 'userType', e.target.value)}
                       size="small"
+                      aria-label="User type"
                     />
 
                     <Typography variant="body2" color="text.secondary">
@@ -506,6 +529,7 @@ const ActivityReport: React.FC = () => {
                       value={row.project}
                       onChange={(e) => updateRowField(index, 'project', e.target.value)}
                       size="small"
+                      aria-label="Project"
                     />
 
                     <Typography variant="body2" color="text.secondary">
@@ -515,6 +539,7 @@ const ActivityReport: React.FC = () => {
                       value={row.task}
                       onChange={(e) => updateRowField(index, 'task', e.target.value)}
                       size="small"
+                      aria-label="Task"
                     />
 
                     <Typography variant="body2" color="text.secondary">
@@ -524,6 +549,7 @@ const ActivityReport: React.FC = () => {
                       value={row.subTask ?? ''}
                       onChange={(e) => updateRowField(index, 'subTask', e.target.value)}
                       size="small"
+                      aria-label="Sub task"
                     />
 
                     <Typography variant="body2" color="text.secondary">
@@ -533,6 +559,7 @@ const ActivityReport: React.FC = () => {
                       value={row.unit}
                       onChange={(e) => updateRowField(index, 'unit', e.target.value)}
                       size="small"
+                      aria-label="Unit"
                     />
 
                     <Typography variant="body2" color="text.secondary">
@@ -544,6 +571,7 @@ const ActivityReport: React.FC = () => {
                       size="small"
                       type="number"
                       inputProps={{ min: 0 }}
+                      aria-label="Quantity"
                     />
 
                     <Typography variant="body2" color="text.secondary">
@@ -554,6 +582,7 @@ const ActivityReport: React.FC = () => {
                       onChange={(e) => updateRowField(index, 'percentage', e.target.value)}
                       size="small"
                       type="number"
+                      aria-label="Percentage"
                     />
 
                     <Typography variant="body2" color="text.secondary">
@@ -564,6 +593,7 @@ const ActivityReport: React.FC = () => {
                       onChange={(e) => updateRowField(index, 'productivity', e.target.value)}
                       size="small"
                       type="number"
+                      aria-label="Productivity"
                     />
 
                     <Typography variant="body2" color="text.secondary">
@@ -574,6 +604,7 @@ const ActivityReport: React.FC = () => {
                       onChange={(e) => updateRowField(index, 'weightage', e.target.value)}
                       size="small"
                       type="number"
+                      aria-label="Weightage"
                     />
                   </Box>
 
@@ -612,6 +643,21 @@ const ActivityReport: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete activity entry"
+        message={
+          deleteTarget
+            ? `Delete "${deleteTarget.project || 'this entry'}" (${deleteTarget.task})? This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        confirmColor="error"
+        loading={deleteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteTarget(null)}
+      />
     </Box>
   );
 };

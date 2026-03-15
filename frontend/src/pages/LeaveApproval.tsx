@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
-  Card,
-  CardContent,
-  Typography,
   Button,
   DialogTitle,
   DialogContent,
@@ -12,32 +9,27 @@ import {
   TextField,
   Chip,
   Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   IconButton,
   Tooltip,
-  useTheme,
-  useMediaQuery,
+  Typography,
 } from '@mui/material';
+import SectionCard from '../components/SectionCard';
 import ResponsiveDialog from '../components/ResponsiveDialog';
 import { CheckCircle, Cancel } from '@mui/icons-material';
 import { leaveApi } from '../api/leave';
-import { LeaveApplication, LeaveType } from '../types';
+import { LeaveApplication, LeaveType, Role } from '../types';
+import { QUERY_KEYS } from '../queryKeys';
+import { canReviewLeave } from '../utils/leave';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import { getApiErrorMessage } from '../hooks/apiMessages';
 import PageLoading from '../components/PageLoading';
 import PageHeader from '../components/PageHeader';
-import MobileTableCard from '../components/MobileTableCard';
+import ResponsiveTable from '../components/ResponsiveTable';
+import { useAuth } from '../contexts/AuthContext';
 
 const LeaveApproval: React.FC = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showSuccess, showError } = useSnackbar();
+  const { user: currentUser } = useAuth();
   const [actionDialog, setActionDialog] = useState<{
     open: boolean;
     application: LeaveApplication | null;
@@ -53,7 +45,7 @@ const LeaveApproval: React.FC = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['pending-leave-applications'],
+    queryKey: QUERY_KEYS.pendingLeaveApplications,
     queryFn: () => leaveApi.getPending(),
   });
 
@@ -61,7 +53,7 @@ const LeaveApproval: React.FC = () => {
     mutationFn: ({ id, comments }: { id: string; comments?: string }) =>
       leaveApi.approve(id, comments),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pending-leave-applications'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.pendingLeaveApplications });
       handleCloseActionDialog();
       showSuccess('Leave approved successfully!');
     },
@@ -74,7 +66,7 @@ const LeaveApproval: React.FC = () => {
     mutationFn: ({ id, comments }: { id: string; comments: string }) =>
       leaveApi.reject(id, comments),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pending-leave-applications'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.pendingLeaveApplications });
       handleCloseActionDialog();
       showSuccess('Leave rejected successfully!');
     },
@@ -99,6 +91,11 @@ const LeaveApproval: React.FC = () => {
   const handleSubmitAction = () => {
     if (!actionDialog.application) return;
 
+    if (!canReviewLeave(actionDialog.application.user?.role, currentUser?.role)) {
+      showError('Only SUPER_ADMIN can approve or reject leave for LAB_ADMIN or SUPER_ADMIN users');
+      return;
+    }
+
     if (actionDialog.action === 'approve') {
       approveMutation.mutate({
         id: actionDialog.application.id,
@@ -114,6 +111,9 @@ const LeaveApproval: React.FC = () => {
   };
 
   if (isLoading) return <PageLoading />;
+
+  const canReview = (application: LeaveApplication) =>
+    canReviewLeave(application.user?.role, currentUser?.role);
 
   return (
     <Box>
@@ -137,158 +137,95 @@ const LeaveApproval: React.FC = () => {
       )}
 
       {!isError && (
-      <Card elevation={2}>
-        <CardContent>
+      <SectionCard>
           {pendingApplications && pendingApplications.length > 0 ? (
-            isMobile ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {pendingApplications.map((application) => (
-                  <MobileTableCard
-                    key={application.id}
-                    items={[
-                      {
-                        label: 'Type',
-                        value: application.leaveType === LeaveType.UNPAID_LEAVE ? 'Unpaid' : 'Casual',
-                      },
-                      {
-                        label: 'Employee',
-                        value: (
-                          <Box>
-                            <Typography component="span" variant="body2" fontWeight="bold" display="block">
-                              {application.user?.name}
-                            </Typography>
-                            <Typography component="span" variant="caption" color="text.secondary">
-                              {application.user?.designation} · {application.user?.employeeId}
-                            </Typography>
-                          </Box>
-                        ),
-                      },
-                      {
-                        label: 'From – To',
-                        value: `${new Date(application.fromDate).toLocaleDateString('en-IN')} – ${new Date(application.toDate).toLocaleDateString('en-IN')}`,
-                      },
-                      { label: 'Days', value: application.totalDays },
-                      { label: 'Reason', value: application.reason },
-                      {
-                        label: 'Applied On',
-                        value: new Date(application.appliedAt).toLocaleDateString('en-IN'),
-                      },
-                    ]}
-                    actions={
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        <Tooltip title="Approve">
-                          <IconButton
-                            size="small"
-                            color="success"
-                            onClick={() => handleOpenActionDialog(application, 'approve')}
-                            aria-label="Approve leave"
-                          >
-                            <CheckCircle />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Reject">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleOpenActionDialog(application, 'reject')}
-                            aria-label="Reject leave"
-                          >
-                            <Cancel />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    }
-                  />
-                ))}
-              </Box>
-            ) : (
-              <TableContainer
-                component={Paper}
-                elevation={0}
-                sx={{
-                  overflowX: 'auto',
-                  WebkitOverflowScrolling: 'touch',
-                }}
-              >
-                <Table sx={{ minWidth: 640 }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><strong>Type</strong></TableCell>
-                      <TableCell><strong>Employee</strong></TableCell>
-                      <TableCell><strong>Employee ID</strong></TableCell>
-                      <TableCell><strong>From Date</strong></TableCell>
-                      <TableCell><strong>To Date</strong></TableCell>
-                      <TableCell><strong>Days</strong></TableCell>
-                      <TableCell><strong>Reason</strong></TableCell>
-                      <TableCell><strong>Applied On</strong></TableCell>
-                      <TableCell align="center"><strong>Actions</strong></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {pendingApplications.map((application) => (
-                      <TableRow key={application.id} hover>
-                        <TableCell>
-                          {application.leaveType === LeaveType.UNPAID_LEAVE ? 'Unpaid' : 'Casual'}
-                        </TableCell>
-                        <TableCell>
-                          <Box>
-                            <Typography variant="body2" fontWeight="bold">
-                              {application.user?.name}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {application.user?.designation}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>{application.user?.employeeId}</TableCell>
-                        <TableCell>
-                          {new Date(application.fromDate).toLocaleDateString('en-IN')}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(application.toDate).toLocaleDateString('en-IN')}
-                        </TableCell>
-                        <TableCell>{application.totalDays}</TableCell>
-                        <TableCell>
-                          <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
-                            {application.reason}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(application.appliedAt).toLocaleDateString('en-IN')}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Tooltip title="Approve">
-                            <IconButton
-                              size="small"
-                              color="success"
-                              onClick={() => handleOpenActionDialog(application, 'approve')}
-                              aria-label="Approve leave"
-                            >
-                              <CheckCircle />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Reject">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleOpenActionDialog(application, 'reject')}
-                              aria-label="Reject leave"
-                            >
-                              <Cancel />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )
+            <ResponsiveTable
+              rows={pendingApplications}
+              rowKey={(app) => app.id}
+              columns={[
+                {
+                  header: 'Type',
+                  render: (app) => app.leaveType === LeaveType.UNPAID_LEAVE ? 'Unpaid' : 'Casual',
+                },
+                {
+                  header: 'Employee',
+                  render: (app) => (
+                    <Box>
+                      <Typography variant="body2" fontWeight="bold">{app.user?.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {app.user?.designation}
+                      </Typography>
+                    </Box>
+                  ),
+                },
+                {
+                  header: 'Employee ID',
+                  render: (app) => app.user?.employeeId ?? '—',
+                  desktopOnly: true,
+                },
+                {
+                  header: 'From Date',
+                  render: (app) => new Date(app.fromDate).toLocaleDateString('en-IN'),
+                  mobileLabel: 'From – To',
+                },
+                {
+                  header: 'To Date',
+                  render: (app) => new Date(app.toDate).toLocaleDateString('en-IN'),
+                  desktopOnly: true,
+                },
+                { header: 'Days', render: (app) => app.totalDays },
+                {
+                  header: 'Reason',
+                  render: (app) => (
+                    <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
+                      {app.reason}
+                    </Typography>
+                  ),
+                },
+                {
+                  header: 'Applied On',
+                  render: (app) => new Date(app.appliedAt).toLocaleDateString('en-IN'),
+                },
+              ]}
+              actions={(application) => (
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  <Tooltip
+                    title={canReview(application) ? 'Approve' : 'Only SUPER_ADMIN can approve admin leave'}
+                  >
+                    <span>
+                      <IconButton
+                        size="small"
+                        color="success"
+                        onClick={() => canReview(application) && handleOpenActionDialog(application, 'approve')}
+                        aria-label="Approve leave"
+                        disabled={!canReview(application)}
+                      >
+                        <CheckCircle />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                  <Tooltip
+                    title={canReview(application) ? 'Reject' : 'Only SUPER_ADMIN can reject admin leave'}
+                  >
+                    <span>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => canReview(application) && handleOpenActionDialog(application, 'reject')}
+                        aria-label="Reject leave"
+                        disabled={!canReview(application)}
+                      >
+                        <Cancel />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Box>
+              )}
+            />
           ) : (
             <Alert severity="info">No pending leave applications</Alert>
           )}
-        </CardContent>
-      </Card>
+      </SectionCard>
       )}
 
       {/* Approve/Reject Dialog */}

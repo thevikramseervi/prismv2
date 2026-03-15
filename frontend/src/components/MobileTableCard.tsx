@@ -38,19 +38,28 @@ const MobileTableCard: React.FC<MobileTableCardProps> = ({ items, actions }) => 
               justifyContent: 'space-between',
               alignItems: 'flex-start',
               gap: 1,
-              flexWrap: 'wrap',
             }}
           >
-            <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ flexShrink: 0, pt: '2px' }}
+            >
               {label}
             </Typography>
-            <Typography
-              component="span"
-              variant="body2"
-              sx={{ fontWeight: 500, textAlign: 'right', minWidth: 0 }}
-            >
-              {value}
-            </Typography>
+            <Box sx={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
+              {typeof value === 'string' || typeof value === 'number' ? (
+                <Typography
+                  component="span"
+                  variant="body2"
+                  sx={{ fontWeight: 500, wordBreak: 'break-word' }}
+                >
+                  {value}
+                </Typography>
+              ) : (
+                value
+              )}
+            </Box>
           </Box>
         ))}
         {actions != null && (
