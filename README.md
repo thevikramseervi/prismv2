@@ -146,14 +146,32 @@ attend-ease/
    ```
 
 3. **Configure environment variables**
-   Create `.env` file with:
+   Create `.env` in the backend directory. See **Environment variables** below for a full list.
+
+   **Required**
+   - `DATABASE_URL` – PostgreSQL connection string (e.g. `postgresql://user:pass@localhost:5432/attendease?schema=public`)
+   - `JWT_SECRET` – Secret used to sign JWT tokens
+
+   **Common**
+   - `PORT` – Backend port (default: 3000)
+   - `NODE_ENV` – `development` or `production`
+   - `JWT_EXPIRATION` – Token lifetime (e.g. `7d`)
+   - `FRONTEND_URL` – Allowed CORS origin (e.g. `http://localhost:5173`)
+
+   **Optional**
+   - `DEV_LOG_PASSWORD_RESET_LINK` – Set to `true` in local dev to log reset links when SMTP is not configured
+   - `COMPANY_NAME`, `COMPANY_DIVISION`, `COMPANY_ADDRESS`, `CURRENCY_NOTE`, `DEFAULT_PAY_DAY` – Salary slip / company branding
+   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` – Email (password reset, etc.)
+   - `TWO_FACTOR_ISSUER` – TOTP issuer name (default: Attend Ease)
+
+   Example `.env`:
    ```env
    DATABASE_URL="postgresql://seed:YOUR_PASSWORD@localhost:5432/attendease?schema=public"
    JWT_SECRET="your-super-secret-jwt-key"
    JWT_EXPIRATION="7d"
    PORT=3000
    NODE_ENV="development"
-   # Optional: enable only in local dev to log reset links when SMTP is missing
+   FRONTEND_URL="http://localhost:5173"
    DEV_LOG_PASSWORD_RESET_LINK="false"
    ```
 
@@ -173,8 +191,14 @@ attend-ease/
    ```bash
    npm run start:dev
    ```
-   Server runs at: http://localhost:3000
+   Server runs at: http://localhost:3000  
    API Docs (development only): http://localhost:3000/api/docs
+
+### How to run (summary)
+- **Backend**: `cd backend && npm run start:dev` (after `npm install`, env, and DB setup).
+- **Frontend**: `cd frontend && npm run dev` (after `npm install`). App: http://localhost:5173.
+- **Migrations**: `cd backend && npm run prisma:migrate`.
+- **Seed**: `cd backend && npm run prisma:seed`.
 
 ### Frontend Setup
 

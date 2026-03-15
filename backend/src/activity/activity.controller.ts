@@ -15,6 +15,7 @@ import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ActivityFiltersDto } from './dto/activity-filters.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtUser } from '../auth/types/jwt-user.type';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -30,8 +31,8 @@ export class ActivityController {
   @Post()
   @ApiOperation({ summary: 'Create daily activity entry' })
   @ApiResponse({ status: 201, description: 'Activity entry created successfully' })
-  create(@CurrentUser() user: any, @Body() createDto: CreateActivityDto) {
-    return this.activityService.create(createDto, { id: user.id, role: user.role });
+  create(@CurrentUser() user: JwtUser, @Body() createDto: CreateActivityDto) {
+    return this.activityService.create(createDto, { id: user.id, role: user.role as Role });
   }
 
   @Get('my')
@@ -41,7 +42,7 @@ export class ActivityController {
   @ApiQuery({ name: 'endDate', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Activities retrieved successfully' })
   getMyActivities(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtUser,
     @Query('date') date?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -66,17 +67,17 @@ export class ActivityController {
   @ApiResponse({ status: 200, description: 'Activity entry updated successfully' })
   update(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtUser,
     @Body() updateDto: UpdateActivityDto,
   ) {
-    return this.activityService.update(id, updateDto, { id: user.id, role: user.role });
+    return this.activityService.update(id, updateDto, { id: user.id, role: user.role as Role });
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an activity entry' })
   @ApiResponse({ status: 200, description: 'Activity entry deleted successfully' })
-  remove(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.activityService.remove(id, { id: user.id, role: user.role });
+  remove(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.activityService.remove(id, { id: user.id, role: user.role as Role });
   }
 }
 

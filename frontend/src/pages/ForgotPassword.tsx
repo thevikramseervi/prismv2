@@ -16,6 +16,7 @@ import {
 import { ArrowBack, Email as EmailIcon, Brightness4, Brightness7 } from '@mui/icons-material';
 import { useThemeMode } from '../contexts/ThemeModeContext';
 import { authApi } from '../api/auth';
+import { getApiErrorMessage } from '../hooks/apiMessages';
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -34,14 +35,9 @@ const ForgotPassword: React.FC = () => {
       await authApi.forgotPassword(email.trim());
       setSuccess(true);
     } catch (err: unknown) {
-      const error = err as { response?: { status?: number; data?: { message?: string } } };
-      const status = error.response?.status;
-      const message = error.response?.data?.message;
-      if (status === 429) {
-        setError(message || 'Too many requests. Please try again later.');
-      } else {
-        setError(message || 'Something went wrong. Please try again.');
-      }
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const fallback = status === 429 ? 'Too many requests. Please try again later.' : 'Something went wrong. Please try again.';
+      setError(getApiErrorMessage(err, fallback));
     } finally {
       setLoading(false);
     }

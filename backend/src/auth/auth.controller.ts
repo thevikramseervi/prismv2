@@ -11,6 +11,7 @@ import { Verify2faDto } from './dto/verify-2fa.dto';
 import { Setup2faResponseDto } from './dto/setup-2fa-response.dto';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { JwtUser } from './types/jwt-user.type';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Roles } from './decorators/roles.decorator';
 import { RolesGuard } from './guards/roles.guard';
@@ -37,7 +38,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({ status: 200, description: 'User profile retrieved' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getProfile(@CurrentUser() user: any) {
+  async getProfile(@CurrentUser() user: JwtUser) {
     return this.authService.validateUser(user.id);
   }
 
@@ -48,7 +49,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Password updated successfully' })
   @ApiResponse({ status: 401, description: 'Current password is incorrect' })
   async changePassword(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtUser,
     @Body() changePasswordDto: ChangePasswordDto,
   ) {
     await this.authService.changePassword(user.id, changePasswordDto);
@@ -90,7 +91,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Start 2FA setup (admin only)' })
   @ApiResponse({ status: 200, description: 'Returns QR/secret for authenticator app', type: Setup2faResponseDto })
-  async setup2fa(@CurrentUser() user: any) {
+  async setup2fa(@CurrentUser() user: JwtUser) {
     return this.authService.setup2fa(user.id);
   }
 
@@ -100,7 +101,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Enable 2FA after verifying code (admin only)' })
   @ApiResponse({ status: 200, description: '2FA enabled' })
-  async enable2fa(@CurrentUser() user: any, @Body() dto: Enable2faDto) {
+  async enable2fa(@CurrentUser() user: JwtUser, @Body() dto: Enable2faDto) {
     await this.authService.enable2fa(user.id, dto);
     return { message: '2FA enabled successfully' };
   }
@@ -120,7 +121,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Disable 2FA (admin only)' })
   @ApiResponse({ status: 200, description: '2FA disabled' })
-  async disable2fa(@CurrentUser() user: any) {
+  async disable2fa(@CurrentUser() user: JwtUser) {
     await this.authService.disable2fa(user.id);
     return { message: '2FA disabled successfully' };
   }

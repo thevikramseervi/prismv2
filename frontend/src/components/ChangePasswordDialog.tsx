@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { authApi } from '../api/auth';
+import { getApiErrorMessage } from '../hooks/apiMessages';
 
 interface ChangePasswordDialogProps {
   open: boolean;
@@ -72,13 +73,12 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({
       });
       handleClose();
     } catch (err: unknown) {
-      const error = err as { response?: { status?: number; data?: { message?: string } } };
-      const status = error.response?.status;
-      const message = error.response?.data?.message;
-      if (status === 401 || message?.toLowerCase().includes('current password')) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const msg = getApiErrorMessage(err, 'Failed to change password. Please try again.');
+      if (status === 401 || msg?.toLowerCase().includes('current password')) {
         setError('Current password is incorrect');
       } else {
-        setError(message || 'Failed to change password. Please try again.');
+        setError(msg);
       }
     } finally {
       setLoading(false);

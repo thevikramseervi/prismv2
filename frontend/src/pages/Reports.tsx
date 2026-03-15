@@ -122,10 +122,12 @@ const Reports: React.FC = () => {
 
   const {
     data: users,
+    isLoading: usersLoading,
     isError: usersError,
+    refetch: refetchUsers,
   } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => usersApi.getAll(),
+    queryKey: ['users-all'],
+    queryFn: () => usersApi.getAllPages(),
   });
 
   type AttendanceReportRow = Attendance & {
@@ -591,7 +593,7 @@ const Reports: React.FC = () => {
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth>
+                <FormControl fullWidth disabled={usersLoading}>
                   <InputLabel>Employee (Optional)</InputLabel>
                   <Select
                     value={selectedUserId}
@@ -623,7 +625,15 @@ const Reports: React.FC = () => {
             </Grid>
 
             {usersError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
+              <Alert
+                severity="error"
+                sx={{ mb: 2 }}
+                action={
+                  <Button color="inherit" size="small" onClick={() => refetchUsers()}>
+                    Retry
+                  </Button>
+                }
+              >
                 Failed to load users. Employee filters may be incomplete.
               </Alert>
             )}
@@ -847,7 +857,7 @@ const Reports: React.FC = () => {
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth>
+                <FormControl fullWidth disabled={usersLoading}>
                   <InputLabel>Employee (Optional)</InputLabel>
                   <Select
                     value={selectedUserId}
@@ -1102,7 +1112,7 @@ const Reports: React.FC = () => {
                 </FormControl>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth>
+                <FormControl fullWidth disabled={usersLoading}>
                   <InputLabel>Employee (Optional)</InputLabel>
                   <Select
                     value={selectedUserId}
@@ -1385,7 +1395,7 @@ const Reports: React.FC = () => {
             <DialogTitle>Manual Attendance Entry</DialogTitle>
             <DialogContent>
               <Box sx={{ mt: 1 }}>
-                <FormControl fullWidth margin="normal">
+                <FormControl fullWidth margin="normal" disabled={usersLoading}>
                   <InputLabel>Employee</InputLabel>
                   <Select
                     label="Employee"

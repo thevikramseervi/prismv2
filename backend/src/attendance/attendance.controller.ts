@@ -15,6 +15,7 @@ import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtUser } from '../auth/types/jwt-user.type';
 import { Role, AttendanceStatus } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -41,7 +42,7 @@ export class AttendanceController {
   @ApiQuery({ name: 'endDate', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Attendance retrieved successfully' })
   getMyAttendance(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtUser,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
@@ -52,7 +53,7 @@ export class AttendanceController {
   @ApiOperation({ summary: 'Get monthly attendance for current user' })
   @ApiResponse({ status: 200, description: 'Monthly attendance retrieved successfully' })
   getMonthlyAttendance(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtUser,
     @Param('year') year: string,
     @Param('month') month: string,
   ) {
@@ -66,7 +67,7 @@ export class AttendanceController {
   @Get('dashboard')
   @ApiOperation({ summary: 'Get attendance dashboard stats' })
   @ApiResponse({ status: 200, description: 'Dashboard stats retrieved successfully' })
-  getDashboardStats(@CurrentUser() user: any) {
+  getDashboardStats(@CurrentUser() user: JwtUser) {
     return this.attendanceService.getDashboardStats(user.id);
   }
 
@@ -104,7 +105,7 @@ export class AttendanceController {
   @ApiOperation({ summary: 'Get attendance by ID' })
   @ApiResponse({ status: 200, description: 'Attendance retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Attendance not found' })
-  async findOne(@Param('id') id: string, @CurrentUser() user: any) {
+  async findOne(@Param('id') id: string, @CurrentUser() user: JwtUser) {
     const attendance = await this.attendanceService.findOne(id);
     const isAdmin = user.role === Role.LAB_ADMIN || user.role === Role.SUPER_ADMIN;
     if (!isAdmin && attendance.userId !== user.id) {

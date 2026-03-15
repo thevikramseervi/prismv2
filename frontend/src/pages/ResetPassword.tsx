@@ -17,6 +17,7 @@ import {
 import { Visibility, VisibilityOff, Lock, Brightness4, Brightness7 } from '@mui/icons-material';
 import { useThemeMode } from '../contexts/ThemeModeContext';
 import { authApi } from '../api/auth';
+import { getApiErrorMessage } from '../hooks/apiMessages';
 
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -61,11 +62,7 @@ const ResetPassword: React.FC = () => {
         });
       }, 1500);
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      const message = error.response?.data?.message;
-      setError(
-        message || 'Invalid or expired link. Please request a new reset link.'
-      );
+      setError(getApiErrorMessage(err, 'Invalid or expired link. Please request a new reset link.'));
     } finally {
       setLoading(false);
     }

@@ -45,9 +45,24 @@ async function getUsersPage(params?: {
 export const usersApi = {
   getPage: getUsersPage,
 
+  /** Returns first page only (default limit 50). Use getAllPages() when you need every user. */
   getAll: async (params?: { limit?: number; page?: number }): Promise<User[]> => {
     const result = await getUsersPage(params);
     return result.data;
+  },
+
+  /** Fetches all users by requesting all pages. Use for dropdowns that must list every user. */
+  getAllPages: async (): Promise<User[]> => {
+    const first = await getUsersPage({ page: 1, limit: 100 });
+    const total = first.meta?.total ?? first.data.length;
+    if (total <= first.data.length) return first.data;
+    const pages = Math.ceil(total / 100);
+    const rest = await Promise.all(
+      Array.from({ length: pages - 1 }, (_, i) =>
+        getUsersPage({ page: i + 2, limit: 100 }).then((r) => r.data)
+      )
+    );
+    return first.data.concat(rest.flat());
   },
 
   getById: async (id: string): Promise<User> => {

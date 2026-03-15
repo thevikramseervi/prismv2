@@ -70,7 +70,12 @@ const SalarySlipView: React.FC = () => {
   const presentDays = Number(payroll.presentDays);
   const halfDays = Number(payroll.halfDays);
   const totalPayDays = Number(payroll.totalPayDays);
-  const user = payroll.user!;
+  const userName = payroll.user?.name ?? '—';
+  const userEmployeeId = payroll.user?.employeeId ?? '—';
+  const userEmail = payroll.user?.email ?? '—';
+  const userDesignation = payroll.user?.designation ?? '—';
+  const userEmployeeNumber = payroll.user?.employeeNumber;
+  const userDateOfJoining = payroll.user?.dateOfJoining;
 
   return (
     <Box>
@@ -113,17 +118,17 @@ const SalarySlipView: React.FC = () => {
         </Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 0.5, mb: 2, fontSize: '0.875rem' }}>
           <Typography variant="body2">Employee ID:</Typography>
-          <Typography variant="body2">{user.employeeId}</Typography>
+          <Typography variant="body2">{userEmployeeId}</Typography>
           <Typography variant="body2">Email:</Typography>
-          <Typography variant="body2">{user.email ?? '—'}</Typography>
+          <Typography variant="body2">{userEmail}</Typography>
           <Typography variant="body2">Employee Name:</Typography>
-          <Typography variant="body2">{user.name}</Typography>
+          <Typography variant="body2">{userName}</Typography>
           <Typography variant="body2">Designation:</Typography>
-          <Typography variant="body2">{user.designation}</Typography>
+          <Typography variant="body2">{userDesignation ?? '—'}</Typography>
           <Typography variant="body2">Employee Number:</Typography>
-          <Typography variant="body2">{user.employeeNumber}</Typography>
+          <Typography variant="body2">{userEmployeeNumber ?? '—'}</Typography>
           <Typography variant="body2">Date of Joining:</Typography>
-          <Typography variant="body2">{formatDate(user.dateOfJoining)}</Typography>
+          <Typography variant="body2">{formatDate(userDateOfJoining)}</Typography>
           <Typography variant="body2">Pay Period:</Typography>
           <Typography variant="body2">{payPeriod}</Typography>
           <Typography variant="body2">Pay Date:</Typography>

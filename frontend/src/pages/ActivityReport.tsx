@@ -30,6 +30,8 @@ import { getApiErrorMessage } from '../hooks/apiMessages';
 
 type EditableRow = {
   id?: string;
+  /** Stable client-side id for new (unsaved) rows so delete/filter works correctly. */
+  clientId?: string;
   date: string;
   userId: string;
   userName: string;
@@ -81,7 +83,7 @@ const ActivityReport: React.FC = () => {
 
   const { data: users } = useQuery({
     queryKey: ['users-for-activity'],
-    queryFn: () => usersApi.getAll(),
+    queryFn: () => usersApi.getAllPages(),
     enabled: isAdmin,
   });
 
@@ -181,6 +183,7 @@ const ActivityReport: React.FC = () => {
       const defaultUserId = isAdmin ? selectedUserId : user!.id;
 
       const newRow: EditableRow = {
+        clientId: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         date: selectedDate,
         userId: defaultUserId,
         userName: ctxUser.name,
@@ -250,12 +253,14 @@ const ActivityReport: React.FC = () => {
     await activitiesQuery.refetch();
   };
 
-  const handleDeleteRow = async (row: EditableRow, index: number) => {
+  const rowKey = (r: EditableRow) => r.id ?? r.clientId;
+
+  const handleDeleteRow = async (row: EditableRow) => {
     if (row.id) {
       await deleteMutation.mutateAsync(row.id);
       await activitiesQuery.refetch();
     }
-    setRows((prev) => prev.filter((_, i) => i !== index));
+    setRows((prev) => prev.filter((r) => rowKey(r) !== rowKey(row)));
   };
 
   const currentUserLabel = useMemo(() => {
@@ -593,7 +598,7 @@ const ActivityReport: React.FC = () => {
                       <IconButton
                         aria-label="delete"
                         color="error"
-                        onClick={() => handleDeleteRow(row, index)}
+                        onClick={() => handleDeleteRow(row)}
                         disabled={isBusy}
                         size="small"
                       >

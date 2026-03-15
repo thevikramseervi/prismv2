@@ -15,6 +15,7 @@ import { CreateAnnouncementDto } from './dto/create-announcement.dto';
 import { UpdateAnnouncementDto } from './dto/update-announcement.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtUser } from '../auth/types/jwt-user.type';
 import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -31,7 +32,7 @@ export class AnnouncementsController {
   @ApiOperation({ summary: 'Create announcement (Admin only)' })
   @ApiResponse({ status: 201, description: 'Announcement created successfully' })
   create(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtUser,
     @Body() createAnnouncementDto: CreateAnnouncementDto,
   ) {
     return this.announcementsService.create(createAnnouncementDto, user.id);
@@ -40,7 +41,7 @@ export class AnnouncementsController {
   @Get()
   @ApiOperation({ summary: 'Get all active announcements for current user' })
   @ApiResponse({ status: 200, description: 'Announcements retrieved successfully' })
-  findAll(@CurrentUser() user: any) {
+  findAll(@CurrentUser() user: JwtUser) {
     return this.announcementsService.findAllForUser(user.id);
   }
 
@@ -58,7 +59,7 @@ export class AnnouncementsController {
   @Get('unread-count')
   @ApiOperation({ summary: 'Get unread announcements count' })
   @ApiResponse({ status: 200, description: 'Unread count retrieved successfully' })
-  getUnreadCount(@CurrentUser() user: any) {
+  getUnreadCount(@CurrentUser() user: JwtUser) {
     return this.announcementsService.getUnreadCount(user.id);
   }
 
@@ -95,7 +96,7 @@ export class AnnouncementsController {
   @ApiOperation({ summary: 'Mark announcement as read' })
   @ApiResponse({ status: 200, description: 'Announcement marked as read' })
   @ApiResponse({ status: 404, description: 'Announcement not found' })
-  markAsRead(@Param('id') id: string, @CurrentUser() user: any) {
+  markAsRead(@Param('id') id: string, @CurrentUser() user: JwtUser) {
     return this.announcementsService.markAsRead(id, user.id);
   }
 }

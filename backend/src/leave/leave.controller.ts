@@ -15,6 +15,7 @@ import { ApplyLeaveDto } from './dto/apply-leave.dto';
 import { ReviewLeaveDto } from './dto/review-leave.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtUser } from '../auth/types/jwt-user.type';
 import { Role, LeaveStatus } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -30,7 +31,7 @@ export class LeaveController {
   @ApiOperation({ summary: 'Apply for leave' })
   @ApiResponse({ status: 201, description: 'Leave application submitted successfully' })
   @ApiResponse({ status: 400, description: 'Invalid request or insufficient leave balance' })
-  applyLeave(@CurrentUser() user: any, @Body() applyLeaveDto: ApplyLeaveDto) {
+  applyLeave(@CurrentUser() user: JwtUser, @Body() applyLeaveDto: ApplyLeaveDto) {
     return this.leaveService.applyLeave(user.id, applyLeaveDto);
   }
 
@@ -39,7 +40,7 @@ export class LeaveController {
   @ApiQuery({ name: 'status', required: false, enum: LeaveStatus })
   @ApiResponse({ status: 200, description: 'Leave applications retrieved successfully' })
   getMyApplications(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtUser,
     @Query('status') status?: LeaveStatus,
   ) {
     return this.leaveService.getMyApplications(user.id, status);
@@ -50,7 +51,7 @@ export class LeaveController {
   @ApiQuery({ name: 'year', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'Leave balance retrieved successfully' })
   getMyLeaveBalance(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtUser,
     @Query('year') year?: string,
   ) {
     const parsed = year ? parseInt(year, 10) : NaN;
@@ -90,7 +91,7 @@ export class LeaveController {
   @ApiResponse({ status: 404, description: 'Leave application not found' })
   approveLeave(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtUser,
     @Body() reviewLeaveDto: ReviewLeaveDto,
   ) {
     return this.leaveService.approveLeave(id, user.id, reviewLeaveDto);
@@ -103,7 +104,7 @@ export class LeaveController {
   @ApiResponse({ status: 404, description: 'Leave application not found' })
   rejectLeave(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtUser,
     @Body() reviewLeaveDto: ReviewLeaveDto,
   ) {
     return this.leaveService.rejectLeave(id, user.id, reviewLeaveDto);
@@ -113,7 +114,7 @@ export class LeaveController {
   @ApiOperation({ summary: 'Cancel leave application' })
   @ApiResponse({ status: 200, description: 'Leave application cancelled successfully' })
   @ApiResponse({ status: 404, description: 'Leave application not found' })
-  cancelApplication(@Param('id') id: string, @CurrentUser() user: any) {
+  cancelApplication(@Param('id') id: string, @CurrentUser() user: JwtUser) {
     return this.leaveService.cancelApplication(id, user.id);
   }
 }

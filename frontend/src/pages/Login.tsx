@@ -24,6 +24,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeMode } from '../contexts/ThemeModeContext';
 import { useSnackbar } from '../contexts/SnackbarContext';
+import { getApiErrorMessage } from '../hooks/apiMessages';
 
 const SESSION_EXPIRED_KEY = 'showSessionExpired';
 
@@ -78,11 +79,7 @@ const Login: React.FC = () => {
         navigate(postLoginPath, { replace: true });
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(
-        error.response?.data?.message ||
-          'Login failed. Please check your credentials.'
-      );
+      setError(getApiErrorMessage(err, 'Login failed. Please check your credentials.'));
     } finally {
       setLoading(false);
     }
@@ -96,10 +93,7 @@ const Login: React.FC = () => {
       await complete2fa(twoFactorToken, twoFactorCode);
       navigate(postLoginPath, { replace: true });
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(
-        error.response?.data?.message || 'Invalid code. Please try again.'
-      );
+      setError(getApiErrorMessage(err, 'Invalid code. Please try again.'));
     } finally {
       setLoading(false);
     }

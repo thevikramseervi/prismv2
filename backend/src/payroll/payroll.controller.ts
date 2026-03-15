@@ -18,6 +18,7 @@ import { ExcelGeneratorService } from './excel-generator.service';
 import { GeneratePayrollDto } from './dto/generate-payroll.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtUser } from '../auth/types/jwt-user.type';
 import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -53,7 +54,7 @@ export class PayrollController {
   @ApiResponse({ status: 201, description: 'Payroll generated successfully' })
   @ApiResponse({ status: 409, description: 'Payroll already exists for this month' })
   generatePayroll(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtUser,
     @Body() generatePayrollDto: GeneratePayrollDto,
   ) {
     if (generatePayrollDto.userId) {
@@ -71,7 +72,7 @@ export class PayrollController {
   @Get('my-salary-slips')
   @ApiOperation({ summary: 'Get current user salary slips' })
   @ApiResponse({ status: 200, description: 'Salary slips retrieved successfully' })
-  getMySalarySlips(@CurrentUser() user: any) {
+  getMySalarySlips(@CurrentUser() user: JwtUser) {
     return this.payrollService.getMySalarySlips(user.id);
   }
 
@@ -98,7 +99,7 @@ export class PayrollController {
   @ApiOperation({ summary: 'Get payroll details by ID' })
   @ApiResponse({ status: 200, description: 'Payroll details retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Payroll record not found' })
-  async getPayrollById(@Param('id') id: string, @CurrentUser() user: any) {
+  async getPayrollById(@Param('id') id: string, @CurrentUser() user: JwtUser) {
     const payroll = await this.payrollService.getPayrollById(id);
     const isAdmin = user.role === Role.LAB_ADMIN || user.role === Role.SUPER_ADMIN;
     if (!isAdmin && payroll.userId !== user.id) {
@@ -118,7 +119,7 @@ export class PayrollController {
   @Get(':id/download/pdf')
   @ApiOperation({ summary: 'Download salary slip as PDF' })
   @ApiResponse({ status: 200, description: 'PDF generated successfully' })
-  async downloadPDF(@Param('id') id: string, @CurrentUser() user: any, @Res() res: Response) {
+  async downloadPDF(@Param('id') id: string, @CurrentUser() user: JwtUser, @Res() res: Response) {
     const payroll = await this.payrollService.getPayrollById(id);
     const isAdmin = user.role === Role.LAB_ADMIN || user.role === Role.SUPER_ADMIN;
     if (!isAdmin && payroll.userId !== user.id) {
@@ -156,7 +157,7 @@ export class PayrollController {
   @Get(':id/download/xlsx')
   @ApiOperation({ summary: 'Download salary slip as Excel' })
   @ApiResponse({ status: 200, description: 'Excel generated successfully' })
-  async downloadExcel(@Param('id') id: string, @CurrentUser() user: any, @Res() res: Response) {
+  async downloadExcel(@Param('id') id: string, @CurrentUser() user: JwtUser, @Res() res: Response) {
     const payroll = await this.payrollService.getPayrollById(id);
     const isAdmin = user.role === Role.LAB_ADMIN || user.role === Role.SUPER_ADMIN;
     if (!isAdmin && payroll.userId !== user.id) {

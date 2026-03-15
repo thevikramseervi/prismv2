@@ -83,11 +83,8 @@ Once the server is running, visit:
 
 ## Environment Variables
 
-Copy `.env` and update with your values:
-- DATABASE_URL - PostgreSQL connection string
-- JWT_SECRET - Secret key for JWT tokens
-- JWT_EXPIRATION - Token expiry (default: 7d)
-- PORT - Server port (default: 3000)
-- FRONTEND_URL - Base URL for password reset links (optional)
-- TWO_FACTOR_ISSUER - Issuer name shown in authenticator app (optional; default: "Attend Ease")
- - DEV_LOG_PASSWORD_RESET_LINK - When set to `"true"` in non-production, logs password reset links if SMTP is not configured (never enable in production)
+Copy `.env` and update with your values. For a full list (including optional company/slip and SMTP vars), see the root [README.md](../README.md#-setup-instructions).
+
+- **Required:** DATABASE_URL, JWT_SECRET
+- **Common:** PORT (default: 3000), NODE_ENV, JWT_EXPIRATION (e.g. 7d), FRONTEND_URL
+- **Optional:** DEV_LOG_PASSWORD_RESET_LINK, TWO_FACTOR_ISSUER, SMTP_*, COMPANY_*, etc.
