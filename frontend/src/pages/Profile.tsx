@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { Box, Card, CardContent, Typography, Divider, CircularProgress, Alert, Snackbar } from '@mui/material';
+import React from 'react';
+import { Box, Card, CardContent, Typography, Divider, Alert } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { authApi, type MeResponse } from '../api/auth';
 import AdminSecurity2faCard from '../components/admin/AdminSecurity2faCard';
+import { useSnackbar } from '../contexts/SnackbarContext';
+import PageLoading from '../components/PageLoading';
 
 const formatDate = (d?: string) => {
     if (!d) return '—';
@@ -14,19 +16,13 @@ const formatDate = (d?: string) => {
 };
 
 const Profile: React.FC = () => {
+  const { showSuccess, showError } = useSnackbar();
   const { data: me, isLoading, error } = useQuery<MeResponse>({
     queryKey: ['me'],
     queryFn: authApi.me,
   });
-  const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(null);
 
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (isLoading) return <PageLoading />;
 
   if (error || !me) {
     return (
@@ -133,20 +129,11 @@ const Profile: React.FC = () => {
 
       {(me.role === 'LAB_ADMIN' || me.role === 'SUPER_ADMIN') && (
         <AdminSecurity2faCard
-          onMessage={(message, severity) => setSnackbar({ message, severity })}
+          onMessage={(message, severity) =>
+            severity === 'success' ? showSuccess(message) : showError(message)
+          }
         />
       )}
-
-      <Snackbar
-        open={!!snackbar}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity={snackbar?.severity} onClose={() => setSnackbar(null)}>
-          {snackbar?.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

@@ -11,7 +11,6 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  CircularProgress,
   IconButton,
   Chip,
   Select,
@@ -19,21 +18,20 @@ import {
   FormControl,
   InputLabel,
   Alert,
-  Snackbar,
+  Tooltip,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Add, Edit, Block, CheckCircle } from '@mui/icons-material';
 import { usersApi } from '../api/users';
 import { User, Role, UserStatus } from '../types';
+import { useSnackbar } from '../contexts/SnackbarContext';
+import { getApiErrorMessage } from '../hooks/apiMessages';
+import PageLoading from '../components/PageLoading';
 
 const Users: React.FC = () => {
+  const { showSuccess, showError } = useSnackbar();
   const [open, setOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error';
-  }>({ open: false, message: '', severity: 'success' });
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     mode: 'activate' | 'deactivate' | null;
@@ -83,15 +81,10 @@ const Users: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       handleClose();
-      setSnackbar({ open: true, message: 'User created successfully!', severity: 'success' });
+      showSuccess('User created successfully!');
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      setSnackbar({
-        open: true,
-        message: err.response?.data?.message || 'Failed to create user',
-        severity: 'error',
-      });
+      showError(getApiErrorMessage(error, 'Failed to create user'));
     },
   });
 
@@ -101,15 +94,10 @@ const Users: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       handleClose();
-      setSnackbar({ open: true, message: 'User updated successfully!', severity: 'success' });
+      showSuccess('User updated successfully!');
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      setSnackbar({
-        open: true,
-        message: err.response?.data?.message || 'Failed to update user',
-        severity: 'error',
-      });
+      showError(getApiErrorMessage(error, 'Failed to update user'));
     },
   });
 
@@ -117,14 +105,10 @@ const Users: React.FC = () => {
     mutationFn: usersApi.activate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      setSnackbar({ open: true, message: 'User activated successfully!', severity: 'success' });
+      showSuccess('User activated successfully!');
     },
-    onError: (err: any) => {
-      setSnackbar({
-        open: true,
-        message: err.response?.data?.message || 'Failed to activate user',
-        severity: 'error',
-      });
+    onError: (error: unknown) => {
+      showError(getApiErrorMessage(error, 'Failed to activate user'));
     },
   });
 
@@ -189,11 +173,11 @@ const Users: React.FC = () => {
   const handleSubmit = () => {
     const salary = parseFloat(formData.baseSalary);
     if (!formData.name.trim()) {
-      setSnackbar({ open: true, message: 'Name is required', severity: 'error' });
+      showError('Name is required');
       return;
     }
     if (isNaN(salary) || salary <= 0) {
-      setSnackbar({ open: true, message: 'Please enter a valid base salary', severity: 'error' });
+      showError('Please enter a valid base salary');
       return;
     }
     if (editUser) {
@@ -209,20 +193,20 @@ const Users: React.FC = () => {
       });
     } else {
       if (!formData.email.trim()) {
-        setSnackbar({ open: true, message: 'Email is required', severity: 'error' });
+        showError('Email is required');
         return;
       }
       if (!formData.password.trim()) {
-        setSnackbar({ open: true, message: 'Password is required', severity: 'error' });
+        showError('Password is required');
         return;
       }
       if (!formData.dateOfJoining) {
-        setSnackbar({ open: true, message: 'Date of joining is required', severity: 'error' });
+        showError('Date of joining is required');
         return;
       }
       const empNum = parseInt(formData.employeeNumber, 10);
       if (!Number.isFinite(empNum) || empNum <= 0) {
-        setSnackbar({ open: true, message: 'Please enter a valid employee number', severity: 'error' });
+        showError('Please enter a valid employee number');
         return;
       }
       createMutation.mutate({
@@ -247,11 +231,7 @@ const Users: React.FC = () => {
     if (!confirmDialog.user || !confirmDialog.mode) return;
     if (confirmDialog.mode === 'deactivate') {
       if (confirmDialog.hasLeft && !confirmDialog.leavingDate) {
-        setSnackbar({
-          open: true,
-          message: 'Please select the date of leaving.',
-          severity: 'error',
-        });
+        showError('Please select the date of leaving.');
         return;
       }
 
@@ -308,45 +288,53 @@ const Users: React.FC = () => {
       sortable: false,
       renderCell: (params) => (
         <Box>
-          <IconButton size="small" color="primary" onClick={() => handleOpen(params.row)}>
-            <Edit fontSize="small" />
-          </IconButton>
+          <Tooltip title="Edit user">
+            <IconButton size="small" color="primary" onClick={() => handleOpen(params.row)} aria-label="Edit user">
+              <Edit fontSize="small" />
+            </IconButton>
+          </Tooltip>
           {params.row.status === UserStatus.ACTIVE ? (
-            <IconButton
-              size="small"
-              color="error"
-              onClick={() =>
-                setConfirmDialog({
-                  open: true,
-                  mode: 'deactivate',
-                  user: params.row as User,
-                  hasLeft: true,
-                  leavingDate: (params.row as User).dateOfLeaving
-                    ? (params.row as User).dateOfLeaving!.split('T')[0]
-                    : '',
-                })
-              }
-            >
-              <Block fontSize="small" />
-            </IconButton>
+            <Tooltip title="Deactivate user">
+              <IconButton
+                size="small"
+                color="error"
+                aria-label="Deactivate user"
+                onClick={() =>
+                  setConfirmDialog({
+                    open: true,
+                    mode: 'deactivate',
+                    user: params.row as User,
+                    hasLeft: true,
+                    leavingDate: (params.row as User).dateOfLeaving
+                      ? (params.row as User).dateOfLeaving!.split('T')[0]
+                      : '',
+                  })
+                }
+              >
+                <Block fontSize="small" />
+              </IconButton>
+            </Tooltip>
           ) : (
-            <IconButton
-              size="small"
-              color="success"
-              onClick={() =>
-                setConfirmDialog({
-                  open: true,
-                  mode: 'activate',
-                  user: params.row as User,
-                  hasLeft: false,
-                  leavingDate: (params.row as User).dateOfLeaving
-                    ? (params.row as User).dateOfLeaving!.split('T')[0]
-                    : '',
-                })
-              }
-            >
-              <CheckCircle fontSize="small" />
-            </IconButton>
+            <Tooltip title="Activate user">
+              <IconButton
+                size="small"
+                color="success"
+                aria-label="Activate user"
+                onClick={() =>
+                  setConfirmDialog({
+                    open: true,
+                    mode: 'activate',
+                    user: params.row as User,
+                    hasLeft: false,
+                    leavingDate: (params.row as User).dateOfLeaving
+                      ? (params.row as User).dateOfLeaving!.split('T')[0]
+                      : '',
+                  })
+                }
+              >
+                <CheckCircle fontSize="small" />
+              </IconButton>
+            </Tooltip>
           )}
         </Box>
       ),
@@ -371,13 +359,7 @@ const Users: React.FC = () => {
     },
   ];
 
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (isLoading) return <PageLoading />;
 
   if (isError) {
     return (
@@ -611,15 +593,6 @@ const Users: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

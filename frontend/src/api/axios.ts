@@ -29,11 +29,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
+      // Unauthorized - clear token, signal for login page to show message, then redirect with returnUrl
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       queryClient.clear();
-      window.location.href = '/login';
+      try {
+        sessionStorage.setItem('showSessionExpired', '1');
+      } catch {
+        // ignore
+      }
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = `/login?returnUrl=${returnUrl}`;
     }
     return Promise.reject(error);
   }

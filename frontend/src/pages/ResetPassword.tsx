@@ -12,6 +12,7 @@ import {
   InputAdornment,
   IconButton,
   useTheme,
+  Tooltip,
 } from '@mui/material';
 import { Visibility, VisibilityOff, Lock, Brightness4, Brightness7 } from '@mui/icons-material';
 import { useThemeMode } from '../contexts/ThemeModeContext';
@@ -92,21 +93,23 @@ const ResetPassword: React.FC = () => {
         },
       }}
     >
-      <IconButton
-        onClick={toggleMode}
-        aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        sx={{
-          position: 'absolute',
-          top: 16,
-          right: 16,
-          color: 'white',
-          bgcolor: 'rgba(255,255,255,0.2)',
-          '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
-          zIndex: 1,
-        }}
-      >
-        {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-      </IconButton>
+      <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+        <IconButton
+          onClick={toggleMode}
+          aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          sx={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            color: 'white',
+            bgcolor: 'rgba(255,255,255,0.2)',
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
+            zIndex: 1,
+          }}
+        >
+          {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+        </IconButton>
+      </Tooltip>
       <Container maxWidth="sm">
         <Card
           elevation={0}
@@ -170,17 +173,20 @@ const ResetPassword: React.FC = () => {
                     ),
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowPassword(!showPassword)}
-                          edge="end"
-                          size="small"
-                        >
-                          {showPassword ? (
-                            <VisibilityOff fontSize="small" />
-                          ) : (
-                            <Visibility fontSize="small" />
-                          )}
-                        </IconButton>
+                        <Tooltip title={showPassword ? 'Hide password' : 'Show password'}>
+                          <IconButton
+                            onClick={() => setShowPassword(!showPassword)}
+                            edge="end"
+                            size="small"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showPassword ? (
+                              <VisibilityOff fontSize="small" />
+                            ) : (
+                              <Visibility fontSize="small" />
+                            )}
+                          </IconButton>
+                        </Tooltip>
                       </InputAdornment>
                     ),
                   }}
@@ -198,17 +204,20 @@ const ResetPassword: React.FC = () => {
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowConfirm(!showConfirm)}
-                          edge="end"
-                          size="small"
-                        >
-                          {showConfirm ? (
-                            <VisibilityOff fontSize="small" />
-                          ) : (
-                            <Visibility fontSize="small" />
-                          )}
-                        </IconButton>
+                        <Tooltip title={showConfirm ? 'Hide password' : 'Show password'}>
+                          <IconButton
+                            onClick={() => setShowConfirm(!showConfirm)}
+                            edge="end"
+                            size="small"
+                            aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                          >
+                            {showConfirm ? (
+                              <VisibilityOff fontSize="small" />
+                            ) : (
+                              <Visibility fontSize="small" />
+                            )}
+                          </IconButton>
+                        </Tooltip>
                       </InputAdornment>
                     ),
                   }}

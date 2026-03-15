@@ -158,7 +158,7 @@ export interface Announcement {
   readAt?: string;
 }
 
-// Notification types
+// Notification types (data is optional payload e.g. for deep links)
 export interface Notification {
   id: string;
   type: string;
@@ -166,7 +166,7 @@ export interface Notification {
   body: string;
   createdAt: string;
   readAt?: string;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 // Holiday type

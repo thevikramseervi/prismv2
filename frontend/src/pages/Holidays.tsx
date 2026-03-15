@@ -11,7 +11,6 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  CircularProgress,
   IconButton,
   Table,
   TableBody,
@@ -21,24 +20,25 @@ import {
   TableRow,
   Paper,
   Alert,
-  Snackbar,
+  Tooltip,
 } from '@mui/material';
 import { Add, Edit, Delete } from '@mui/icons-material';
 import { holidaysApi } from '../api/holidays';
 import { Holiday } from '../types';
+import { useSnackbar } from '../contexts/SnackbarContext';
+import { getApiErrorMessage } from '../hooks/apiMessages';
+import PageLoading from '../components/PageLoading';
+import ConfirmDialog from '../components/ConfirmDialog';
+import PageHeader from '../components/PageHeader';
 
 const Holidays: React.FC = () => {
+  const { showSuccess, showError } = useSnackbar();
   const [open, setOpen] = useState(false);
   const [editHoliday, setEditHoliday] = useState<Holiday | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; holiday: Holiday | null }>({
     open: false,
     holiday: null,
   });
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error';
-  }>({ open: false, message: '', severity: 'success' });
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
@@ -47,7 +47,13 @@ const Holidays: React.FC = () => {
     description: '',
   });
 
-  const { data: holidays, isLoading } = useQuery({
+  const {
+    data: holidays,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['holidays'],
     queryFn: () => holidaysApi.getAll(),
   });
@@ -57,15 +63,10 @@ const Holidays: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['holidays'] });
       handleClose();
-      setSnackbar({ open: true, message: 'Holiday added successfully!', severity: 'success' });
+      showSuccess('Holiday added successfully!');
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      setSnackbar({
-        open: true,
-        message: err.response?.data?.message || 'Failed to add holiday',
-        severity: 'error',
-      });
+      showError(getApiErrorMessage(error, 'Failed to add holiday'));
     },
   });
 
@@ -75,15 +76,10 @@ const Holidays: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['holidays'] });
       handleClose();
-      setSnackbar({ open: true, message: 'Holiday updated successfully!', severity: 'success' });
+      showSuccess('Holiday updated successfully!');
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      setSnackbar({
-        open: true,
-        message: err.response?.data?.message || 'Failed to update holiday',
-        severity: 'error',
-      });
+      showError(getApiErrorMessage(error, 'Failed to update holiday'));
     },
   });
 
@@ -91,16 +87,11 @@ const Holidays: React.FC = () => {
     mutationFn: holidaysApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['holidays'] });
-      setSnackbar({ open: true, message: 'Holiday deleted successfully!', severity: 'success' });
+      showSuccess('Holiday deleted successfully!');
       setDeleteConfirm({ open: false, holiday: null });
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      setSnackbar({
-        open: true,
-        message: err.response?.data?.message || 'Failed to delete holiday',
-        severity: 'error',
-      });
+      showError(getApiErrorMessage(error, 'Failed to delete holiday'));
     },
   });
 
@@ -123,6 +114,14 @@ const Holidays: React.FC = () => {
   };
 
   const handleSubmit = () => {
+    if (!formData.date?.trim()) {
+      showError('Please select a date.');
+      return;
+    }
+    if (!formData.name?.trim()) {
+      showError('Holiday name is required.');
+      return;
+    }
     if (editHoliday) {
       updateMutation.mutate({
         id: editHoliday.id,
@@ -132,6 +131,8 @@ const Holidays: React.FC = () => {
       createMutation.mutate(formData);
     }
   };
+
+  const isFormValid = !!formData.date?.trim() && !!formData.name?.trim();
 
   const handleDeleteClick = (holiday: Holiday) => {
     setDeleteConfirm({ open: true, holiday });
@@ -148,13 +149,7 @@ const Holidays: React.FC = () => {
     setDeleteConfirm({ open: false, holiday: null });
   };
 
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (isLoading) return <PageLoading />;
 
   // Sort holidays by date
   const sortedHolidays = holidays
@@ -171,21 +166,31 @@ const Holidays: React.FC = () => {
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold">
-            Holiday Calendar
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Manage company holidays
-          </Typography>
-        </Box>
-        <Button variant="contained" startIcon={<Add />} onClick={() => handleOpen()}>
-          Add Holiday
-        </Button>
-      </Box>
+      <PageHeader
+        title="Holiday Calendar"
+        subtitle="Manage company holidays"
+        actions={
+          <Button variant="contained" startIcon={<Add />} onClick={() => handleOpen()}>
+            Add Holiday
+          </Button>
+        }
+      />
 
-      {Object.keys(holidaysByYear).length === 0 ? (
+      {isError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {getApiErrorMessage(error, 'Failed to load holidays. Please try again.')}
+        </Alert>
+      )}
+
+      {!isError && (Object.keys(holidaysByYear).length === 0 ? (
         <Card elevation={2}>
           <CardContent>
             <Alert severity="info">No holidays configured yet</Alert>
@@ -235,20 +240,26 @@ const Holidays: React.FC = () => {
                             </TableCell>
                             <TableCell>{holiday.description || '-'}</TableCell>
                             <TableCell align="center">
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                onClick={() => handleOpen(holiday)}
-                              >
-                                <Edit fontSize="small" />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => handleDeleteClick(holiday)}
-                              >
-                                <Delete fontSize="small" />
-                              </IconButton>
+                              <Tooltip title={`Edit ${holiday.name}`}>
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => handleOpen(holiday)}
+                                  aria-label={`Edit ${holiday.name}`}
+                                >
+                                  <Edit fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title={`Delete ${holiday.name}`}>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleDeleteClick(holiday)}
+                                  aria-label={`Delete ${holiday.name}`}
+                                >
+                                  <Delete fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
                             </TableCell>
                           </TableRow>
                         );
@@ -259,39 +270,29 @@ const Holidays: React.FC = () => {
               </CardContent>
             </Card>
           ))
-      )}
+      ))}
 
-      {/* Delete confirmation dialog */}
-      <Dialog
+      <ConfirmDialog
         open={deleteConfirm.open}
         onClose={handleDeleteConfirmClose}
-        maxWidth="xs"
-        fullWidth
-        aria-labelledby="delete-holiday-dialog-title"
-      >
-        <DialogTitle id="delete-holiday-dialog-title">Delete holiday?</DialogTitle>
-        <DialogContent>
-          {deleteConfirm.holiday && (
-            <Typography>
-              Are you sure you want to delete{' '}
-              <strong>{deleteConfirm.holiday.name}</strong> (
+        title="Delete holiday?"
+        message={
+          deleteConfirm.holiday ? (
+            <>
+              Are you sure you want to delete <strong>{deleteConfirm.holiday.name}</strong> (
               {new Date(deleteConfirm.holiday.date).toLocaleDateString('en-IN')})? This cannot be
               undone.
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteConfirmClose}>Cancel</Button>
-          <Button
-            onClick={handleDeleteConfirm}
-            color="error"
-            variant="contained"
-            disabled={deleteMutation.isPending}
-          >
-            {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            </>
+          ) : (
+            ''
+          )
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        confirmColor="error"
+        onConfirm={handleDeleteConfirm}
+        loading={deleteMutation.isPending}
+      />
 
       {/* Add/Edit Holiday Dialog */}
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -332,7 +333,7 @@ const Holidays: React.FC = () => {
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={createMutation.isPending || updateMutation.isPending}
+            disabled={!isFormValid || createMutation.isPending || updateMutation.isPending}
           >
             {createMutation.isPending || updateMutation.isPending
               ? 'Saving...'
@@ -343,18 +344,6 @@ const Holidays: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert
-          severity={snackbar.severity}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

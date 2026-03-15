@@ -11,7 +11,6 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  CircularProgress,
   Table,
   TableBody,
   TableCell,
@@ -29,8 +28,12 @@ import { leaveApi } from '../api/leave';
 import { holidaysApi } from '../api/holidays';
 import { LeaveStatus, LeaveType } from '../types';
 import PageHeader from '../components/PageHeader';
+import { useSnackbar } from '../contexts/SnackbarContext';
+import { getApiErrorMessage } from '../hooks/apiMessages';
+import PageLoading from '../components/PageLoading';
 
 const Leave: React.FC = () => {
+  const { showSuccess, showError } = useSnackbar();
   const [open, setOpen] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -107,6 +110,10 @@ const Leave: React.FC = () => {
       setToDate('');
       setReason('');
       setLeaveType(LeaveType.CASUAL_LEAVE);
+      showSuccess('Leave application submitted successfully.');
+    },
+    onError: (error: unknown) => {
+      showError(getApiErrorMessage(error, 'Failed to apply for leave. Please try again.'));
     },
   });
 
@@ -115,10 +122,18 @@ const Leave: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-leave-applications'] });
       queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
+      showSuccess('Leave application cancelled.');
+    },
+    onError: (error: unknown) => {
+      showError(getApiErrorMessage(error, 'Failed to cancel leave. Please try again.'));
     },
   });
 
   const handleSubmit = () => {
+    if (!reason?.trim()) {
+      showError('Please provide a reason for leave.');
+      return;
+    }
     applyMutation.mutate({ fromDate, toDate, reason, leaveType });
   };
 
@@ -139,13 +154,7 @@ const Leave: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (isLoading) return <PageLoading />;
 
   if (isError) {
     return (
@@ -347,6 +356,7 @@ const Leave: React.FC = () => {
               applyMutation.isPending ||
               !fromDate ||
               !toDate ||
+              !reason?.trim() ||
               fromDate > toDate ||
               leaveSummary?.working === 0
             }

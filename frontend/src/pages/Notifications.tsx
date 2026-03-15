@@ -6,21 +6,31 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Button,
   Chip,
   Alert,
 } from '@mui/material';
 import { notificationsApi } from '../api/notifications';
-import { Notification } from '../types';
+import PageLoading from '../components/PageLoading';
+import PageHeader from '../components/PageHeader';
+import { useSnackbar } from '../contexts/SnackbarContext';
+import { getApiErrorMessage } from '../hooks/apiMessages';
 
 const Notifications: React.FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { showError } = useSnackbar();
 
-  const { data: notifications, isLoading } = useQuery({
+  const {
+    data: notifications,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['notifications'],
     queryFn: notificationsApi.getAll,
+    staleTime: 60_000,
   });
 
   const markAllMutation = useMutation({
@@ -28,6 +38,9 @@ const Notifications: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+    },
+    onError: (err: unknown) => {
+      showError(getApiErrorMessage(err, 'Failed to mark all as read'));
     },
   });
 
@@ -37,46 +50,56 @@ const Notifications: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
     },
+    onError: (err: unknown) => {
+      showError(getApiErrorMessage(err, 'Failed to mark notification as read'));
+    },
   });
 
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (isLoading) return <PageLoading />;
 
   const hasUnread = (notifications || []).some((n) => !n.readAt);
+  const markOnePending = markOneMutation.isPending;
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold">
-            Notifications
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Updates about your leave requests and other actions.
-          </Typography>
-        </Box>
-        <Button
-          variant="outlined"
-          disabled={!hasUnread || markAllMutation.isPending}
-          onClick={() => markAllMutation.mutate()}
-        >
-          {markAllMutation.isPending ? 'Marking...' : 'Mark all as read'}
-        </Button>
-      </Box>
+      <PageHeader
+        title="Notifications"
+        subtitle="Updates about your leave requests and other actions."
+        actions={
+          <Button
+            variant="outlined"
+            disabled={!hasUnread || markAllMutation.isPending}
+            onClick={() => markAllMutation.mutate()}
+          >
+            {markAllMutation.isPending ? 'Marking...' : 'Mark all as read'}
+          </Button>
+        }
+      />
 
-      {notifications && notifications.length > 0 ? (
-        notifications.map((notification: Notification) => {
+      {isError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {getApiErrorMessage(error, 'Failed to load notifications. Please try again.')}
+        </Alert>
+      )}
+
+      {!isError && notifications && notifications.length > 0 ? (
+        notifications.map((notification) => {
           const isUnread = !notification.readAt;
           return (
             <Card
               key={notification.id}
               elevation={2}
               sx={{ mb: 2, opacity: isUnread ? 1 : 0.7 }}
+              component="article"
+              aria-label={`Notification: ${notification.title}`}
             >
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
@@ -97,6 +120,7 @@ const Notifications: React.FC = () => {
                   <Button
                     size="small"
                     variant="outlined"
+                    disabled={markOnePending}
                     onClick={() => {
                       if (!notification.readAt) {
                         markOneMutation.mutate(notification.id);
@@ -111,16 +135,15 @@ const Notifications: React.FC = () => {
             </Card>
           );
         })
-      ) : (
+      ) : !isError ? (
         <Card elevation={2}>
           <CardContent>
             <Alert severity="info">You have no notifications yet.</Alert>
           </CardContent>
         </Card>
-      )}
+      ) : null}
     </Box>
   );
 };
 
 export default Notifications;
-

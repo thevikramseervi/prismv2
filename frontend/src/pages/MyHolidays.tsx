@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Table,
   TableBody,
   TableCell,
@@ -17,6 +16,7 @@ import {
 } from '@mui/material';
 import { holidaysApi } from '../api/holidays';
 import { type Holiday } from '../types';
+import PageLoading from '../components/PageLoading';
 
 const MyHolidays: React.FC = () => {
   const { data: holidays, isLoading, isError } = useQuery({
@@ -24,13 +24,7 @@ const MyHolidays: React.FC = () => {
     queryFn: () => holidaysApi.getAll(),
   });
 
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (isLoading) return <PageLoading />;
 
   if (isError) {
     return (

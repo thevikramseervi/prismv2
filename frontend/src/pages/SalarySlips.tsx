@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
@@ -16,17 +16,18 @@ import {
   IconButton,
   Tooltip,
   Paper,
-  Snackbar,
   Alert,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { PictureAsPdf, Description, Visibility } from '@mui/icons-material';
 import { payrollApi } from '../api/payroll';
 import { PaymentStatus } from '../types';
+import { useSnackbar } from '../contexts/SnackbarContext';
+import PageLoading from '../components/PageLoading';
 
 const SalarySlips: React.FC = () => {
   const navigate = useNavigate();
-  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const { showError } = useSnackbar();
   const { data: salarySlipsRaw, isLoading, isError } = useQuery({
     queryKey: ['my-salary-slips'],
     queryFn: () => payrollApi.getMySalarySlips(),
@@ -59,7 +60,7 @@ const SalarySlips: React.FC = () => {
     try {
       await payrollApi.downloadPDF(id);
     } catch {
-      setDownloadError('Failed to download PDF. Please try again.');
+      showError('Failed to download PDF. Please try again.');
     }
   };
 
@@ -67,7 +68,7 @@ const SalarySlips: React.FC = () => {
     try {
       await payrollApi.downloadExcel(id);
     } catch {
-      setDownloadError('Failed to download Excel file. Please try again.');
+      showError('Failed to download Excel file. Please try again.');
     }
   };
 
@@ -79,13 +80,7 @@ const SalarySlips: React.FC = () => {
     return months[month - 1] ?? 'Unknown';
   };
 
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (isLoading) return <PageLoading />;
 
   if (isError) {
     return <Alert severity="error" sx={{ mt: 2 }}>Failed to load salary slips. Please refresh the page.</Alert>;
@@ -175,16 +170,6 @@ const SalarySlips: React.FC = () => {
           </TableContainer>
         </CardContent>
       </Card>
-      <Snackbar
-        open={!!downloadError}
-        autoHideDuration={5000}
-        onClose={() => setDownloadError(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity="error" onClose={() => setDownloadError(null)}>
-          {downloadError}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

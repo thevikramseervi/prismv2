@@ -11,10 +11,8 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  CircularProgress,
   Chip,
   Alert,
-  Snackbar,
   FormControl,
   InputLabel,
   Select,
@@ -24,16 +22,15 @@ import { Add, Campaign } from '@mui/icons-material';
 import { announcementsApi } from '../api/announcements';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
+import { useSnackbar } from '../contexts/SnackbarContext';
+import { getApiErrorMessage } from '../hooks/apiMessages';
+import PageLoading from '../components/PageLoading';
 
 const Announcements: React.FC = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useSnackbar();
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'LAB_ADMIN';
   const [open, setOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error';
-  }>({ open: false, message: '', severity: 'success' });
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
@@ -43,7 +40,13 @@ const Announcements: React.FC = () => {
     targetAudience: 'ALL',
   });
 
-  const { data: announcements, isLoading } = useQuery({
+  const {
+    data: announcements,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['announcements'],
     queryFn: () => announcementsApi.getAll(),
   });
@@ -54,15 +57,10 @@ const Announcements: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       setOpen(false);
       setFormData({ title: '', content: '', priority: 'MEDIUM', targetAudience: 'ALL' });
-      setSnackbar({ open: true, message: 'Announcement created!', severity: 'success' });
+      showSuccess('Announcement created!');
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      setSnackbar({
-        open: true,
-        message: err.response?.data?.message || 'Failed to create announcement',
-        severity: 'error',
-      });
+      showError(getApiErrorMessage(error, 'Failed to create announcement'));
     },
   });
 
@@ -94,13 +92,7 @@ const Announcements: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (isLoading) return <PageLoading />;
 
   return (
     <Box>
@@ -116,7 +108,21 @@ const Announcements: React.FC = () => {
         }
       />
 
-      {announcements && announcements.length > 0 ? (
+      {isError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {getApiErrorMessage(error, 'Failed to load announcements. Please try again.')}
+        </Alert>
+      )}
+
+      {!isError && announcements && announcements.length > 0 ? (
         announcements.map((announcement) => (
           <Card key={announcement.id} elevation={2} sx={{ mb: 2 }}>
             <CardContent>
@@ -169,13 +175,13 @@ const Announcements: React.FC = () => {
             </CardContent>
           </Card>
         ))
-      ) : (
+      ) : !isError ? (
         <Card elevation={2}>
           <CardContent>
             <Alert severity="info">No announcements available</Alert>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Create Announcement Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
@@ -237,16 +243,6 @@ const Announcements: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

@@ -11,10 +11,8 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  CircularProgress,
   Chip,
   Alert,
-  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -28,22 +26,28 @@ import {
 import { CheckCircle, Cancel } from '@mui/icons-material';
 import { leaveApi } from '../api/leave';
 import { LeaveApplication, LeaveType } from '../types';
+import { useSnackbar } from '../contexts/SnackbarContext';
+import { getApiErrorMessage } from '../hooks/apiMessages';
+import PageLoading from '../components/PageLoading';
+import PageHeader from '../components/PageHeader';
 
 const LeaveApproval: React.FC = () => {
+  const { showSuccess, showError } = useSnackbar();
   const [actionDialog, setActionDialog] = useState<{
     open: boolean;
     application: LeaveApplication | null;
     action: 'approve' | 'reject' | null;
   }>({ open: false, application: null, action: null });
   const [comments, setComments] = useState('');
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success' as 'success' | 'error',
-  });
   const queryClient = useQueryClient();
 
-  const { data: pendingApplications, isLoading } = useQuery({
+  const {
+    data: pendingApplications,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['pending-leave-applications'],
     queryFn: () => leaveApi.getPending(),
   });
@@ -54,19 +58,10 @@ const LeaveApproval: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-leave-applications'] });
       handleCloseActionDialog();
-      setSnackbar({
-        open: true,
-        message: 'Leave approved successfully!',
-        severity: 'success',
-      });
+      showSuccess('Leave approved successfully!');
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      setSnackbar({
-        open: true,
-        message: err.response?.data?.message || 'Failed to approve leave',
-        severity: 'error',
-      });
+      showError(getApiErrorMessage(error, 'Failed to approve leave'));
     },
   });
 
@@ -76,19 +71,10 @@ const LeaveApproval: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-leave-applications'] });
       handleCloseActionDialog();
-      setSnackbar({
-        open: true,
-        message: 'Leave rejected successfully!',
-        severity: 'success',
-      });
+      showSuccess('Leave rejected successfully!');
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      setSnackbar({
-        open: true,
-        message: err.response?.data?.message || 'Failed to reject leave',
-        severity: 'error',
-      });
+      showError(getApiErrorMessage(error, 'Failed to reject leave'));
     },
   });
 
@@ -115,34 +101,37 @@ const LeaveApproval: React.FC = () => {
       });
     } else if (actionDialog.action === 'reject') {
       if (!comments.trim()) {
-        setSnackbar({
-          open: true,
-          message: 'Comments are required when rejecting a leave application',
-          severity: 'error',
-        });
+        showError('Comments are required when rejecting a leave application');
         return;
       }
       rejectMutation.mutate({ id: actionDialog.application.id, comments });
     }
   };
 
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (isLoading) return <PageLoading />;
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Leave Approval
-      </Typography>
-      <Typography variant="body1" color="text.secondary" mb={3}>
-        Review and approve/reject leave applications
-      </Typography>
+      <PageHeader
+        title="Leave Approval"
+        subtitle="Review and approve/reject leave applications"
+      />
 
+      {isError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {getApiErrorMessage(error, 'Failed to load leave applications. Please try again.')}
+        </Alert>
+      )}
+
+      {!isError && (
       <Card elevation={2}>
         <CardContent>
           {pendingApplications && pendingApplications.length > 0 ? (
@@ -219,6 +208,7 @@ const LeaveApproval: React.FC = () => {
                             size="small"
                             color="success"
                             onClick={() => handleOpenActionDialog(application, 'approve')}
+                            aria-label="Approve leave"
                           >
                             <CheckCircle />
                           </IconButton>
@@ -228,6 +218,7 @@ const LeaveApproval: React.FC = () => {
                             size="small"
                             color="error"
                             onClick={() => handleOpenActionDialog(application, 'reject')}
+                            aria-label="Reject leave"
                           >
                             <Cancel />
                           </IconButton>
@@ -243,6 +234,7 @@ const LeaveApproval: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Approve/Reject Dialog */}
       <Dialog open={actionDialog.open} onClose={handleCloseActionDialog} maxWidth="sm" fullWidth>
@@ -317,19 +309,6 @@ const LeaveApproval: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert
-          severity={snackbar.severity}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

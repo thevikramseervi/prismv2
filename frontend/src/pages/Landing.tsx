@@ -10,6 +10,7 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
+  Tooltip,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -84,13 +85,15 @@ const Landing: React.FC = () => {
               Attend Ease
             </Typography>
             <Stack direction="row" alignItems="center" spacing={1}>
-              <IconButton
-                color="inherit"
-                onClick={toggleMode}
-                aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-              </IconButton>
+              <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+                <IconButton
+                  color="inherit"
+                  onClick={toggleMode}
+                  aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+                </IconButton>
+              </Tooltip>
               <Button
               variant="contained"
               endIcon={<Login />}

@@ -14,9 +14,9 @@ import {
   MenuItem,
   Paper,
   IconButton,
-  Alert,
   CircularProgress,
   Chip,
+  Tooltip,
 } from '@mui/material';
 import { Add, Delete, Save, Download } from '@mui/icons-material';
 import ExcelJS from 'exceljs';
@@ -25,6 +25,8 @@ import { usersApi } from '../api/users';
 import { ActivityEntry, Role } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
+import { useSnackbar } from '../contexts/SnackbarContext';
+import { getApiErrorMessage } from '../hooks/apiMessages';
 
 type EditableRow = {
   id?: string;
@@ -68,6 +70,7 @@ const toRow = (entry: ActivityEntry, fallbackUser?: { name: string; employeeId: 
 
 const ActivityReport: React.FC = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useSnackbar();
   const queryClient = useQueryClient();
   const isAdmin = user?.role === Role.LAB_ADMIN || user?.role === Role.SUPER_ADMIN;
 
@@ -75,7 +78,6 @@ const ActivityReport: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [selectedUserId, setSelectedUserId] = useState<string>(user?.id ?? '');
   const [rows, setRows] = useState<EditableRow[]>([]);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const { data: users } = useQuery({
     queryKey: ['users-for-activity'],
@@ -103,14 +105,10 @@ const ActivityReport: React.FC = () => {
     mutationFn: (payload: CreateActivityPayload) => activityApi.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
-      setMessage({ type: 'success', text: 'Activity saved successfully' });
+      showSuccess('Activity saved successfully');
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      setMessage({
-        type: 'error',
-        text: err?.response?.data?.message ?? 'Failed to save activity',
-      });
+      showError(getApiErrorMessage(error, 'Failed to save activity'));
     },
   });
 
@@ -119,14 +117,10 @@ const ActivityReport: React.FC = () => {
       activityApi.update(data.id, data.payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
-      setMessage({ type: 'success', text: 'Activity updated successfully' });
+      showSuccess('Activity updated successfully');
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      setMessage({
-        type: 'error',
-        text: err?.response?.data?.message ?? 'Failed to update activity',
-      });
+      showError(getApiErrorMessage(error, 'Failed to update activity'));
     },
   });
 
@@ -134,21 +128,16 @@ const ActivityReport: React.FC = () => {
     mutationFn: (id: string) => activityApi.remove(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
-      setMessage({ type: 'success', text: 'Activity deleted successfully' });
+      showSuccess('Activity deleted successfully');
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      setMessage({
-        type: 'error',
-        text: err?.response?.data?.message ?? 'Failed to delete activity',
-      });
+      showError(getApiErrorMessage(error, 'Failed to delete activity'));
     },
   });
 
   const isBusy = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   const handleLoad = async () => {
-    setMessage(null);
     const data = await activitiesQuery.refetch();
     const list = data.data ?? [];
 
@@ -210,13 +199,8 @@ const ActivityReport: React.FC = () => {
       };
 
       setRows((prev) => [...prev, newRow]);
-      setMessage(null);
     } catch (err: unknown) {
-      const error = err as { message?: string };
-      setMessage({
-        type: 'error',
-        text: error.message ?? 'Unable to add row',
-      });
+      showError(getApiErrorMessage(err, 'Unable to add row'));
     }
   };
 
@@ -244,7 +228,7 @@ const ActivityReport: React.FC = () => {
     };
 
     if (!row.project || !row.task || !row.unit) {
-      setMessage({ type: 'error', text: 'Project, Task and Unit are required' });
+      showError('Project, Task and Unit are required');
       return;
     }
 
@@ -281,7 +265,7 @@ const ActivityReport: React.FC = () => {
 
   const handleExportExcel = async () => {
     if (rows.length === 0) {
-      setMessage({ type: 'error', text: 'No activity rows to export for this date' });
+      showError('No activity rows to export for this date');
       return;
     }
 
@@ -337,7 +321,7 @@ const ActivityReport: React.FC = () => {
       link.click();
       URL.revokeObjectURL(url);
     } catch {
-      setMessage({ type: 'error', text: 'Failed to export activity report to Excel' });
+      showError('Failed to export activity report to Excel');
     }
   };
 
@@ -423,14 +407,6 @@ const ActivityReport: React.FC = () => {
               </Button>
             </Box>
           </Box>
-
-          {message && (
-            <Box mb={2}>
-              <Alert severity={message.type} onClose={() => setMessage(null)}>
-                {message.text}
-              </Alert>
-            </Box>
-          )}
 
           <Box
             mb={2}
@@ -602,24 +578,28 @@ const ActivityReport: React.FC = () => {
                     justifyContent="flex-end"
                     gap={1}
                   >
-                    <IconButton
-                      aria-label="save"
-                      color="primary"
-                      onClick={() => handleSaveRow(row, index)}
-                      disabled={isBusy}
-                      size="small"
-                    >
-                      <Save fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      aria-label="delete"
-                      color="error"
-                      onClick={() => handleDeleteRow(row, index)}
-                      disabled={isBusy}
-                      size="small"
-                    >
-                      <Delete fontSize="small" />
-                    </IconButton>
+                    <Tooltip title="Save row">
+                      <IconButton
+                        aria-label="save"
+                        color="primary"
+                        onClick={() => handleSaveRow(row, index)}
+                        disabled={isBusy}
+                        size="small"
+                      >
+                        <Save fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete row">
+                      <IconButton
+                        aria-label="delete"
+                        color="error"
+                        onClick={() => handleDeleteRow(row, index)}
+                        disabled={isBusy}
+                        size="small"
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </Box>
                 </Paper>
               ))}

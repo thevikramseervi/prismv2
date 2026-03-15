@@ -19,6 +19,7 @@ import {
   Badge,
   Chip,
   Container,
+  Tooltip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -98,7 +99,6 @@ const navItems: NavItem[] = [
 const DashboardLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [notificationsAnchorEl, setNotificationsAnchorEl] = useState<null | HTMLElement>(null);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const { user, logout } = useAuth();
   const { mode, toggleMode } = useThemeMode();
@@ -126,14 +126,6 @@ const DashboardLayout: React.FC = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
-  };
-
-  const handleNotificationsOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setNotificationsAnchorEl(event.currentTarget);
-  };
-
-  const handleNotificationsClose = () => {
-    setNotificationsAnchorEl(null);
   };
 
   const filteredNavItems = navItems.filter((item) => {
@@ -215,36 +207,49 @@ const DashboardLayout: React.FC = () => {
         }}
       >
         <Toolbar>
-          <IconButton
-            color="inherit"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
+          <Tooltip title="Open menu">
+            <IconButton
+              color="inherit"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2, display: { sm: 'none' } }}
+              aria-label="Open menu"
+            >
+              <MenuIcon />
+            </IconButton>
+          </Tooltip>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {navItems.find((item) => item.path === location.pathname)?.title ||
               'Dashboard'}
           </Typography>
 
-          <IconButton color="inherit" sx={{ mr: 1 }} onClick={handleNotificationsOpen}>
-            <Badge badgeContent={unreadData?.unreadCount ?? 0} color="error">
-              <Notifications />
-            </Badge>
-          </IconButton>
+          <Tooltip title="Notifications">
+            <IconButton
+              color="inherit"
+              sx={{ mr: 1 }}
+              onClick={() => navigate('/notifications')}
+              aria-label="Notifications"
+            >
+              <Badge badgeContent={unreadData?.unreadCount ?? 0} color="error">
+                <Notifications />
+              </Badge>
+            </IconButton>
+          </Tooltip>
 
-          <IconButton
-            color="inherit"
-            onClick={toggleMode}
-            sx={{ mr: 1 }}
-            aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-          </IconButton>
+          <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <IconButton
+              color="inherit"
+              onClick={toggleMode}
+              sx={{ mr: 1 }}
+              aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+            </IconButton>
+          </Tooltip>
 
-          <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
-            <Avatar
+          <Tooltip title="Account menu">
+            <IconButton onClick={handleMenuOpen} sx={{ p: 0 }} aria-label="Account menu">
+              <Avatar
               sx={{
                 bgcolor: 'primary.main',
                 width: 40,
@@ -253,7 +258,8 @@ const DashboardLayout: React.FC = () => {
             >
               {user?.name.charAt(0).toUpperCase()}
             </Avatar>
-          </IconButton>
+            </IconButton>
+          </Tooltip>
 
           <Menu
             anchorEl={anchorEl}
@@ -304,22 +310,6 @@ const DashboardLayout: React.FC = () => {
                 <Logout fontSize="small" />
               </ListItemIcon>
               Logout
-            </MenuItem>
-          </Menu>
-          <Menu
-            anchorEl={notificationsAnchorEl}
-            open={Boolean(notificationsAnchorEl)}
-            onClose={handleNotificationsClose}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-          >
-            <MenuItem
-              onClick={() => {
-                handleNotificationsClose();
-                navigate('/notifications');
-              }}
-            >
-              <ListItemText primary="View notifications" />
             </MenuItem>
           </Menu>
           <ChangePasswordDialog

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -12,6 +12,7 @@ import {
   InputAdornment,
   IconButton,
   useTheme,
+  Tooltip,
 } from '@mui/material';
 import {
   Visibility,
@@ -22,6 +23,9 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeMode } from '../contexts/ThemeModeContext';
+import { useSnackbar } from '../contexts/SnackbarContext';
+
+const SESSION_EXPIRED_KEY = 'showSessionExpired';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -33,11 +37,33 @@ const Login: React.FC = () => {
   const [twoFactorToken, setTwoFactorToken] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const { login, complete2fa } = useAuth();
+  const { showError } = useSnackbar();
   const { mode, toggleMode } = useThemeMode();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const successMessage = (location.state as { message?: string })?.message;
+  const returnUrlEncoded = new URLSearchParams(location.search).get('returnUrl');
+  let postLoginPath = '/';
+  if (returnUrlEncoded) {
+    try {
+      const decoded = decodeURIComponent(returnUrlEncoded);
+      if (decoded.startsWith('/')) postLoginPath = decoded;
+    } catch {
+      // ignore malformed returnUrl
+    }
+  }
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(SESSION_EXPIRED_KEY)) {
+        sessionStorage.removeItem(SESSION_EXPIRED_KEY);
+        showError('Session expired. Please sign in again.');
+      }
+    } catch {
+      // ignore
+    }
+  }, [showError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +75,7 @@ const Login: React.FC = () => {
         setTwoFactorToken(response.twoFactorToken);
         setStep('2fa');
       } else {
-        navigate('/');
+        navigate(postLoginPath, { replace: true });
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -68,7 +94,7 @@ const Login: React.FC = () => {
     setLoading(true);
     try {
       await complete2fa(twoFactorToken, twoFactorCode);
-      navigate('/');
+      navigate(postLoginPath, { replace: true });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(
@@ -97,21 +123,23 @@ const Login: React.FC = () => {
         px: 2,
       }}
     >
-      <IconButton
-        onClick={toggleMode}
-        aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        sx={{
-          position: 'fixed',
-          top: 16,
-          right: 16,
-          color: 'text.primary',
-          bgcolor: 'rgba(15,23,42,0.5)',
-          '&:hover': { bgcolor: 'rgba(15,23,42,0.8)' },
-          zIndex: 10,
-        }}
-      >
-        {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-      </IconButton>
+      <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+        <IconButton
+          onClick={toggleMode}
+          aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          sx={{
+            position: 'fixed',
+            top: 16,
+            right: 16,
+            color: 'text.primary',
+            bgcolor: 'rgba(15,23,42,0.5)',
+            '&:hover': { bgcolor: 'rgba(15,23,42,0.8)' },
+            zIndex: 10,
+          }}
+        >
+          {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+        </IconButton>
+      </Tooltip>
 
       <Container maxWidth="md">
         <Card
@@ -278,17 +306,20 @@ const Login: React.FC = () => {
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowPassword(!showPassword)}
-                          edge="end"
-                          size="small"
-                        >
-                          {showPassword ? (
-                            <VisibilityOff fontSize="small" />
-                          ) : (
-                            <Visibility fontSize="small" />
-                          )}
-                        </IconButton>
+                        <Tooltip title={showPassword ? 'Hide password' : 'Show password'}>
+                          <IconButton
+                            onClick={() => setShowPassword(!showPassword)}
+                            edge="end"
+                            size="small"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showPassword ? (
+                              <VisibilityOff fontSize="small" />
+                            ) : (
+                              <Visibility fontSize="small" />
+                            )}
+                          </IconButton>
+                        </Tooltip>
                       </InputAdornment>
                     ),
                   }}

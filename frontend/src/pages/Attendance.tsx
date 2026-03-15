@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Table,
   TableBody,
   TableCell,
@@ -18,12 +17,14 @@ import {
   ToggleButtonGroup,
   IconButton,
   useTheme,
+  Tooltip,
 } from '@mui/material';
 import { CalendarMonth, TableRows, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { attendanceApi } from '../api/attendance';
 import { holidaysApi } from '../api/holidays';
 import { type Attendance, AttendanceStatus, type Holiday } from '../types';
 import PageHeader from '../components/PageHeader';
+import PageLoading from '../components/PageLoading';
 
 type ViewMode = 'table' | 'calendar';
 
@@ -152,6 +153,22 @@ const Attendance: React.FC = () => {
     [currentMonth]
   );
 
+  // For table view: one row per day of the month; map date key -> record for in/out/duration
+  const recordByDateKey = useMemo(() => {
+    const map = new Map<string, Attendance>();
+    attendance.forEach((record) => {
+      const key = (record.date as string).split('T')[0];
+      map.set(key, record);
+    });
+    return map;
+  }, [attendance]);
+
+  const tableDays = useMemo(() => {
+    return monthDays
+      .filter((day) => day.isCurrentMonth)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [monthDays]);
+
   const getStatusColor = (
     status: AttendanceStatus,
   ): 'default' | 'error' | 'warning' | 'primary' | 'info' | 'success' => {
@@ -181,13 +198,7 @@ const Attendance: React.FC = () => {
     });
   };
 
-  if (isLoading && !monthlyData) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (isLoading && !monthlyData) return <PageLoading />;
 
   if (isError) {
     return (
@@ -225,18 +236,22 @@ const Attendance: React.FC = () => {
         </ToggleButtonGroup>
 
         <Box display="flex" alignItems="center" gap={1}>
-          <IconButton size="small" onClick={() => handleMonthChange('prev')}>
-            <ChevronLeft />
-          </IconButton>
+          <Tooltip title="Previous month">
+            <IconButton size="small" onClick={() => handleMonthChange('prev')} aria-label="Previous month">
+              <ChevronLeft />
+            </IconButton>
+          </Tooltip>
           <Typography variant="subtitle1" fontWeight="bold">
             {currentMonth.toLocaleDateString('en-IN', {
               month: 'long',
               year: 'numeric',
             })}
           </Typography>
-          <IconButton size="small" onClick={() => handleMonthChange('next')}>
-            <ChevronRight />
-          </IconButton>
+          <Tooltip title="Next month">
+            <IconButton size="small" onClick={() => handleMonthChange('next')} aria-label="Next month">
+              <ChevronRight />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Box>
 
@@ -259,6 +274,7 @@ const Attendance: React.FC = () => {
 
                 {monthDays.map((day) => {
                   const key = formatKey(day.date);
+                  const record = recordByDateKey.get(key);
                   const attendanceStatus = statusByDate.get(key);
                   // Derive status when there is no record: prefer HOLIDAY, then WEEKEND
                   let status = attendanceStatus as AttendanceStatus | undefined;
@@ -274,6 +290,26 @@ const Attendance: React.FC = () => {
                   }
                   const isToday =
                     formatKey(day.date) === formatKey(new Date()) && day.isCurrentMonth;
+
+                  const dayTooltip =
+                    record
+                      ? (
+                          <Box component="span" sx={{ display: 'block' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.5 }}>
+                              <Typography component="span" variant="caption" color="text.secondary">First in</Typography>
+                              <Typography component="span" variant="caption" fontWeight={600}>{formatTime(record.firstInTime)}</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.5 }}>
+                              <Typography component="span" variant="caption" color="text.secondary">Last out</Typography>
+                              <Typography component="span" variant="caption" fontWeight={600}>{formatTime(record.lastOutTime)}</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.5 }}>
+                              <Typography component="span" variant="caption" color="text.secondary">Duration</Typography>
+                              <Typography component="span" variant="caption" fontWeight={600}>{formatDuration(record.totalDuration)}</Typography>
+                            </Box>
+                          </Box>
+                        )
+                      : 'No punch';
 
                   let bg: string;
                   if (!day.isCurrentMonth) {
@@ -293,42 +329,43 @@ const Attendance: React.FC = () => {
                   }
 
                   return (
-                    <Paper
-                      key={key + String(day.isCurrentMonth)}
-                      elevation={0}
-                      sx={{
-                        p: 1,
-                        minHeight: 64,
-                        bgcolor: bg,
-                        opacity: day.isCurrentMonth ? 1 : 0.6,
-                        borderRadius: 1.5,
-                        border: isToday ? 2 : 1,
-                        borderColor: isToday ? 'primary.main' : 'divider',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'flex-start',
-                      }}
-                    >
-                      <Typography
-                        variant="subtitle2"
-                        fontWeight="bold"
-                        sx={{ color: 'text.primary' }}
+                    <Tooltip key={key + String(day.isCurrentMonth)} title={dayTooltip} arrow placement="top">
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 1,
+                          minHeight: 64,
+                          bgcolor: bg,
+                          opacity: day.isCurrentMonth ? 1 : 0.6,
+                          borderRadius: 1.5,
+                          border: isToday ? 2 : 1,
+                          borderColor: isToday ? 'primary.main' : 'divider',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                        }}
                       >
-                        {day.date.getDate()}
-                      </Typography>
-                      {status && (
                         <Typography
-                          variant="caption"
-                          sx={{
-                            mt: 0.5,
-                            textTransform: 'capitalize',
-                            color: 'text.primary',
-                          }}
+                          variant="subtitle2"
+                          fontWeight="bold"
+                          sx={{ color: 'text.primary' }}
                         >
-                          {status.replace('_', ' ').toLowerCase()}
+                          {day.date.getDate()}
                         </Typography>
-                      )}
-                    </Paper>
+                        {status && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              mt: 0.5,
+                              textTransform: 'capitalize',
+                              color: 'text.primary',
+                            }}
+                          >
+                            {status.replace('_', ' ').toLowerCase()}
+                          </Typography>
+                        )}
+                      </Paper>
+                    </Tooltip>
                   );
                 })}
               </Box>
@@ -393,31 +430,53 @@ const Attendance: React.FC = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {attendance.length > 0 ? (
-                      attendance.map((record) => (
-                        <TableRow key={record.id} hover>
+                    {tableDays.map((day) => {
+                      const key = formatKey(day.date);
+                      const record = recordByDateKey.get(key);
+                      let status: AttendanceStatus | undefined = record?.status as AttendanceStatus | undefined;
+                      if (!status) {
+                        if (holidayDateKeys.has(key)) {
+                          status = AttendanceStatus.HOLIDAY;
+                        } else {
+                          const dow = day.date.getDay();
+                          if (dow === 0 || dow === 6) status = AttendanceStatus.WEEKEND;
+                        }
+                      }
+                      return (
+                        <TableRow key={key} hover>
                           <TableCell>
-                            {new Date(record.date).toLocaleDateString('en-IN')}
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                {day.date.toLocaleDateString('en-IN', { weekday: 'short' })}
+                              </Typography>
+                              <Typography variant="body2" fontWeight={500}>
+                                {day.date.toLocaleDateString('en-IN', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })}
+                              </Typography>
+                            </Box>
                           </TableCell>
                           <TableCell>
-                            <Chip
-                              label={record.status.replace('_', ' ')}
-                              color={getStatusColor(record.status)}
-                              size="small"
-                            />
+                            {status ? (
+                              <Chip
+                                label={String(status).replace(/_/g, ' ')}
+                                color={getStatusColor(status)}
+                                size="small"
+                              />
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                No record
+                              </Typography>
+                            )}
                           </TableCell>
-                          <TableCell>{formatTime(record.firstInTime)}</TableCell>
-                          <TableCell>{formatTime(record.lastOutTime)}</TableCell>
-                          <TableCell>{formatDuration(record.totalDuration)}</TableCell>
+                          <TableCell>{record ? formatTime(record.firstInTime) : '—'}</TableCell>
+                          <TableCell>{record ? formatTime(record.lastOutTime) : '—'}</TableCell>
+                          <TableCell>{record ? formatDuration(record.totalDuration) : '—'}</TableCell>
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} align="center">
-                          No attendance records for this month
-                        </TableCell>
-                      </TableRow>
-                    )}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>

@@ -11,6 +11,7 @@ import {
   Container,
   IconButton,
   useTheme,
+  Tooltip,
 } from '@mui/material';
 import { ArrowBack, Email as EmailIcon, Brightness4, Brightness7 } from '@mui/icons-material';
 import { useThemeMode } from '../contexts/ThemeModeContext';
@@ -68,21 +69,23 @@ const ForgotPassword: React.FC = () => {
         },
       }}
     >
-      <IconButton
-        onClick={toggleMode}
-        aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        sx={{
-          position: 'absolute',
-          top: 16,
-          right: 16,
-          color: 'white',
-          bgcolor: 'rgba(255,255,255,0.2)',
-          '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
-          zIndex: 1,
-        }}
-      >
-        {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-      </IconButton>
+      <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+        <IconButton
+          onClick={toggleMode}
+          aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          sx={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            color: 'white',
+            bgcolor: 'rgba(255,255,255,0.2)',
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
+            zIndex: 1,
+          }}
+        >
+          {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+        </IconButton>
+      </Tooltip>
       <Container maxWidth="sm">
         <Card
           elevation={0}

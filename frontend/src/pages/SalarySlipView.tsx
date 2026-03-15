@@ -12,7 +12,6 @@ import {
   TableHead,
   TableRow,
   Button,
-  CircularProgress,
   Alert,
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
@@ -24,6 +23,7 @@ import {
   formatCurrency,
   getMonthName,
 } from '../utils/slipUtils';
+import PageLoading from '../components/PageLoading';
 
 const formatDate = (d: string | undefined) => {
   if (!d) return '—';
@@ -43,13 +43,7 @@ const SalarySlipView: React.FC = () => {
     enabled: !!id,
   });
 
-  if (isLoading || !id) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (isLoading || !id) return <PageLoading />;
 
   if (error || !payroll) {
     return (

@@ -9,6 +9,7 @@ import {
   Alert,
   InputAdornment,
   IconButton,
+  Tooltip,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { authApi } from '../api/auth';
@@ -105,13 +106,16 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowCurrent((s) => !s)}
-                    edge="end"
-                    size="small"
-                  >
-                    {showCurrent ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
+                  <Tooltip title={showCurrent ? 'Hide password' : 'Show password'}>
+                    <IconButton
+                      onClick={() => setShowCurrent((s) => !s)}
+                      edge="end"
+                      size="small"
+                      aria-label={showCurrent ? 'Hide password' : 'Show password'}
+                    >
+                      {showCurrent ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </Tooltip>
                 </InputAdornment>
               ),
             }}
@@ -128,13 +132,16 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowNew((s) => !s)}
-                    edge="end"
-                    size="small"
-                  >
-                    {showNew ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
+                  <Tooltip title={showNew ? 'Hide password' : 'Show password'}>
+                    <IconButton
+                      onClick={() => setShowNew((s) => !s)}
+                      edge="end"
+                      size="small"
+                      aria-label={showNew ? 'Hide password' : 'Show password'}
+                    >
+                      {showNew ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </Tooltip>
                 </InputAdornment>
               ),
             }}
@@ -156,13 +163,16 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowConfirm((s) => !s)}
-                    edge="end"
-                    size="small"
-                  >
-                    {showConfirm ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
+                  <Tooltip title={showConfirm ? 'Hide password' : 'Show password'}>
+                    <IconButton
+                      onClick={() => setShowConfirm((s) => !s)}
+                      edge="end"
+                      size="small"
+                      aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirm ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </Tooltip>
                 </InputAdornment>
               ),
             }}

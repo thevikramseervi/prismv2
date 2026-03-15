@@ -1,25 +1,32 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Typography, Grid, Alert, Snackbar } from '@mui/material';
+import { Box, Typography, Grid, Alert, Button } from '@mui/material';
 import { usersApi } from '../api/users';
 import AdminBiometricCard from '../components/admin/AdminBiometricCard';
 import AdminPayrollCard from '../components/admin/AdminPayrollCard';
+import { useSnackbar } from '../contexts/SnackbarContext';
+import { getApiErrorMessage } from '../hooks/apiMessages';
+import PageLoading from '../components/PageLoading';
 
 const Admin: React.FC = () => {
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success' as 'success' | 'error',
-  });
+  const { showSuccess, showError } = useSnackbar();
+  const showSnackbar = (message: string, severity: 'success' | 'error') => {
+    if (severity === 'success') showSuccess(message);
+    else showError(message);
+  };
 
-  const { data: users } = useQuery({
+  const {
+    data: users,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersApi.getAll(),
   });
 
-  const showSnackbar = (message: string, severity: 'success' | 'error') => {
-    setSnackbar({ open: true, message, severity });
-  };
+  if (isLoading) return <PageLoading />;
 
   return (
     <Box>
@@ -30,6 +37,21 @@ const Admin: React.FC = () => {
         Administrative tools and settings
       </Typography>
 
+      {isError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {getApiErrorMessage(error, 'Failed to load users. Please try again.')}
+        </Alert>
+      )}
+
+      {!isError && (
       <Grid container spacing={3}>
         <Grid size={{ xs: 12 }}>
           <AdminBiometricCard onMessage={showSnackbar} section="upload" />
@@ -41,12 +63,7 @@ const Admin: React.FC = () => {
           <AdminBiometricCard onMessage={showSnackbar} section="sync" />
         </Grid>
       </Grid>
-
-      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      )}
     </Box>
   );
 };
