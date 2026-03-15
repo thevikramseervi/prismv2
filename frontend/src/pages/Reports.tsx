@@ -24,13 +24,14 @@ import {
   Paper,
   Chip,
   Alert,
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { Download, Summarize, CheckCircle } from '@mui/icons-material';
+import ResponsiveDialog from '../components/ResponsiveDialog';
 import { attendanceApi } from '../api/attendance';
 import { leaveApi } from '../api/leave';
 import { payrollApi } from '../api/payroll';
@@ -45,6 +46,7 @@ import {
 } from '../types';
 import ExcelJS from 'exceljs';
 import PageHeader from '../components/PageHeader';
+import MobileTableCard from '../components/MobileTableCard';
 import { useAuth } from '../contexts/AuthContext';
 
 /** Format time to HH:MM. Backend now sends plain "HH:MM" strings for in/out times. */
@@ -100,6 +102,7 @@ function TabPanel(props: TabPanelProps) {
 
 const Reports: React.FC = () => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isDark = theme.palette.mode === 'dark';
   const [tabValue, setTabValue] = useState(0);
   const queryClient = useQueryClient();
@@ -765,68 +768,132 @@ const Reports: React.FC = () => {
                     </Button>
                   </Box>
                 </Box>
-                <TableContainer component={Paper} elevation={0} sx={{ maxHeight: 500 }}>
-                  <Table stickyHeader>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell><strong>Date</strong></TableCell>
-                        <TableCell><strong>Employee</strong></TableCell>
-                        <TableCell><strong>Status</strong></TableCell>
-                        <TableCell><strong>First In</strong></TableCell>
-                        <TableCell><strong>Last Out</strong></TableCell>
-                        <TableCell><strong>Duration (H:MM)</strong></TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {attendanceData.map((record) => (
-                        <TableRow key={record.id} hover>
-                          <TableCell>{new Date(record.date).toLocaleDateString('en-IN')}</TableCell>
-                          <TableCell>
-                            {record.user?.name || 'N/A'}
-                            <Typography variant="caption" display="block" color="text.secondary">
-                              {record.user?.employeeId}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={record.status.replace('_', ' ')}
-                              size="small"
-                              color={
-                                record.status === AttendanceStatus.PRESENT
-                                  ? 'success'
-                                  : record.status === AttendanceStatus.ABSENT
-                                  ? 'error'
-                                  : record.status === AttendanceStatus.HALF_DAY
-                                  ? 'warning'
-                                  : 'default'
-                              }
-                            />
-                          </TableCell>
-                          <TableCell>{formatTime(record.firstInTime)}</TableCell>
-                          <TableCell>{formatTime(record.lastOutTime)}</TableCell>
-                          <TableCell>{formatDuration(record.totalDuration)}</TableCell>
-                          {authUser?.role === 'SUPER_ADMIN' && (
-                            <TableCell>
-                              <Button
+                {isMobile ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, maxHeight: 500, overflowY: 'auto' }}>
+                    {attendanceData.map((record) => (
+                      <MobileTableCard
+                        key={record.id}
+                        items={[
+                          { label: 'Date', value: new Date(record.date).toLocaleDateString('en-IN') },
+                          {
+                            label: 'Employee',
+                            value: (
+                              <Box>
+                                <Typography component="span" variant="body2" fontWeight="bold" display="block">
+                                  {record.user?.name || 'N/A'}
+                                </Typography>
+                                <Typography component="span" variant="caption" color="text.secondary">
+                                  {record.user?.employeeId}
+                                </Typography>
+                              </Box>
+                            ),
+                          },
+                          {
+                            label: 'Status',
+                            value: (
+                              <Chip
+                                label={record.status.replace('_', ' ')}
                                 size="small"
-                                variant="text"
-                                onClick={() =>
-                                  setEditDialog({
-                                    open: true,
-                                    record,
-                                    newStatus: record.status as AttendanceStatus,
-                                  })
+                                color={
+                                  record.status === AttendanceStatus.PRESENT
+                                    ? 'success'
+                                    : record.status === AttendanceStatus.ABSENT
+                                    ? 'error'
+                                    : record.status === AttendanceStatus.HALF_DAY
+                                    ? 'warning'
+                                    : 'default'
                                 }
-                              >
-                                Edit
-                              </Button>
-                            </TableCell>
-                          )}
+                              />
+                            ),
+                          },
+                          { label: 'First In', value: formatTime(record.firstInTime) },
+                          { label: 'Last Out', value: formatTime(record.lastOutTime) },
+                          { label: 'Duration', value: formatDuration(record.totalDuration) },
+                        ]}
+                        actions={
+                          authUser?.role === 'SUPER_ADMIN' ? (
+                            <Button
+                              size="small"
+                              variant="text"
+                              onClick={() =>
+                                setEditDialog({
+                                  open: true,
+                                  record,
+                                  newStatus: record.status as AttendanceStatus,
+                                })
+                              }
+                            >
+                              Edit
+                            </Button>
+                          ) : undefined
+                        }
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <TableContainer component={Paper} elevation={0} sx={{ maxHeight: 500 }}>
+                    <Table stickyHeader>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell><strong>Date</strong></TableCell>
+                          <TableCell><strong>Employee</strong></TableCell>
+                          <TableCell><strong>Status</strong></TableCell>
+                          <TableCell><strong>First In</strong></TableCell>
+                          <TableCell><strong>Last Out</strong></TableCell>
+                          <TableCell><strong>Duration (H:MM)</strong></TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      </TableHead>
+                      <TableBody>
+                        {attendanceData.map((record) => (
+                          <TableRow key={record.id} hover>
+                            <TableCell>{new Date(record.date).toLocaleDateString('en-IN')}</TableCell>
+                            <TableCell>
+                              {record.user?.name || 'N/A'}
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                {record.user?.employeeId}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={record.status.replace('_', ' ')}
+                                size="small"
+                                color={
+                                  record.status === AttendanceStatus.PRESENT
+                                    ? 'success'
+                                    : record.status === AttendanceStatus.ABSENT
+                                    ? 'error'
+                                    : record.status === AttendanceStatus.HALF_DAY
+                                    ? 'warning'
+                                    : 'default'
+                                }
+                              />
+                            </TableCell>
+                            <TableCell>{formatTime(record.firstInTime)}</TableCell>
+                            <TableCell>{formatTime(record.lastOutTime)}</TableCell>
+                            <TableCell>{formatDuration(record.totalDuration)}</TableCell>
+                            {authUser?.role === 'SUPER_ADMIN' && (
+                              <TableCell>
+                                <Button
+                                  size="small"
+                                  variant="text"
+                                  onClick={() =>
+                                    setEditDialog({
+                                      open: true,
+                                      record,
+                                      newStatus: record.status as AttendanceStatus,
+                                    })
+                                  }
+                                >
+                                  Edit
+                                </Button>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
               </Box>
             ) : attendanceData && attendanceData.length === 0 ? (
               <Alert severity="info">No attendance records found for the selected criteria</Alert>
@@ -983,93 +1050,179 @@ const Reports: React.FC = () => {
                     Export to Excel
                   </Button>
                 </Box>
-                <TableContainer component={Paper} elevation={0} sx={{ maxHeight: 500 }}>
-                  <Table stickyHeader>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell><strong>Employee</strong></TableCell>
-                        <TableCell><strong>From Date</strong></TableCell>
-                        <TableCell><strong>To Date</strong></TableCell>
-                        <TableCell><strong>Days</strong></TableCell>
-                        <TableCell><strong>Reason</strong></TableCell>
-                        <TableCell><strong>Status</strong></TableCell>
-                        <TableCell><strong>Applied On</strong></TableCell>
-                        {authUser && (authUser.role === 'LAB_ADMIN' || authUser.role === 'SUPER_ADMIN') && (
-                          <TableCell><strong>Actions</strong></TableCell>
-                        )}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {leaveData.map((leave) => (
-                        <TableRow key={leave.id} hover>
-                          <TableCell>
-                            {leave.user?.name || 'N/A'}
-                            <Typography variant="caption" display="block" color="text.secondary">
-                              {leave.user?.employeeId}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>{new Date(leave.fromDate).toLocaleDateString('en-IN')}</TableCell>
-                          <TableCell>{new Date(leave.toDate).toLocaleDateString('en-IN')}</TableCell>
-                          <TableCell>{leave.totalDays}</TableCell>
-                          <TableCell>{leave.reason}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={leave.status}
-                              size="small"
-                              color={
-                                leave.status === LeaveStatus.APPROVED
-                                  ? 'success'
-                                  : leave.status === LeaveStatus.REJECTED
-                                  ? 'error'
-                                  : leave.status === LeaveStatus.PENDING
-                                  ? 'warning'
-                                  : 'default'
-                              }
-                            />
-                          </TableCell>
-                          <TableCell>{new Date(leave.appliedAt).toLocaleDateString('en-IN')}</TableCell>
+                {isMobile ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, maxHeight: 500, overflowY: 'auto' }}>
+                    {leaveData.map((leave) => (
+                      <MobileTableCard
+                        key={leave.id}
+                        items={[
+                          {
+                            label: 'Employee',
+                            value: (
+                              <Box>
+                                <Typography component="span" variant="body2" fontWeight="bold" display="block">
+                                  {leave.user?.name || 'N/A'}
+                                </Typography>
+                                <Typography component="span" variant="caption" color="text.secondary">
+                                  {leave.user?.employeeId}
+                                </Typography>
+                              </Box>
+                            ),
+                          },
+                          {
+                            label: 'From – To',
+                            value: `${new Date(leave.fromDate).toLocaleDateString('en-IN')} – ${new Date(leave.toDate).toLocaleDateString('en-IN')}`,
+                          },
+                          { label: 'Days', value: leave.totalDays },
+                          { label: 'Reason', value: leave.reason },
+                          {
+                            label: 'Status',
+                            value: (
+                              <Chip
+                                label={leave.status}
+                                size="small"
+                                color={
+                                  leave.status === LeaveStatus.APPROVED
+                                    ? 'success'
+                                    : leave.status === LeaveStatus.REJECTED
+                                    ? 'error'
+                                    : leave.status === LeaveStatus.PENDING
+                                    ? 'warning'
+                                    : 'default'
+                                }
+                              />
+                            ),
+                          },
+                          {
+                            label: 'Applied On',
+                            value: new Date(leave.appliedAt).toLocaleDateString('en-IN'),
+                          },
+                        ]}
+                        actions={
+                          authUser && (authUser.role === 'LAB_ADMIN' || authUser.role === 'SUPER_ADMIN') && leave.status === LeaveStatus.PENDING ? (
+                            <Box display="flex" gap={1}>
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={() =>
+                                  setLeaveActionDialog({
+                                    open: true,
+                                    application: leave,
+                                    action: 'approve',
+                                  })
+                                }
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="small"
+                                color="error"
+                                variant="text"
+                                onClick={() =>
+                                  setLeaveActionDialog({
+                                    open: true,
+                                    application: leave,
+                                    action: 'reject',
+                                  })
+                                }
+                              >
+                                Reject
+                              </Button>
+                            </Box>
+                          ) : undefined
+                        }
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <TableContainer component={Paper} elevation={0} sx={{ maxHeight: 500 }}>
+                    <Table stickyHeader>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell><strong>Employee</strong></TableCell>
+                          <TableCell><strong>From Date</strong></TableCell>
+                          <TableCell><strong>To Date</strong></TableCell>
+                          <TableCell><strong>Days</strong></TableCell>
+                          <TableCell><strong>Reason</strong></TableCell>
+                          <TableCell><strong>Status</strong></TableCell>
+                          <TableCell><strong>Applied On</strong></TableCell>
                           {authUser && (authUser.role === 'LAB_ADMIN' || authUser.role === 'SUPER_ADMIN') && (
-                            <TableCell>
-                              {leave.status === LeaveStatus.PENDING ? (
-                                <Box display="flex" gap={1}>
-                                  <Button
-                                    size="small"
-                                    variant="text"
-                                    onClick={() =>
-                                      setLeaveActionDialog({
-                                        open: true,
-                                        application: leave,
-                                        action: 'approve',
-                                      })
-                                    }
-                                  >
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    color="error"
-                                    variant="text"
-                                    onClick={() =>
-                                      setLeaveActionDialog({
-                                        open: true,
-                                        application: leave,
-                                        action: 'reject',
-                                      })
-                                    }
-                                  >
-                                    Reject
-                                  </Button>
-                                </Box>
-                              ) : (
-                                '—'
-                              )}
-                            </TableCell>
+                            <TableCell><strong>Actions</strong></TableCell>
                           )}
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      </TableHead>
+                      <TableBody>
+                        {leaveData.map((leave) => (
+                          <TableRow key={leave.id} hover>
+                            <TableCell>
+                              {leave.user?.name || 'N/A'}
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                {leave.user?.employeeId}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>{new Date(leave.fromDate).toLocaleDateString('en-IN')}</TableCell>
+                            <TableCell>{new Date(leave.toDate).toLocaleDateString('en-IN')}</TableCell>
+                            <TableCell>{leave.totalDays}</TableCell>
+                            <TableCell>{leave.reason}</TableCell>
+                            <TableCell>
+                              <Chip
+                                label={leave.status}
+                                size="small"
+                                color={
+                                  leave.status === LeaveStatus.APPROVED
+                                    ? 'success'
+                                    : leave.status === LeaveStatus.REJECTED
+                                    ? 'error'
+                                    : leave.status === LeaveStatus.PENDING
+                                    ? 'warning'
+                                    : 'default'
+                                }
+                              />
+                            </TableCell>
+                            <TableCell>{new Date(leave.appliedAt).toLocaleDateString('en-IN')}</TableCell>
+                            {authUser && (authUser.role === 'LAB_ADMIN' || authUser.role === 'SUPER_ADMIN') && (
+                              <TableCell>
+                                {leave.status === LeaveStatus.PENDING ? (
+                                  <Box display="flex" gap={1}>
+                                    <Button
+                                      size="small"
+                                      variant="text"
+                                      onClick={() =>
+                                        setLeaveActionDialog({
+                                          open: true,
+                                          application: leave,
+                                          action: 'approve',
+                                        })
+                                      }
+                                    >
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      color="error"
+                                      variant="text"
+                                      onClick={() =>
+                                        setLeaveActionDialog({
+                                          open: true,
+                                          application: leave,
+                                          action: 'reject',
+                                        })
+                                      }
+                                    >
+                                      Reject
+                                    </Button>
+                                  </Box>
+                                ) : (
+                                  '—'
+                                )}
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
               </Box>
             ) : leaveData && leaveData.length === 0 ? (
               <Alert severity="info">No leave applications found</Alert>
@@ -1240,73 +1393,141 @@ const Reports: React.FC = () => {
                     Export to Excel
                   </Button>
                 </Box>
-                <TableContainer component={Paper} elevation={0} sx={{ maxHeight: 500 }}>
-                  <Table stickyHeader>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell><strong>Employee</strong></TableCell>
-                        <TableCell><strong>Month/Year</strong></TableCell>
-                        <TableCell align="right"><strong>Working Days</strong></TableCell>
-                        <TableCell align="right"><strong>Pay Days</strong></TableCell>
-                        <TableCell align="right"><strong>Gross</strong></TableCell>
-                        <TableCell align="right"><strong>Net Salary</strong></TableCell>
-                        <TableCell><strong>Status</strong></TableCell>
-                        {authUser?.role === 'SUPER_ADMIN' && (
-                          <TableCell align="center"><strong>Actions</strong></TableCell>
-                        )}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {payrollData.map((payroll) => (
-                        <TableRow key={payroll.id} hover>
-                          <TableCell>
-                            {payroll.user?.name || 'N/A'}
-                            <Typography variant="caption" display="block" color="text.secondary">
-                              {payroll.user?.employeeId}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            {months[payroll.month - 1]} {payroll.year}
-                          </TableCell>
-                          <TableCell align="right">{payroll.workingDays}</TableCell>
-                          <TableCell align="right">{Number(payroll.totalPayDays).toFixed(1)}</TableCell>
-                          <TableCell align="right">₹{Number(payroll.grossEarnings).toLocaleString()}</TableCell>
-                          <TableCell align="right">
-                            <strong>₹{Number(payroll.netSalary).toLocaleString()}</strong>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={payroll.paymentStatus}
+                {isMobile ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, maxHeight: 500, overflowY: 'auto' }}>
+                    {payrollData.map((payroll) => (
+                      <MobileTableCard
+                        key={payroll.id}
+                        items={[
+                          {
+                            label: 'Employee',
+                            value: (
+                              <Box>
+                                <Typography component="span" variant="body2" fontWeight="bold" display="block">
+                                  {payroll.user?.name || 'N/A'}
+                                </Typography>
+                                <Typography component="span" variant="caption" color="text.secondary">
+                                  {payroll.user?.employeeId}
+                                </Typography>
+                              </Box>
+                            ),
+                          },
+                          {
+                            label: 'Month/Year',
+                            value: `${months[payroll.month - 1]} ${payroll.year}`,
+                          },
+                          { label: 'Working Days', value: payroll.workingDays },
+                          { label: 'Pay Days', value: Number(payroll.totalPayDays).toFixed(1) },
+                          {
+                            label: 'Gross',
+                            value: `₹${Number(payroll.grossEarnings).toLocaleString()}`,
+                          },
+                          {
+                            label: 'Net Salary',
+                            value: `₹${Number(payroll.netSalary).toLocaleString()}`,
+                          },
+                          {
+                            label: 'Status',
+                            value: (
+                              <Chip
+                                label={payroll.paymentStatus}
+                                size="small"
+                                color={
+                                  payroll.paymentStatus === PaymentStatus.PAID
+                                    ? 'success'
+                                    : payroll.paymentStatus === PaymentStatus.PROCESSED
+                                    ? 'warning'
+                                    : 'default'
+                                }
+                              />
+                            ),
+                          },
+                        ]}
+                        actions={
+                          authUser?.role === 'SUPER_ADMIN' && payroll.paymentStatus !== PaymentStatus.PAID ? (
+                            <Button
                               size="small"
-                              color={
-                                payroll.paymentStatus === PaymentStatus.PAID
-                                  ? 'success'
-                                  : payroll.paymentStatus === PaymentStatus.PROCESSED
-                                  ? 'warning'
-                                  : 'default'
-                              }
-                            />
-                          </TableCell>
+                              variant="outlined"
+                              color="success"
+                              startIcon={<CheckCircle />}
+                              onClick={() => setMarkPaidDialog({ open: true, payroll })}
+                            >
+                              Mark Paid
+                            </Button>
+                          ) : undefined
+                        }
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <TableContainer component={Paper} elevation={0} sx={{ maxHeight: 500 }}>
+                    <Table stickyHeader>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell><strong>Employee</strong></TableCell>
+                          <TableCell><strong>Month/Year</strong></TableCell>
+                          <TableCell align="right"><strong>Working Days</strong></TableCell>
+                          <TableCell align="right"><strong>Pay Days</strong></TableCell>
+                          <TableCell align="right"><strong>Gross</strong></TableCell>
+                          <TableCell align="right"><strong>Net Salary</strong></TableCell>
+                          <TableCell><strong>Status</strong></TableCell>
                           {authUser?.role === 'SUPER_ADMIN' && (
-                            <TableCell align="center">
-                              {payroll.paymentStatus !== PaymentStatus.PAID && (
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="success"
-                                  startIcon={<CheckCircle />}
-                                  onClick={() => setMarkPaidDialog({ open: true, payroll })}
-                                >
-                                  Mark Paid
-                                </Button>
-                              )}
-                            </TableCell>
+                            <TableCell align="center"><strong>Actions</strong></TableCell>
                           )}
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      </TableHead>
+                      <TableBody>
+                        {payrollData.map((payroll) => (
+                          <TableRow key={payroll.id} hover>
+                            <TableCell>
+                              {payroll.user?.name || 'N/A'}
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                {payroll.user?.employeeId}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              {months[payroll.month - 1]} {payroll.year}
+                            </TableCell>
+                            <TableCell align="right">{payroll.workingDays}</TableCell>
+                            <TableCell align="right">{Number(payroll.totalPayDays).toFixed(1)}</TableCell>
+                            <TableCell align="right">₹{Number(payroll.grossEarnings).toLocaleString()}</TableCell>
+                            <TableCell align="right">
+                              <strong>₹{Number(payroll.netSalary).toLocaleString()}</strong>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={payroll.paymentStatus}
+                                size="small"
+                                color={
+                                  payroll.paymentStatus === PaymentStatus.PAID
+                                    ? 'success'
+                                    : payroll.paymentStatus === PaymentStatus.PROCESSED
+                                    ? 'warning'
+                                    : 'default'
+                                }
+                              />
+                            </TableCell>
+                            {authUser?.role === 'SUPER_ADMIN' && (
+                              <TableCell align="center">
+                                {payroll.paymentStatus !== PaymentStatus.PAID && (
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="success"
+                                    startIcon={<CheckCircle />}
+                                    onClick={() => setMarkPaidDialog({ open: true, payroll })}
+                                  >
+                                    Mark Paid
+                                  </Button>
+                                )}
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
               </Box>
             ) : payrollData && payrollData.length === 0 ? (
               <Alert severity="info">No payroll records found for the selected criteria</Alert>
@@ -1316,7 +1537,7 @@ const Reports: React.FC = () => {
       </Card>
       {authUser && (authUser.role === 'LAB_ADMIN' || authUser.role === 'SUPER_ADMIN') && (
         <>
-          <Dialog
+          <ResponsiveDialog
             open={editDialog.open}
             onClose={() => setEditDialog({ open: false, record: null, newStatus: '' })}
             maxWidth="xs"
@@ -1379,9 +1600,9 @@ const Reports: React.FC = () => {
                 {updateAttendanceMutation.isPending ? 'Saving...' : 'Save'}
               </Button>
             </DialogActions>
-          </Dialog>
+          </ResponsiveDialog>
 
-          <Dialog
+          <ResponsiveDialog
             open={createDialog.open}
             onClose={() =>
               setCreateDialog((prev) => ({
@@ -1479,9 +1700,9 @@ const Reports: React.FC = () => {
                 {createAttendanceMutation.isPending ? 'Saving...' : 'Save'}
               </Button>
             </DialogActions>
-          </Dialog>
+          </ResponsiveDialog>
 
-          <Dialog
+          <ResponsiveDialog
             open={leaveActionDialog.open}
             onClose={() => {
               setLeaveActionDialog({ open: false, application: null, action: null });
@@ -1566,10 +1787,10 @@ const Reports: React.FC = () => {
                   : 'Reject'}
               </Button>
             </DialogActions>
-          </Dialog>
+          </ResponsiveDialog>
 
           {/* Mark as Paid confirmation dialog */}
-          <Dialog
+          <ResponsiveDialog
             open={markPaidDialog.open}
             onClose={() => setMarkPaidDialog({ open: false, payroll: null })}
             maxWidth="xs"
@@ -1617,7 +1838,7 @@ const Reports: React.FC = () => {
                 {markAsPaidMutation.isPending ? 'Marking...' : 'Confirm Paid'}
               </Button>
             </DialogActions>
-          </Dialog>
+          </ResponsiveDialog>
         </>
       )}
     </Box>

@@ -17,6 +17,8 @@ import {
   Tooltip,
   Paper,
   Alert,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { PictureAsPdf, Description, Visibility } from '@mui/icons-material';
@@ -24,8 +26,11 @@ import { payrollApi } from '../api/payroll';
 import { PaymentStatus } from '../types';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import PageLoading from '../components/PageLoading';
+import MobileTableCard from '../components/MobileTableCard';
 
 const SalarySlips: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const { showError } = useSnackbar();
   const { data: salarySlipsRaw, isLoading, isError } = useQuery({
@@ -96,39 +101,39 @@ const SalarySlips: React.FC = () => {
       </Typography>
 
       <Card elevation={2}>
-        <CardContent>
-          <TableContainer component={Paper} elevation={0}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell><strong>Month</strong></TableCell>
-                  <TableCell><strong>Year</strong></TableCell>
-                  <TableCell align="right"><strong>Gross Earnings</strong></TableCell>
-                  <TableCell align="right"><strong>Net Salary</strong></TableCell>
-                  <TableCell><strong>Status</strong></TableCell>
-                  <TableCell align="center"><strong>Actions</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {salarySlips && salarySlips.length > 0 ? (
-                  salarySlips.map((slip) => (
-                    <TableRow key={slip.id} hover>
-                      <TableCell>{getMonthName(slip.month)}</TableCell>
-                      <TableCell>{slip.year}</TableCell>
-                      <TableCell align="right">
-                        {slip.grossEarnings != null ? `₹${Number(slip.grossEarnings).toFixed(2)}` : '—'}
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>{slip.netSalary != null ? `₹${Number(slip.netSalary).toFixed(2)}` : '—'}</strong>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={slip.paymentStatus}
-                          color={getStatusColor(slip.paymentStatus)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell align="center">
+        <CardContent sx={{ overflow: 'hidden' }}>
+          {salarySlips && salarySlips.length > 0 ? (
+            isMobile ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {salarySlips.map((slip) => (
+                  <MobileTableCard
+                    key={slip.id}
+                    items={[
+                      {
+                        label: 'Month / Year',
+                        value: `${getMonthName(slip.month)} ${slip.year}`,
+                      },
+                      {
+                        label: 'Gross Earnings',
+                        value: slip.grossEarnings != null ? `₹${Number(slip.grossEarnings).toFixed(2)}` : '—',
+                      },
+                      {
+                        label: 'Net Salary',
+                        value: slip.netSalary != null ? `₹${Number(slip.netSalary).toFixed(2)}` : '—',
+                      },
+                      {
+                        label: 'Status',
+                        value: (
+                          <Chip
+                            label={slip.paymentStatus}
+                            color={getStatusColor(slip.paymentStatus)}
+                            size="small"
+                          />
+                        ),
+                      },
+                    ]}
+                    actions={
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                         <Tooltip title="View slip">
                           <IconButton
                             size="small"
@@ -155,19 +160,88 @@ const SalarySlips: React.FC = () => {
                             <Description />
                           </IconButton>
                         </Tooltip>
-                      </TableCell>
+                      </Box>
+                    }
+                  />
+                ))}
+              </Box>
+            ) : (
+              <TableContainer
+                component={Paper}
+                elevation={0}
+                sx={{
+                  overflowX: 'auto',
+                  WebkitOverflowScrolling: 'touch',
+                }}
+              >
+                <Table sx={{ minWidth: 400 }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><strong>Month</strong></TableCell>
+                      <TableCell><strong>Year</strong></TableCell>
+                      <TableCell align="right"><strong>Gross Earnings</strong></TableCell>
+                      <TableCell align="right"><strong>Net Salary</strong></TableCell>
+                      <TableCell><strong>Status</strong></TableCell>
+                      <TableCell align="center"><strong>Actions</strong></TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center">
-                      No salary slips available
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {salarySlips.map((slip) => (
+                      <TableRow key={slip.id} hover>
+                        <TableCell>{getMonthName(slip.month)}</TableCell>
+                        <TableCell>{slip.year}</TableCell>
+                        <TableCell align="right">
+                          {slip.grossEarnings != null ? `₹${Number(slip.grossEarnings).toFixed(2)}` : '—'}
+                        </TableCell>
+                        <TableCell align="right">
+                          <strong>{slip.netSalary != null ? `₹${Number(slip.netSalary).toFixed(2)}` : '—'}</strong>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={slip.paymentStatus}
+                            color={getStatusColor(slip.paymentStatus)}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Tooltip title="View slip">
+                            <IconButton
+                              size="small"
+                              onClick={() => navigate(`/salary-slips/view/${slip.id}`)}
+                            >
+                              <Visibility />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Download PDF">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDownloadPDF(slip.id)}
+                            >
+                              <PictureAsPdf />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Download Excel">
+                            <IconButton
+                              size="small"
+                              color="success"
+                              onClick={() => handleDownloadExcel(slip.id)}
+                            >
+                              <Description />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No salary slips available
+            </Typography>
+          )}
         </CardContent>
       </Card>
     </Box>

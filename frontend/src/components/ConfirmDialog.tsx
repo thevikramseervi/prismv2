@@ -1,12 +1,12 @@
 import React from 'react';
 import {
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Button,
   Typography,
 } from '@mui/material';
+import ResponsiveDialog from './ResponsiveDialog';
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -31,7 +31,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onClose,
   loading = false,
 }) => (
-  <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth aria-labelledby="confirm-dialog-title">
+  <ResponsiveDialog open={open} onClose={onClose} maxWidth="xs" fullWidth aria-labelledby="confirm-dialog-title">
     <DialogTitle id="confirm-dialog-title">{title}</DialogTitle>
     <DialogContent>
       {message != null && message !== '' ? (
@@ -46,7 +46,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         {loading ? 'Processing...' : confirmLabel}
       </Button>
     </DialogActions>
-  </Dialog>
+  </ResponsiveDialog>
 );
 
 export default ConfirmDialog;

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -11,6 +10,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
+import ResponsiveDialog from './ResponsiveDialog';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { authApi } from '../api/auth';
 import { getApiErrorMessage } from '../hooks/apiMessages';
@@ -86,7 +86,7 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+    <ResponsiveDialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
       <form onSubmit={handleSubmit}>
         <DialogTitle>Change password</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
@@ -191,7 +191,7 @@ const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({
           </Button>
         </DialogActions>
       </form>
-    </Dialog>
+    </ResponsiveDialog>
   );
 };
 

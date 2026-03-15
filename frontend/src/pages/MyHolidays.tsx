@@ -13,12 +13,17 @@ import {
   TableRow,
   Paper,
   Alert,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { holidaysApi } from '../api/holidays';
 import { type Holiday } from '../types';
 import PageLoading from '../components/PageLoading';
+import MobileTableCard from '../components/MobileTableCard';
 
 const MyHolidays: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { data: holidays, isLoading, isError } = useQuery({
     queryKey: ['holidays'],
     queryFn: () => holidaysApi.getAll(),
@@ -75,43 +80,55 @@ const MyHolidays: React.FC = () => {
                 <Typography variant="h6" fontWeight="bold" gutterBottom>
                   {year} ({yearHolidays.length} holidays)
                 </Typography>
-                <TableContainer component={Paper} elevation={0}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>
-                          <strong>Date</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Day</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Holiday</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Description</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {yearHolidays.map((holiday) => {
-                        const date = new Date(holiday.date);
-                        return (
-                          <TableRow key={holiday.id} hover>
-                            <TableCell>{date.toLocaleDateString('en-IN')}</TableCell>
-                            <TableCell>
-                              {date.toLocaleDateString('en-IN', { weekday: 'long' })}
-                            </TableCell>
-                            <TableCell>
-                              <strong>{holiday.name}</strong>
-                            </TableCell>
-                            <TableCell>{holiday.description || '-'}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                {isMobile ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {yearHolidays.map((holiday) => {
+                      const date = new Date(holiday.date);
+                      return (
+                        <MobileTableCard
+                          key={holiday.id}
+                          items={[
+                            { label: 'Date', value: date.toLocaleDateString('en-IN') },
+                            {
+                              label: 'Day',
+                              value: date.toLocaleDateString('en-IN', { weekday: 'long' }),
+                            },
+                            { label: 'Holiday', value: holiday.name },
+                            { label: 'Description', value: holiday.description || '–' },
+                          ]}
+                        />
+                      );
+                    })}
+                  </Box>
+                ) : (
+                  <TableContainer component={Paper} elevation={0}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell><strong>Date</strong></TableCell>
+                          <TableCell><strong>Day</strong></TableCell>
+                          <TableCell><strong>Holiday</strong></TableCell>
+                          <TableCell><strong>Description</strong></TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {yearHolidays.map((holiday) => {
+                          const date = new Date(holiday.date);
+                          return (
+                            <TableRow key={holiday.id} hover>
+                              <TableCell>{date.toLocaleDateString('en-IN')}</TableCell>
+                              <TableCell>
+                                {date.toLocaleDateString('en-IN', { weekday: 'long' })}
+                              </TableCell>
+                              <TableCell><strong>{holiday.name}</strong></TableCell>
+                              <TableCell>{holiday.description || '-'}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
               </CardContent>
             </Card>
           ))

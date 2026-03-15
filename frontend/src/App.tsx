@@ -74,6 +74,17 @@ function getTheme(mode: 'light' | 'dark') {
             textTransform: 'none',
             borderRadius: 12,
             fontWeight: 600,
+            minHeight: 44,
+            minWidth: 44,
+          },
+        },
+      },
+      MuiIconButton: {
+        styleOverrides: {
+          root: {
+            minWidth: 44,
+            minHeight: 44,
+            padding: 10,
           },
         },
       },
@@ -106,6 +117,9 @@ function getTheme(mode: 'light' | 'dark') {
             '& .MuiOutlinedInput-root': {
               borderRadius: 12,
             },
+            '& .MuiOutlinedInput-input': {
+              fontSize: 16,
+            },
           },
         },
       },
@@ -114,6 +128,20 @@ function getTheme(mode: 'light' | 'dark') {
           root: {
             borderRadius: 8,
             fontWeight: 600,
+          },
+        },
+      },
+      MuiMenuItem: {
+        styleOverrides: {
+          root: {
+            minHeight: 44,
+          },
+        },
+      },
+      MuiListItemButton: {
+        styleOverrides: {
+          root: {
+            minHeight: 44,
           },
         },
       },

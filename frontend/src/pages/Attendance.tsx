@@ -17,6 +17,7 @@ import {
   ToggleButtonGroup,
   IconButton,
   useTheme,
+  useMediaQuery,
   Tooltip,
 } from '@mui/material';
 import { CalendarMonth, TableRows, ChevronLeft, ChevronRight } from '@mui/icons-material';
@@ -25,6 +26,7 @@ import { holidaysApi } from '../api/holidays';
 import { type Attendance, AttendanceStatus, type Holiday } from '../types';
 import PageHeader from '../components/PageHeader';
 import PageLoading from '../components/PageLoading';
+import MobileTableCard from '../components/MobileTableCard';
 
 type ViewMode = 'table' | 'calendar';
 
@@ -105,6 +107,7 @@ const formatKey = (date: Date) => {
 
 const Attendance: React.FC = () => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isDark = theme.palette.mode === 'dark';
   const [viewMode, setViewMode] = useState<ViewMode>('calendar');
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
@@ -417,69 +420,129 @@ const Attendance: React.FC = () => {
           )}
 
           <Card elevation={2}>
-            <CardContent>
-              <TableContainer component={Paper} elevation={0}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><strong>Date</strong></TableCell>
-                      <TableCell><strong>Status</strong></TableCell>
-                      <TableCell><strong>First In</strong></TableCell>
-                      <TableCell><strong>Last Out</strong></TableCell>
-                      <TableCell><strong>Duration (H:MM)</strong></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {tableDays.map((day) => {
-                      const key = formatKey(day.date);
-                      const record = recordByDateKey.get(key);
-                      let status: AttendanceStatus | undefined = record?.status as AttendanceStatus | undefined;
-                      if (!status) {
-                        if (holidayDateKeys.has(key)) {
-                          status = AttendanceStatus.HOLIDAY;
-                        } else {
-                          const dow = day.date.getDay();
-                          if (dow === 0 || dow === 6) status = AttendanceStatus.WEEKEND;
-                        }
+            <CardContent sx={{ overflow: 'hidden' }}>
+              {isMobile ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {tableDays.map((day) => {
+                    const key = formatKey(day.date);
+                    const record = recordByDateKey.get(key);
+                    let status: AttendanceStatus | undefined = record?.status as AttendanceStatus | undefined;
+                    if (!status) {
+                      if (holidayDateKeys.has(key)) {
+                        status = AttendanceStatus.HOLIDAY;
+                      } else {
+                        const dow = day.date.getDay();
+                        if (dow === 0 || dow === 6) status = AttendanceStatus.WEEKEND;
                       }
-                      return (
-                        <TableRow key={key} hover>
-                          <TableCell>
-                            <Box>
-                              <Typography variant="caption" color="text.secondary" display="block">
-                                {day.date.toLocaleDateString('en-IN', { weekday: 'short' })}
-                              </Typography>
-                              <Typography variant="body2" fontWeight={500}>
-                                {day.date.toLocaleDateString('en-IN', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric',
-                                })}
-                              </Typography>
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            {status ? (
+                    }
+                    return (
+                      <MobileTableCard
+                        key={key}
+                        items={[
+                          {
+                            label: 'Date',
+                            value: day.date.toLocaleDateString('en-IN', {
+                              weekday: 'short',
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            }),
+                          },
+                          {
+                            label: 'Status',
+                            value: status ? (
                               <Chip
                                 label={String(status).replace(/_/g, ' ')}
                                 color={getStatusColor(status)}
                                 size="small"
                               />
                             ) : (
-                              <Typography variant="body2" color="text.secondary">
-                                No record
-                              </Typography>
-                            )}
-                          </TableCell>
-                          <TableCell>{record ? formatTime(record.firstInTime) : '—'}</TableCell>
-                          <TableCell>{record ? formatTime(record.lastOutTime) : '—'}</TableCell>
-                          <TableCell>{record ? formatDuration(record.totalDuration) : '—'}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                              'No record'
+                            ),
+                          },
+                          { label: 'First In', value: record ? formatTime(record.firstInTime) : '—' },
+                          { label: 'Last Out', value: record ? formatTime(record.lastOutTime) : '—' },
+                          {
+                            label: 'Duration',
+                            value: record ? formatDuration(record.totalDuration) : '—',
+                          },
+                        ]}
+                      />
+                    );
+                  })}
+                </Box>
+              ) : (
+                <TableContainer
+                  component={Paper}
+                  elevation={0}
+                  sx={{
+                    overflowX: 'auto',
+                    overflowY: 'auto',
+                    WebkitOverflowScrolling: 'touch',
+                  }}
+                >
+                  <Table sx={{ minWidth: 320 }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell><strong>Date</strong></TableCell>
+                        <TableCell><strong>Status</strong></TableCell>
+                        <TableCell><strong>First In</strong></TableCell>
+                        <TableCell><strong>Last Out</strong></TableCell>
+                        <TableCell><strong>Duration (H:MM)</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {tableDays.map((day) => {
+                        const key = formatKey(day.date);
+                        const record = recordByDateKey.get(key);
+                        let status: AttendanceStatus | undefined = record?.status as AttendanceStatus | undefined;
+                        if (!status) {
+                          if (holidayDateKeys.has(key)) {
+                            status = AttendanceStatus.HOLIDAY;
+                          } else {
+                            const dow = day.date.getDay();
+                            if (dow === 0 || dow === 6) status = AttendanceStatus.WEEKEND;
+                          }
+                        }
+                        return (
+                          <TableRow key={key} hover>
+                            <TableCell>
+                              <Box>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  {day.date.toLocaleDateString('en-IN', { weekday: 'short' })}
+                                </Typography>
+                                <Typography variant="body2" fontWeight={500}>
+                                  {day.date.toLocaleDateString('en-IN', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric',
+                                  })}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              {status ? (
+                                <Chip
+                                  label={String(status).replace(/_/g, ' ')}
+                                  color={getStatusColor(status)}
+                                  size="small"
+                                />
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">
+                                  No record
+                                </Typography>
+                              )}
+                            </TableCell>
+                            <TableCell>{record ? formatTime(record.firstInTime) : '—'}</TableCell>
+                            <TableCell>{record ? formatTime(record.lastOutTime) : '—'}</TableCell>
+                            <TableCell>{record ? formatDuration(record.totalDuration) : '—'}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
             </CardContent>
           </Card>
         </>

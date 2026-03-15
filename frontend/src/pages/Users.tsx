@@ -6,7 +6,6 @@ import {
   CardContent,
   Typography,
   Button,
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -27,6 +26,7 @@ import { User, Role, UserStatus } from '../types';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import { getApiErrorMessage } from '../hooks/apiMessages';
 import PageLoading from '../components/PageLoading';
+import ResponsiveDialog from '../components/ResponsiveDialog';
 
 const Users: React.FC = () => {
   const { showSuccess, showError } = useSnackbar();
@@ -386,8 +386,18 @@ const Users: React.FC = () => {
       </Box>
 
       <Card elevation={2}>
-        <CardContent>
-          <Box sx={{ height: 600, width: '100%' }}>
+        <CardContent sx={{ overflow: 'hidden' }}>
+          <Box
+            sx={{
+              height: { xs: 400, sm: 500, md: 600 },
+              width: '100%',
+              minHeight: 300,
+              overflow: 'auto',
+              '& .MuiDataGrid-root': { border: 'none' },
+              '& .MuiDataGrid-cell': { minHeight: 44 },
+              '& .MuiDataGrid-columnHeaders': { minHeight: 44 },
+            }}
+          >
             <DataGrid
               rows={users || []}
               columns={columns}
@@ -397,17 +407,20 @@ const Users: React.FC = () => {
               paginationModel={paginationModel}
               onPaginationModelChange={setPaginationModel}
               disableRowSelectionOnClick
+              columnHeaderHeight={44}
+              rowHeight={44}
+              sx={{ minWidth: 520 }}
             />
           </Box>
         </CardContent>
       </Card>
 
       {/* Add/Edit User Dialog */}
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+      <ResponsiveDialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>{editUser ? 'Edit User' : 'Add New User'}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 label="Employee ID"
                 value={formData.employeeId}
@@ -510,9 +523,9 @@ const Users: React.FC = () => {
               : 'Create'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </ResponsiveDialog>
 
-      <Dialog
+      <ResponsiveDialog
         open={confirmDialog.open}
         onClose={handleConfirmClose}
         maxWidth="xs"
@@ -591,7 +604,7 @@ const Users: React.FC = () => {
             {confirmDialog.mode === 'deactivate' ? 'Deactivate' : 'Activate'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </ResponsiveDialog>
 
     </Box>
   );

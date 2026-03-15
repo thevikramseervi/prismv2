@@ -6,7 +6,6 @@ import {
   CardContent,
   Typography,
   Button,
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -21,6 +20,8 @@ import {
   Paper,
   Alert,
   Tooltip,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { Add, Edit, Delete } from '@mui/icons-material';
 import { holidaysApi } from '../api/holidays';
@@ -30,8 +31,12 @@ import { getApiErrorMessage } from '../hooks/apiMessages';
 import PageLoading from '../components/PageLoading';
 import ConfirmDialog from '../components/ConfirmDialog';
 import PageHeader from '../components/PageHeader';
+import ResponsiveDialog from '../components/ResponsiveDialog';
+import MobileTableCard from '../components/MobileTableCard';
 
 const Holidays: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showSuccess, showError } = useSnackbar();
   const [open, setOpen] = useState(false);
   const [editHoliday, setEditHoliday] = useState<Holiday | null>(null);
@@ -205,41 +210,24 @@ const Holidays: React.FC = () => {
                 <Typography variant="h6" fontWeight="bold" gutterBottom>
                   {year} ({yearHolidays.length} holidays)
                 </Typography>
-                <TableContainer component={Paper} elevation={0}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>
-                          <strong>Date</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Day</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Holiday Name</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Description</strong>
-                        </TableCell>
-                        <TableCell align="center">
-                          <strong>Actions</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {yearHolidays.map((holiday) => {
-                        const date = new Date(holiday.date);
-                        return (
-                          <TableRow key={holiday.id} hover>
-                            <TableCell>{date.toLocaleDateString('en-IN')}</TableCell>
-                            <TableCell>
-                              {date.toLocaleDateString('en-IN', { weekday: 'long' })}
-                            </TableCell>
-                            <TableCell>
-                              <strong>{holiday.name}</strong>
-                            </TableCell>
-                            <TableCell>{holiday.description || '-'}</TableCell>
-                            <TableCell align="center">
+                {isMobile ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {yearHolidays.map((holiday) => {
+                      const date = new Date(holiday.date);
+                      return (
+                        <MobileTableCard
+                          key={holiday.id}
+                          items={[
+                            { label: 'Date', value: date.toLocaleDateString('en-IN') },
+                            {
+                              label: 'Day',
+                              value: date.toLocaleDateString('en-IN', { weekday: 'long' }),
+                            },
+                            { label: 'Holiday', value: holiday.name },
+                            { label: 'Description', value: holiday.description || '–' },
+                          ]}
+                          actions={
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
                               <Tooltip title={`Edit ${holiday.name}`}>
                                 <IconButton
                                   size="small"
@@ -260,13 +248,64 @@ const Holidays: React.FC = () => {
                                   <Delete fontSize="small" />
                                 </IconButton>
                               </Tooltip>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                            </Box>
+                          }
+                        />
+                      );
+                    })}
+                  </Box>
+                ) : (
+                  <TableContainer component={Paper} elevation={0}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell><strong>Date</strong></TableCell>
+                          <TableCell><strong>Day</strong></TableCell>
+                          <TableCell><strong>Holiday Name</strong></TableCell>
+                          <TableCell><strong>Description</strong></TableCell>
+                          <TableCell align="center"><strong>Actions</strong></TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {yearHolidays.map((holiday) => {
+                          const date = new Date(holiday.date);
+                          return (
+                            <TableRow key={holiday.id} hover>
+                              <TableCell>{date.toLocaleDateString('en-IN')}</TableCell>
+                              <TableCell>
+                                {date.toLocaleDateString('en-IN', { weekday: 'long' })}
+                              </TableCell>
+                              <TableCell><strong>{holiday.name}</strong></TableCell>
+                              <TableCell>{holiday.description || '-'}</TableCell>
+                              <TableCell align="center">
+                                <Tooltip title={`Edit ${holiday.name}`}>
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => handleOpen(holiday)}
+                                    aria-label={`Edit ${holiday.name}`}
+                                  >
+                                    <Edit fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title={`Delete ${holiday.name}`}>
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() => handleDeleteClick(holiday)}
+                                    aria-label={`Delete ${holiday.name}`}
+                                  >
+                                    <Delete fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
               </CardContent>
             </Card>
           ))
@@ -295,7 +334,7 @@ const Holidays: React.FC = () => {
       />
 
       {/* Add/Edit Holiday Dialog */}
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <ResponsiveDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>{editHoliday ? 'Edit Holiday' : 'Add New Holiday'}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>
@@ -342,7 +381,7 @@ const Holidays: React.FC = () => {
               : 'Add Holiday'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </ResponsiveDialog>
 
     </Box>
   );

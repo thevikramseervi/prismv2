@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Box, Card, CardContent, Typography, Button, TextField, CircularProgress, Alert, Divider, Paper, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
+import { Box, Card, CardContent, Typography, Button, TextField, CircularProgress, Alert, Divider, Paper, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
+import ResponsiveDialog from '../ResponsiveDialog';
 import { Security, QrCode2 } from '@mui/icons-material';
 import { QRCodeSVG } from 'qrcode.react';
 import { authApi } from '../../api/auth';
@@ -88,14 +89,14 @@ const AdminSecurity2faCard: React.FC<AdminSecurity2faCardProps> = ({ onMessage }
           )}
         </CardContent>
       </Card>
-      <Dialog open={disableDialogOpen} onClose={() => !disable2faMutation.isPending && setDisableDialogOpen(false)}>
+      <ResponsiveDialog open={disableDialogOpen} onClose={() => !disable2faMutation.isPending && setDisableDialogOpen(false)}>
         <DialogTitle>Disable two-factor authentication?</DialogTitle>
         <DialogContent><DialogContentText>Your account will be protected only by your password. You can re-enable 2FA anytime from this page.</DialogContentText></DialogContent>
         <DialogActions>
           <Button onClick={() => setDisableDialogOpen(false)} disabled={disable2faMutation.isPending}>Cancel</Button>
           <Button color="error" variant="contained" onClick={() => disable2faMutation.mutate()} disabled={disable2faMutation.isPending}>{disable2faMutation.isPending ? 'Disabling…' : 'Disable 2FA'}</Button>
         </DialogActions>
-      </Dialog>
+      </ResponsiveDialog>
     </>
   );
 };

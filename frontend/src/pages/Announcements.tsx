@@ -6,7 +6,6 @@ import {
   CardContent,
   Typography,
   Button,
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -23,6 +22,7 @@ import { announcementsApi } from '../api/announcements';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
 import { useSnackbar } from '../contexts/SnackbarContext';
+import ResponsiveDialog from '../components/ResponsiveDialog';
 import { getApiErrorMessage } from '../hooks/apiMessages';
 import PageLoading from '../components/PageLoading';
 
@@ -184,7 +184,7 @@ const Announcements: React.FC = () => {
       ) : null}
 
       {/* Create Announcement Dialog */}
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+      <ResponsiveDialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Create Announcement</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>
@@ -242,7 +242,7 @@ const Announcements: React.FC = () => {
             {createMutation.isPending ? 'Creating...' : 'Create'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </ResponsiveDialog>
     </Box>
   );
 };
